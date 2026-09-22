@@ -141,8 +141,11 @@ class HwInpState extends OptimizedState<HwInp> {
       );
 
       api.JoinedOsConfig parsed;
-      if (response2.data["versions"]["software_name"] == "iPhone OS") {
-        Logger.debug("Using as iOS");
+      // This build ships the open-absinthe stub, which can't generate validation data from a one-time
+      // Mac snapshot, so Macs also keep using the relay (the Mac stays the validation source).
+      final bool useRelay = true;
+      if (useRelay || response2.data["versions"]["software_name"] == "iPhone OS") {
+        Logger.debug("Using relay for ${response2.data["versions"]["software_name"]}");
         parsed = await api.configFromRelay(code: code, host: relayHost, token: "5c175851953ecaf5209185d897591badb6c3e712");
         usingBeeper = false;
       } else {
