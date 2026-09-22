@@ -26,6 +26,11 @@ function(apply_cargokit target manifest_dir lib_name any_symbol_name)
         set(OUTPUT_LIB "${CMAKE_CURRENT_BINARY_DIR}/${CARGOKIT_LIB_FULL_NAME}")
     endif()
     set(CARGOKIT_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/cargokit_build")
+    # vendored OpenSSL's Configure (perl) can't open paths over MAX_PATH, which the deep
+    # default target dir exceeds; allow a shorter one
+    if (DEFINED ENV{CARGOKIT_TEMP_DIR_OVERRIDE})
+        file(TO_CMAKE_PATH "$ENV{CARGOKIT_TEMP_DIR_OVERRIDE}" CARGOKIT_TEMP_DIR)
+    endif()
 
     if (FLUTTER_TARGET_PLATFORM)
         set(CARGOKIT_TARGET_PLATFORM "${FLUTTER_TARGET_PLATFORM}")

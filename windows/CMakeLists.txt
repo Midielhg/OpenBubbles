@@ -3,6 +3,12 @@ project(bluebubbles_app LANGUAGES CXX)
 
 set(BINARY_NAME "bluebubbles_app")
 
+# On Windows ARM64 hosts CMAKE_SYSTEM_PROCESSOR reports the host (ARM64) even when Flutter
+# generates for x64, so objectbox_flutter_libs downloads the wrong (nonexistent) prebuilt.
+if(CMAKE_GENERATOR_PLATFORM STREQUAL "x64" AND CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "ARM64")
+  set(CMAKE_SYSTEM_PROCESSOR AMD64)
+endif()
+
 cmake_policy(SET CMP0063 NEW)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
