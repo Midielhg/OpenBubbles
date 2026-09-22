@@ -48,7 +48,10 @@ class Handle {
       }
     }
     if (address.startsWith("urn:biz")) return "Business";
-    if (contact != null) return contact!.displayName;
+    // contacts (e.g. shared "Maybe:" cards or CardDAV entries without FN) can have an empty name;
+    // fall back to the address instead of rendering a blank title
+    final contactName = contact?.displayName ?? "";
+    if (contactName.replaceFirst("Maybe: ", "").trim().isNotEmpty) return contactName;
     return address.contains("@") ? address : (formattedAddress ?? address);
   }
   String? get initials {

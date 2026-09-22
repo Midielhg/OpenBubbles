@@ -111,12 +111,71 @@ class ThemesService extends GetxService {
     ),
   ]);
 
+  // macOS Messages look: Apple system colors, dark gray (not black) in dark mode, bundled Inter font
+  static const String macLightName = "macOS Light";
+  static const String macDarkName = "macOS Dark";
+  static const String macFont = "Inter";
+
+  static BubbleColors macBubbleColors(bool dark) => BubbleColors(
+    iMessageBubbleColor: HexColor(dark ? "0A84FF" : "007AFF"),
+    oniMessageBubbleColor: Colors.white,
+    smsBubbleColor: HexColor(dark ? "30D158" : "34C759"),
+    onSmsBubbleColor: Colors.white,
+    receivedBubbleColor: HexColor(dark ? "3A3A3C" : "E9E9EB"),
+    onReceivedBubbleColor: dark ? Colors.white : Colors.black,
+  );
+
+  ThemeData _macTheme(bool dark) {
+    final typography = (dark
+        ? Typography.englishLike2021.merge(Typography.whiteMountainView)
+        : Typography.englishLike2021.merge(Typography.blackMountainView)).apply(fontFamily: macFont);
+    return FlexColorScheme(
+      textTheme: typography,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: HexColor(dark ? "0A84FF" : "007AFF"),
+        brightness: dark ? Brightness.dark : Brightness.light,
+        primary: HexColor(dark ? "0A84FF" : "007AFF"),
+        onPrimary: Colors.white,
+        primaryContainer: HexColor(dark ? "0A84FF" : "007AFF"),
+        onPrimaryContainer: Colors.white,
+        background: HexColor(dark ? "1E1E1E" : "FFFFFF"),
+        onBackground: dark ? Colors.white : Colors.black,
+        surface: HexColor(dark ? "2C2C2E" : "F2F2F7"),
+        onSurface: dark ? Colors.white : Colors.black,
+        surfaceVariant: HexColor(dark ? "2C2C2E" : "F2F2F7"),
+        onSurfaceVariant: HexColor(dark ? "EBEBF5" : "3C3C43"),
+        outline: HexColor(dark ? "98989D" : "8E8E93"),
+        error: HexColor(dark ? "FF453A" : "FF3B30"),
+      ),
+      useMaterial3: true,
+    ).toTheme.copyWith(splashFactory: InkSparkle.splashFactory, extensions: [
+      macBubbleColors(dark),
+      BubbleText(
+        bubbleText: typography.bodyMedium!.copyWith(
+          fontSize: 15,
+          height: typography.bodyMedium!.height! * 0.85,
+          color: dark ? Colors.white : Colors.black,
+        ),
+      ),
+    ]);
+  }
+
+  late final macLightTheme = _macTheme(false);
+  late final macDarkTheme = _macTheme(true);
+
+  List<ThemeStruct> get macThemes => [
+    ThemeStruct(name: macLightName, themeData: macLightTheme, googleFont: macFont),
+    ThemeStruct(name: macDarkName, themeData: macDarkTheme, googleFont: macFont),
+  ];
+
+  // index 0/1 are the dark/light fallbacks used by ThemeStruct.getDarkTheme/getLightTheme
   List<ThemeStruct> get defaultThemes => [
     ThemeStruct(name: "OLED Dark", themeData: oledDarkTheme),
     ThemeStruct(name: "Bright White", themeData: whiteLightTheme),
     ThemeStruct(name: "Nord Theme", themeData: nordDarkTheme),
     ThemeStruct(name: "Music Theme ☀", themeData: whiteLightTheme),
     ThemeStruct(name: "Music Theme 🌙", themeData: oledDarkTheme),
+    ...macThemes,
     ...FlexScheme.values
         .where((e) => e != FlexScheme.custom)
         .map((e) => [

@@ -7,6 +7,7 @@ import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:path/path.dart';
 
 class Database {
@@ -75,6 +76,28 @@ class Database {
       }
     } catch (e, s) {
       Logger.error("Failed to seed themes!", error: e, trace: s);
+    }
+
+    // Add the macOS Messages themes to existing installs, and switch to the macOS look once.
+    // After that the user's own theme/effect choices are left alone.
+    try {
+      for (final theme in ts.macThemes) {
+        if (Database.themes.query(ThemeStruct_.name.equals(theme.name)).build().findFirst() == null) {
+          Database.themes.put(theme);
+        }
+      }
+      if (!(ss.prefs.getBool("macosLookApplied") ?? false)) {
+        await ss.prefs.setString("selected-light", ThemesService.macLightName);
+        await ss.prefs.setString("selected-dark", ThemesService.macDarkName);
+        ss.settings.useWindowsAccent.value = false;
+        if (kIsDesktop && Platform.isWindows) {
+          ss.settings.windowEffect.value = WindowEffect.mica;
+        }
+        await ss.saveSettings();
+        await ss.prefs.setBool("macosLookApplied", true);
+      }
+    } catch (e, s) {
+      Logger.error("Failed to apply macOS themes!", error: e, trace: s);
     }
 
     try {

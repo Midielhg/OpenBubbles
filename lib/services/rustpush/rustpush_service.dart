@@ -4814,7 +4814,19 @@ class RustPushService extends GetxService {
         
         Logger.info("service");
       } else {
-        var data = await api.SharedPushState.restore(path: fs.appDocDir.path);
+        // A transient restore failure (e.g. a panic while decrypting one item) used to drop an
+        // already-registered install back into setup. Retry while the saved registration exists.
+        final hasSavedRegistration = File(join(fs.appDocDir.path, "hw_info.plist")).existsSync();
+        (api.SharedPushState, api.ApsWatcher)? data;
+        for (int attempt = 1; attempt <= (hasSavedRegistration ? 3 : 1); attempt++) {
+          try {
+            data = await api.SharedPushState.restore(path: fs.appDocDir.path);
+          } catch (e, s) {
+            Logger.error("State restore attempt $attempt failed", error: e, trace: s);
+          }
+          if (data != null) break;
+          if (hasSavedRegistration) await Future.delayed(Duration(seconds: 2 * attempt));
+        }
         if (data != null) {
           var (pollState, deskState) = api.dupDaemonDesk(state: data.$1);
           state = deskState;

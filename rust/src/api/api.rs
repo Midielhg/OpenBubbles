@@ -415,8 +415,25 @@ pub fn reset_anisette(path: String) {
 
     let anisette_dir = dir.join("anisette_test");
     if anisette_dir.exists() {
-        fs::remove_dir_all(dir.join("anisette_test")).expect("failed to remvoe anisette");
+        // std's remove_dir_all can fail on some Windows setups with OS error 4395
+        // ("object manager encountered a reparse point"); fall back to a plain recursive delete
+        if let Err(e) = fs::remove_dir_all(&anisette_dir) {
+            warn!("remove_dir_all failed for anisette ({e}), deleting manually");
+            remove_dir_manually(&anisette_dir).expect("failed to remove anisette");
+        }
     }
+}
+
+fn remove_dir_manually(dir: &std::path::Path) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            remove_dir_manually(&path)?;
+        } else {
+            fs::remove_file(&path)?;
+        }
+    }
+    fs::remove_dir(dir)
 }
 
 pub async fn make_anisette(path: String, config: &JoinedOSConfig, conn: &APSConnection) -> ArcAnisetteClient<DefaultAnisetteProvider> {

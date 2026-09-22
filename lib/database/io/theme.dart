@@ -194,7 +194,31 @@ class ThemeStruct {
   factory ThemeStruct.fromMap(Map<String, dynamic> json) {
     final map = json["data"];
     final brightness = Brightness.values[map["colorScheme"]["brightness"]];
-    final font = GoogleFonts.asMap()[map["textTheme"]["font"]] ?? ({
+    final isMacTheme = json["name"] == ThemesService.macLightName || json["name"] == ThemesService.macDarkName;
+    // Inter ships in assets/fonts, so use the bundled family instead of fetching it through google_fonts
+    final font = (map["textTheme"]["font"] == ThemesService.macFont ? ({
+      TextStyle? textStyle,
+      Color? color,
+      Color? backgroundColor,
+      double? fontSize,
+      FontWeight? fontWeight,
+      FontStyle? fontStyle,
+      double? letterSpacing,
+      double? wordSpacing,
+      TextBaseline? textBaseline,
+      double? height,
+      Locale? locale,
+      Paint? foreground,
+      Paint? background,
+      List<Shadow>? shadows,
+      List<FontFeature>? fontFeatures,
+      TextDecoration? decoration,
+      Color? decorationColor,
+      TextDecorationStyle? decorationStyle,
+      double? decorationThickness,
+    }) {
+      return (textStyle ?? const TextStyle()).copyWith(fontFamily: ThemesService.macFont);
+    } : null) ?? GoogleFonts.asMap()[map["textTheme"]["font"]] ?? ({
       TextStyle? textStyle,
       Color? color,
       Color? backgroundColor,
@@ -308,7 +332,9 @@ class ThemeStruct {
               receivedBubbleColor: HexColor(json["name"] == "OLED Dark" ? "323332" : "e9e9e8"),
               onReceivedBubbleColor: json["name"] == "OLED Dark" ? Colors.white : Colors.black,
             ),
-          if (json["name"] != "OLED Dark" && json["name"] != "Bright White")
+          if (isMacTheme)
+            ThemesService.macBubbleColors(brightness == Brightness.dark),
+          if (json["name"] != "OLED Dark" && json["name"] != "Bright White" && !isMacTheme)
             BubbleColors(
               smsBubbleColor: map["colorScheme"]["smsBubble"] == null ? null : Color(map["colorScheme"]["smsBubble"]),
               onSmsBubbleColor: map["colorScheme"]["onSmsBubble"] == null ? null : Color(map["colorScheme"]["onSmsBubble"]),
