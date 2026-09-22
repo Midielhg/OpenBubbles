@@ -220,16 +220,7 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
                                 }
                                 await mcs.invokeMethod("open-contact-form", parameters);
                               } else {
-                                var update = existingParticipant.contact!;
-                                update.displayName = contact.displayName.replaceFirst("Maybe: ", "");
-                                update.structuredName = contact.structuredName;
-                                update.avatar = contact.avatar;
-                                update.isShared = false;
-                                if (contact.id == update.id) {
-                                  contact = update;
-                                } else {
-                                  update.save();
-                                }
+                                promoteSuggestedContact(controller.chat.participants.first, contact);
                               }
                               if (contact.posterPath != "alreadyset") {
                                 controller.chat.participants.first.setPoster(contact.posterPath); // make sure we are on the same page

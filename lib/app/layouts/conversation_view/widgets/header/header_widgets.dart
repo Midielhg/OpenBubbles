@@ -15,6 +15,31 @@ import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:bluebubbles/database/database.dart';
+
+/// Desktop "Add"/"Update" for a suggested (shared) contact. Copies the shared name and photo into the
+/// participant's contact, or promotes the suggested contact itself when the participant has none yet
+/// (or already points at it), and links the handle to the result. The caller still saves [suggested].
+void promoteSuggestedContact(Handle participant, Contact suggested) {
+  // reload so the contact relation isn't stale
+  final handle = Handle.findOne(id: participant.id) ?? participant;
+  var target = handle.contact;
+  if (target == null || target.dbId == suggested.dbId) {
+    target = suggested;
+  }
+  target.displayName = suggested.displayName.replaceFirst("Maybe: ", "");
+  target.structuredName = suggested.structuredName;
+  target.avatar = suggested.avatar;
+  target.isShared = false;
+  if (target != suggested) {
+    target.save();
+  }
+  if (handle.contactRelation.targetId != target.dbId) {
+    handle.contactRelation.target = target;
+    Database.handles.put(handle);
+  }
+  participant.contactRelation.target = target;
+}
 
 class ManualMark extends StatefulWidget {
   const ManualMark({required this.controller});

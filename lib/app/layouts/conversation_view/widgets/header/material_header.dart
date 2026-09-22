@@ -67,7 +67,8 @@ class MaterialHeader extends StatelessWidget implements PreferredSizeWidget {
         padding: EdgeInsets.only(top: kIsDesktop ? 20 : 0),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: controller.chat.isGroup ? () {
+          // contact forms are android-only, so desktop opens details like cupertino does
+          onTap: controller.chat.isGroup || kIsDesktop || kIsWeb ? () {
             Navigator.of(context).push(
               ThemeSwitcher.buildPageRoute(
                 builder: (context) => ConversationDetails(
@@ -297,12 +298,7 @@ class MaterialHeader extends StatelessWidget implements PreferredSizeWidget {
                                 }
                                 await mcs.invokeMethod("open-contact-form", parameters);
                               } else {
-                                var update = controller.chat.participants.first.contact!;
-                                update.displayName = contact.displayName.replaceFirst("Maybe: ", "");
-                                update.structuredName = contact.structuredName;
-                                update.avatar = contact.avatar;
-                                update.isShared = false;
-                                update.save();
+                                promoteSuggestedContact(controller.chat.participants.first, contact);
                               }
                               if (contact.posterPath != "alreadyset") {
                                 controller.chat.participants.first.setPoster(contact.posterPath); // make sure we are on the same page
