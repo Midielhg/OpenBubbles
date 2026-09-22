@@ -708,6 +708,9 @@ class RustPushBackend implements BackendService {
       "account_name": ss.settings.userName.value,
       "apple_id": ss.settings.iCloudAccount.value,
       "login_status_message": stateStr,
+      "renewal_date": state is api.RegisterState_Registered ? DateTime.now().add(Duration(seconds: state.nextS)) : null,
+      // relay configs carry no hardware snapshot, so the relay device must be online to renew
+      "renewal_needs_relay": deviceState.encodedData == null,
       "vetted_aliases": handles.map((e) => {
         "Alias": e.replaceFirst("tel:", "").replaceFirst("mailto:", ""),
         "Status": state is api.RegisterState_Registered ? 3 : 0,

@@ -25,6 +25,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:supercharged/supercharged.dart';
@@ -639,6 +640,13 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                                       text: accountInfo['login_status_message'],
                                       style: TextStyle(color: getIndicatorColor((accountInfo['login_status_message']?.startsWith("Connected") ?? false) ? SocketState.connected : SocketState.disconnected))),
                                   const TextSpan(text: "\n"),
+                                  if (accountInfo['renewal_date'] is DateTime) ...[
+                                    const TextSpan(text: "Next Renewal: "),
+                                    TextSpan(text: DateFormat.yMMMd().add_jm().format(accountInfo['renewal_date'])),
+                                    if (accountInfo['renewal_needs_relay'] == true)
+                                      const TextSpan(text: "  (keep your Mac on and running the helper)", style: TextStyle(fontStyle: FontStyle.italic)),
+                                    const TextSpan(text: "\n"),
+                                  ],
                                   const TextSpan(text: "SMS Forwarding Status: "),
                                   TextSpan(
                                       text: accountInfo['sms_forwarding_enabled'] == true ? "ENABLED" : "DISABLED",
