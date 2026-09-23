@@ -65,10 +65,13 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
     }
 
     return ClipRect(
-      child: BackdropFilter(
+      child: _HeaderBlur(
+          colorFilter: ColorFilter.matrix(
+            CupertinoTheme.maybeBrightnessOf(context) == Brightness.dark ? darkMatrix : lightMatrix,
+          ),
           filter: ImageFilter.compose(
-              // desktop: just a light scroll-edge blur under the floating controls
-              outer: ImageFilter.blur(sigmaX: kIsDesktop ? 5 : 30, sigmaY: kIsDesktop ? 5 : 30),
+              // desktop: a scroll-edge blur under the floating controls that fades out downward
+              outer: ImageFilter.blur(sigmaX: kIsDesktop ? 12 : 30, sigmaY: kIsDesktop ? 12 : 30),
               inner: ColorFilter.matrix(
                 CupertinoTheme.maybeBrightnessOf(context) == Brightness.dark ? darkMatrix : lightMatrix,
               )),
@@ -643,5 +646,26 @@ class _ChatIconAndTitleState extends CustomState<_ChatIconAndTitle, void, Conver
         children: children,
       );
     }
+  }
+}
+
+/// Desktop: a progressive blur (strong at the top edge, none where the header meets the messages) so
+/// it doesn't end in a hard line. Elsewhere: the original full-strength header blur.
+class _HeaderBlur extends StatelessWidget {
+  const _HeaderBlur({required this.filter, required this.colorFilter, required this.child});
+
+  final ImageFilter filter;
+  final ColorFilter colorFilter;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!kIsDesktop) return BackdropFilter(filter: filter, child: child);
+    return Stack(
+      children: [
+        Positioned.fill(child: ProgressiveBlur(sigma: 14, colorFilter: colorFilter)),
+        child,
+      ],
+    );
   }
 }

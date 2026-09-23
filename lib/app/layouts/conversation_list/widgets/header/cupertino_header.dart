@@ -213,10 +213,14 @@ class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     final scrolled = shrinkOffset > 0 || overlapsContent;
     return ClipRect(
-      child: BackdropFilter(
-        filter: Glass.filter(scrolled ? Glass.chromeBlur : 0.01),
-        child: Container(
-          color: scrolled ? Glass.fill(context, opacity: 0.5) : Colors.transparent,
+      child: Stack(
+        children: [
+          // fades from full blur at the top edge to none at the bottom, instead of a hard line
+          if (scrolled)
+            Positioned.fill(
+              child: ProgressiveBlur(sigma: 12, color: Glass.fill(context, opacity: 0.6)),
+            ),
+          Container(
           padding: const EdgeInsets.fromLTRB(14, 28, 14, 12),
           // macOS Tahoe: the search field and the toolbar button share one row
           child: Row(
@@ -232,7 +236,8 @@ class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ],
           ),
-        ),
+          ),
+        ],
       ),
     );
   }

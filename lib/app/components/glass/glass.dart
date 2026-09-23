@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:bluebubbles/helpers/types/constants.dart';
@@ -296,4 +297,58 @@ Future<T?> showGlassPopover<T>({
       ),
     ),
   );
+}
+
+/// A blur that fades out downward instead of ending in a hard line (the scroll-edge effect under
+/// floating toolbars). Built from [steps] stacked backdrop blurs anchored at the top, each shorter than
+/// the last: blurs compose, so strength accumulates toward the top edge. Per-layer strengths are chosen
+/// so the combined blur follows a smooth curve from ~0 at the bottom to [sigma] at the top, which keeps
+/// every band edge below what the eye can see. (A gradient-masked single blur would be simpler, but on
+/// this renderer a blur inside a mask layer only sees that empty layer and blurs nothing.)
+/// [colorFilter] (e.g. saturation) is applied once, on the full-height layer.
+class ProgressiveBlur extends StatelessWidget {
+  const ProgressiveBlur({super.key, required this.sigma, this.color, this.colorFilter, this.steps = 8});
+
+  final double sigma;
+  final Color? color;
+  final ColorFilter? colorFilter;
+  final int steps;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final height = constraints.maxHeight;
+      double target(int k) => sigma * math.pow(k / steps, 1.5).toDouble();
+      final layers = <Widget>[];
+      for (int k = 1; k <= steps; k++) {
+        // layer k covers the top (steps - k + 1)/steps of the height and adds enough blur that the region
+        // covered by k layers reaches target(k)
+        final layerSigma = math.sqrt(math.max(0.0, target(k) * target(k) - target(k - 1) * target(k - 1)));
+        ImageFilter filter = ImageFilter.blur(sigmaX: layerSigma, sigmaY: layerSigma);
+        if (k == 1 && colorFilter != null) filter = ImageFilter.compose(outer: filter, inner: colorFilter!);
+        layers.add(Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: height * (steps - k + 1) / steps,
+          child: ClipRect(child: BackdropFilter(filter: filter, child: const SizedBox.expand())),
+        ));
+      }
+      return Stack(children: [
+        ...layers,
+        if (color != null)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [color!, color!.withOpacity(0)],
+                ),
+              ),
+            ),
+          ),
+      ]);
+    });
+  }
 }
