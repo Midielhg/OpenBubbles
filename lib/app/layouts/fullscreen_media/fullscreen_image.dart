@@ -276,7 +276,7 @@ class _FullscreenImageState extends OptimizedState<FullscreenImage> with Automat
                                   Navigator.of(context).pop();
                                 },
                                 child: const Icon(
-                                  Icons.close,
+                                  CupertinoIcons.xmark,
                                   color: Colors.white,
                                 ),
                               ),
@@ -334,7 +334,7 @@ class _FullscreenImageState extends OptimizedState<FullscreenImage> with Automat
                                         refreshAttachment();
                                       },
                                       child: const Icon(
-                                        Icons.refresh,
+                                        CupertinoIcons.arrow_clockwise,
                                         color: Colors.white,
                                       ),
                                     ),

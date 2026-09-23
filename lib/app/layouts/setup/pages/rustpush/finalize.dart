@@ -103,7 +103,7 @@ class _FinalizePageState extends OptimizedState<FinalizePage> {
                 child: GestureDetector(
                   child: Row(
                   children: [
-                    Icon(Icons.add, color: context.theme.textTheme.titleMedium!.color!,),
+                    Icon(CupertinoIcons.add, color: context.theme.textTheme.titleMedium!.color!,),
                     const SizedBox(width: 5,),
                     Text(
                       "Add your number",
@@ -255,7 +255,7 @@ class _FinalizePageState extends OptimizedState<FinalizePage> {
                                         style: context.theme.textTheme.bodyLarge!
                                             .apply(fontSizeFactor: 1.1, color: Colors.white)),
                                     const SizedBox(width: 10),
-                                    const Icon(Icons.check, color: Colors.white, size: 20),
+                                    const Icon(CupertinoIcons.checkmark, color: Colors.white, size: 20),
                                   ],
                                 ),
                               ),

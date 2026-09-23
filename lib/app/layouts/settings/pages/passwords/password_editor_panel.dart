@@ -222,7 +222,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: _generateRandomPassword,
-              icon: const Icon(Icons.auto_fix_high),
+              icon: const Icon(CupertinoIcons.wand_stars),
               label: const Text("Generate Password"),
             ),
           ),
@@ -282,7 +282,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: OutlinedButton.icon(
           onPressed: _addAltDomain,
-          icon: const Icon(Icons.add),
+          icon: const Icon(CupertinoIcons.add),
           label: const Text("Add Secondary Server"),
         ),
       ),
@@ -372,7 +372,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: _generateRandomPassword,
-              icon: const Icon(Icons.auto_fix_high),
+              icon: const Icon(CupertinoIcons.wand_stars),
               label: const Text("Generate Password"),
             ),
           ),
@@ -759,7 +759,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: OutlinedButton.icon(
           onPressed: _promptAddTotp,
-          icon: const Icon(Icons.add),
+          icon: const Icon(CupertinoIcons.add),
           label: const Text("Add TOTP Code"),
         ),
       );
@@ -779,7 +779,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
             children: [
               OutlinedButton.icon(
                 onPressed: _copyTotpUri,
-                icon: const Icon(Icons.link),
+                icon: const Icon(CupertinoIcons.link),
                 label: const Text("Copy Link"),
               ),
               OutlinedButton.icon(

@@ -366,12 +366,12 @@ class AttachmentPickerState extends OptimizedState<AttachmentPicker> {
     } else {
       switch (index) {
         case 0:
-          return Icons.photo_camera_outlined;
+          return CupertinoIcons.camera;
         case 1:
-          return Icons.videocam_outlined;
+          return CupertinoIcons.video_camera;
       }
     }
-    return Icons.abc;
+    return CupertinoIcons.textformat_abc;
   }
 
   String getText(int index) {

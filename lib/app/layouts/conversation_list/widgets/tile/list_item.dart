@@ -4,6 +4,7 @@ import 'package:bluebubbles/app/layouts/conversation_list/pages/conversation_lis
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -51,7 +52,7 @@ class ListItem extends StatelessWidget {
                   : action == MaterialSwipeAction.alerts
                   ? (chat.muteType == "mute" ? Icons.notifications_active : Icons.notifications_off)
                   : action == MaterialSwipeAction.delete
-                  ? Icons.delete_forever_outlined
+                  ? CupertinoIcons.trash
                   : action == MaterialSwipeAction.mark_read
                   ? (chat.hasUnreadMessage! ? Icons.mark_chat_read : Icons.mark_chat_unread)
                   : (chat.isArchived! ? Icons.unarchive : Icons.archive),

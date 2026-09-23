@@ -231,7 +231,7 @@ class MaterialOverflowMenu extends StatelessWidget {
         ];
       },
       icon: ss.settings.skin.value == Skins.Material ? Icon(
-        Icons.more_vert,
+        CupertinoIcons.ellipsis_vertical,
         color: context.theme.colorScheme.properOnSurface,
         size: 25,
       ) : null,
@@ -246,14 +246,14 @@ class MaterialOverflowMenu extends StatelessWidget {
                 color: context.theme.colorScheme.properSurface,
               ),
               child: Icon(
-                Icons.more_horiz,
+                CupertinoIcons.ellipsis,
                 color: context.theme.colorScheme.properOnSurface,
                 size: 20,
               ),
             ),
             materialSkin: const SizedBox.shrink(),
             samsungSkin: Icon(
-              Icons.more_vert,
+              CupertinoIcons.ellipsis_vertical,
               color: context.theme.colorScheme.properOnSurface,
               size: 25,
             ),
@@ -377,7 +377,7 @@ class CupertinoOverflowMenu extends StatelessWidget {
                 color: context.theme.colorScheme.properSurface,
               ),
               child: Icon(
-                Icons.more_horiz,
+                CupertinoIcons.ellipsis,
                 color: context.theme.colorScheme.properOnSurface,
                 size: 20,
               ),

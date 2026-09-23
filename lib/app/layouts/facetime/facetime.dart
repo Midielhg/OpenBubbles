@@ -73,13 +73,13 @@ class _FaceTimePanelState extends OptimizedState<FaceTimePanel> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (session.mode == api.FTMode.outgoing)
-          Icon(Icons.call_made, color: context.theme.colorScheme.bubble(context, false), size: 17,),
+          Icon(CupertinoIcons.phone_arrow_up_right, color: context.theme.colorScheme.bubble(context, false), size: 17,),
           if (session.mode == api.FTMode.incoming)
-          Icon(Icons.call_received, color: context.theme.colorScheme.bubble(context, false), size: 17,),
+          Icon(CupertinoIcons.phone_arrow_down_left, color: context.theme.colorScheme.bubble(context, false), size: 17,),
           if (session.mode == api.FTMode.missed)
-          const Icon(Icons.call_missed, color: Colors.redAccent, size: 17),
+          const Icon(CupertinoIcons.phone_down, color: Colors.redAccent, size: 17),
           if (session.mode == api.FTMode.missedOutgoing)
-          const Icon(Icons.call_missed_outgoing, color: Colors.redAccent, size: 17),
+          const Icon(CupertinoIcons.phone_down, color: Colors.redAccent, size: 17),
           if (session.mode != null)
           const SizedBox(width: 5),
           if (session.startTime != null)

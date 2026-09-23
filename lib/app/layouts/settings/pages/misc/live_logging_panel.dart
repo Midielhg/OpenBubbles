@@ -4,6 +4,7 @@ import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -114,7 +115,7 @@ class _LiveLoggingPanel extends State<LiveLoggingPanel> {
                     actions: [
                       // Menu button with 2 options, Play/Pause and Clear
                       PopupMenuButton(
-                        icon: const Icon(Icons.more_vert),
+                        icon: const Icon(CupertinoIcons.ellipsis_vertical),
                         itemBuilder: (context) => [
                           PopupMenuItem(
                             child: Obx(

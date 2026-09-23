@@ -13,6 +13,7 @@ import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/src/rust/lib.dart' as lib;
 import 'package:cbor/simple.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -241,7 +242,7 @@ class _GroupCredentialsPanelState
           onPressed: () => _openGroupParticipants(),
           icon: Icon(
             widget.initialSummary.isOwner
-                ? Icons.edit_outlined
+                ? CupertinoIcons.pencil
                 : Icons.group_outlined,
           ),
         ),
@@ -264,7 +265,7 @@ class _GroupCredentialsPanelState
           }
         },
         child: Icon(
-          Icons.add,
+          CupertinoIcons.add,
           color: context.theme.colorScheme.onPrimary,
           size: 22,
         ),

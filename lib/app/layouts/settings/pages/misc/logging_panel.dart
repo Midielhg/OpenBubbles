@@ -4,6 +4,7 @@ import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -118,12 +119,12 @@ class _LoggingPanel extends State<LoggingPanel> {
                     actions: [
                       // Menu button with 2 options, Play/Pause and Clear
                       PopupMenuButton(
-                        icon: const Icon(Icons.more_vert),
+                        icon: const Icon(CupertinoIcons.ellipsis_vertical),
                         itemBuilder: (context) => [
                           PopupMenuItem(
                             child: Obx(
                               () => ListTile(
-                                leading: errorsOnly.value ? const Icon(Icons.file_copy_outlined) : const Icon(Icons.error_outline),
+                                leading: errorsOnly.value ? const Icon(CupertinoIcons.doc_on_doc) : const Icon(CupertinoIcons.exclamationmark_circle),
                                 title: Text(errorsOnly.value ? "Show All Logs" : "Show Only Errors"),
                                 onTap: () {
                                   errorsOnly.toggle();
@@ -138,7 +139,7 @@ class _LoggingPanel extends State<LoggingPanel> {
                           ),
                           PopupMenuItem(
                             child: ListTile(
-                              leading: const Icon(Icons.refresh),
+                              leading: const Icon(CupertinoIcons.arrow_clockwise),
                               title: const Text("Refresh"),
                               onTap: () {
                                 _logs.clear();

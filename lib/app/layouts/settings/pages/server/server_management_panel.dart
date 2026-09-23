@@ -822,7 +822,7 @@ class _ServerManagementPanelState extends CustomState<ServerManagementPanel, voi
                           });
                         },
                         trailing: Obx(() => (!controller.isRestartingMessages.value)
-                            ? Icon(Icons.refresh, color: context.theme.colorScheme.outline)
+                            ? Icon(CupertinoIcons.arrow_clockwise, color: context.theme.colorScheme.outline)
                             : Container(
                                 constraints: const BoxConstraints(
                                   maxHeight: 20,
@@ -873,7 +873,7 @@ class _ServerManagementPanelState extends CustomState<ServerManagementPanel, voi
                                     });
                                   },
                                   trailing: (!controller.isRestartingPrivateAPI.value)
-                                      ? Icon(Icons.refresh, color: context.theme.colorScheme.outline)
+                                      ? Icon(CupertinoIcons.arrow_clockwise, color: context.theme.colorScheme.outline)
                                       : Container(
                                           constraints: const BoxConstraints(
                                             maxHeight: 20,
@@ -938,7 +938,7 @@ class _ServerManagementPanelState extends CustomState<ServerManagementPanel, voi
                           }
                         },
                         trailing: (!controller.isRestarting.value)
-                            ? Icon(Icons.refresh, color: context.theme.colorScheme.outline)
+                            ? Icon(CupertinoIcons.arrow_clockwise, color: context.theme.colorScheme.outline)
                             : Container(
                                 constraints: const BoxConstraints(
                                   maxHeight: 20,

@@ -362,7 +362,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                             border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.add,
+                            CupertinoIcons.add,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),
@@ -580,7 +580,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                               border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.upload,
+                            CupertinoIcons.square_arrow_up,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),
@@ -801,7 +801,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                             border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.add,
+                            CupertinoIcons.add,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),
@@ -912,7 +912,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                               border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.upload,
+                            CupertinoIcons.square_arrow_up,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),
@@ -977,7 +977,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                             border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.add,
+                            CupertinoIcons.add,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),
@@ -1109,7 +1109,7 @@ class _BackupRestorePanelState extends OptimizedState<BackupRestorePanel> {
                               border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.upload,
+                            CupertinoIcons.square_arrow_up,
                             color: context.theme.colorScheme.primary,
                             size: 20,
                           ),

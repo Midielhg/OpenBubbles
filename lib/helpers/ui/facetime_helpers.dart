@@ -263,7 +263,7 @@ Future<void> showOutgoingFaceTimeOverlay(RxString callState, String desc, String
                   if (hasEnded)
                   const SizedBox(width: 60),
                   if (hasEnded)
-                  phoneButton("Cancel", Colors.red, Icons.close, () async {
+                  phoneButton("Cancel", Colors.red, CupertinoIcons.xmark, () async {
                       hideFaceTimeOverlay(callUuid);
                     },),
                   if (hasEnded)

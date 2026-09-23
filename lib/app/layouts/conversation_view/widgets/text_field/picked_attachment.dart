@@ -180,7 +180,7 @@ class _PickedAttachmentState extends OptimizedState<PickedAttachment> with Autom
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Icon(
-                  Icons.close,
+                  CupertinoIcons.xmark,
                   color: context.theme.colorScheme.background,
                   size: 18,
                 ),

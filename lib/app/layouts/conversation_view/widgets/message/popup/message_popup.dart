@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+
 import 'package:bluebubbles/app/components/custom_text_editing_controllers.dart';
 import 'package:bluebubbles/app/layouts/chat_creator/chat_creator.dart';
 import 'package:bluebubbles/app/layouts/conversation_details/dialogs/timeframe_picker.dart';
@@ -634,7 +636,7 @@ class _MessagePopupState extends OptimizedState<MessagePopup> with SingleTickerP
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
                               onTap: reply,
-                              child: const Center(child: Icon(Icons.reply, size: 20)),
+                              child: const Center(child: Icon(CupertinoIcons.arrowshape_turn_up_left, size: 20)),
                             ),
                           ),
                         ),

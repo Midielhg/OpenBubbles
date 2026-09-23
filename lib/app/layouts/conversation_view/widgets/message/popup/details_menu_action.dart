@@ -85,7 +85,7 @@ const Map<DetailsMenuAction, (IconData, IconData)> _actionToIcon = {
   DetailsMenuAction.Share: (CupertinoIcons.share, Icons.share),
   DetailsMenuAction.ReDownloadFromServer: (CupertinoIcons.refresh, Icons.refresh),
   DetailsMenuAction.RemindLater: (CupertinoIcons.alarm, Icons.alarm),
-  DetailsMenuAction.ReportIssue: (Icons.warning_rounded, Icons.warning_rounded),
+  DetailsMenuAction.ReportIssue: (CupertinoIcons.exclamationmark_triangle_fill, CupertinoIcons.exclamationmark_triangle_fill),
   DetailsMenuAction.UploadAttachment: (CupertinoIcons.cloud_upload, Icons.file_upload),
   DetailsMenuAction.CreateContact: (CupertinoIcons.person_crop_circle_badge_plus, Icons.contact_page_outlined),
   DetailsMenuAction.UndoSend: (CupertinoIcons.arrow_uturn_left, Icons.undo),

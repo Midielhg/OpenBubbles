@@ -22,6 +22,7 @@ import 'package:collection/collection.dart';
 import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
@@ -387,7 +388,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                             : ss.settings.iCloudAccount.isEmpty
                             ? "Unknown iCloud account"
                             : ss.settings.iCloudAccount.value, style: context.theme.textTheme.bodyMedium!.apply(color: context.theme.colorScheme.outline)),
-                        trailing: Icon(Icons.edit_outlined, color: context.theme.colorScheme.onBackground),
+                        trailing: Icon(CupertinoIcons.pencil, color: context.theme.colorScheme.onBackground),
                       ),
                     ),
                   ),
@@ -401,7 +402,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                           updatePhoto();
                         },
                         title: Text("Update your photo", style: context.theme.textTheme.bodyLarge!),
-                        trailing: Icon(Icons.edit_outlined, color: context.theme.colorScheme.onBackground),
+                        trailing: Icon(CupertinoIcons.pencil, color: context.theme.colorScheme.onBackground),
                       ),
                     ),
                   ),
@@ -415,7 +416,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                           removePhoto();
                         },
                         title: Text("Remove your photo", style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.error)),
-                        trailing: Icon(Icons.close, color: context.theme.colorScheme.error),
+                        trailing: Icon(CupertinoIcons.xmark, color: context.theme.colorScheme.error),
                       ),
                     ),
                   ) : const SizedBox.shrink()),
@@ -788,7 +789,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                             child: CircularProgressIndicator(
                               strokeWidth: 3,
                               valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
-                            )) : Icon(Icons.check, color: context.theme.colorScheme.outline))
+                            )) : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline))
                         ),
                       if (!(accountInfo['can_pnr'] ?? true) && !kIsDesktop)
                         SettingsTile(
@@ -797,7 +798,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                             pushService.wantAddNumber();
                           },
                           trailing: const NextButton(),
-                          leading: Icon(Icons.add, color: context.theme.colorScheme.outline),
+                          leading: Icon(CupertinoIcons.add, color: context.theme.colorScheme.outline),
                         ),
                         if (accountInfo['login_status_message']?.contains("Sorry, your hosted device is currently offline!") ?? false)
                         SettingsTile(
@@ -875,7 +876,7 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                             child: CircularProgressIndicator(
                               strokeWidth: 3,
                               valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
-                            )) : Icon(Icons.check, color: context.theme.colorScheme.outline))
+                            )) : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline))
                         ),
                       if ((accountInfo['vetted_aliases'] as List<dynamic>? ?? []).any((a) => (a['Alias'] as String).isEmail))
                         SettingsTile(

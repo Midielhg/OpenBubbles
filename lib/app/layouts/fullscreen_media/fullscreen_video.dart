@@ -317,7 +317,7 @@ class _FullscreenVideoState extends OptimizedState<FullscreenVideo> with Automat
                                       child: const Padding(
                                         padding: EdgeInsets.all(8.0),
                                         child: Icon(
-                                          Icons.arrow_back,
+                                          CupertinoIcons.arrow_left,
                                           color: Colors.white,
                                           size: 25,
                                         ),

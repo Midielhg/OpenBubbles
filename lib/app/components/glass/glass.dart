@@ -11,6 +11,10 @@ bool get macLook => kIsDesktop && ss.settings.skin.value == Skins.iOS;
 
 /// macOS System Settings palette: window background and grouped-card fill.
 Color macPageColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F7);
+/// Neutral ink for icon-only chrome (toolbar buttons): macOS secondaryLabel / label. Muted: systemGray.
+Color macChromeInk(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFFE5E5EA) : const Color(0xFF3C3C43);
+const Color macMutedInk = Color(0xFF8E8E93);
+
 Color macCardColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2E) : Colors.white;
 
 /// Liquid Glass surfaces for the macOS Messages look.
@@ -159,7 +163,7 @@ class GlassCircleButton extends StatelessWidget {
         height: size,
         child: GlassSurface(
           child: Center(
-            child: Icon(icon, size: iconSize ?? size * 0.5, color: color ?? Theme.of(context).colorScheme.onBackground.withOpacity(0.85)),
+            child: Icon(icon, size: iconSize ?? size * 0.5, color: color ?? macChromeInk(context)),
           ),
         ),
       ),

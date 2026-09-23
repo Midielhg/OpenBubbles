@@ -11,6 +11,7 @@ import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -355,7 +356,7 @@ class _AppleIdLoginState extends OptimizedState<AppleIdLogin> {
                               subtitle: Text(ss.settings.redactedMode.value && ss.settings.hideContactInfo.value
                                   ? "User iCloud"
                                   : availableUser!, style: context.theme.textTheme.bodyMedium!.apply(color: context.theme.colorScheme.outline)),
-                              trailing: loading ? buildProgressIndicator(context, brightness: Brightness.dark) : Icon(Icons.arrow_forward, color: context.theme.colorScheme.onBackground, size: 20),
+                              trailing: loading ? buildProgressIndicator(context, brightness: Brightness.dark) : Icon(CupertinoIcons.arrow_right, color: context.theme.colorScheme.onBackground, size: 20),
                             ),
                           ),
                         ),
@@ -409,7 +410,7 @@ class _AppleIdLoginState extends OptimizedState<AppleIdLogin> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.arrow_back, color: context.theme.colorScheme.onBackground, size: 20),
+                                    Icon(CupertinoIcons.arrow_left, color: context.theme.colorScheme.onBackground, size: 20),
                                     const SizedBox(width: 10),
                                     Text("Back",
                                         style: context.theme.textTheme.bodyLarge!
@@ -475,7 +476,7 @@ class _AppleIdLoginState extends OptimizedState<AppleIdLogin> {
                                             style: context.theme.textTheme.bodyLarge!
                                                 .apply(fontSizeFactor: 1.1, color: Colors.white)),
                                         const SizedBox(width: 10),
-                                        const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                                        const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                                       ],
                                     ),),
                                     if (loading)
@@ -527,7 +528,7 @@ class _AppleIdLoginState extends OptimizedState<AppleIdLogin> {
                                             style: context.theme.textTheme.bodyLarge!
                                                 .apply(fontSizeFactor: 1.1, color: context.theme.colorScheme.onBackground)),
                                         const SizedBox(width: 10),
-                                        Icon(Icons.arrow_forward, color: context.theme.colorScheme.onBackground, size: 20),
+                                        Icon(CupertinoIcons.arrow_right, color: context.theme.colorScheme.onBackground, size: 20),
                                       ],
                                     ),),
                                     if (loading)

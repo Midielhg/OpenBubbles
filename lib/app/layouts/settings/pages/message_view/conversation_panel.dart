@@ -159,7 +159,7 @@ class _ConversationPanelState extends OptimizedState<ConversationPanel> {
                                     strokeWidth: 3,
                                     valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
                                   ))
-                              : Icon(Icons.check, color: context.theme.colorScheme.outline)),
+                              : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline)),
                       onTap: () async {
                         gettingIcons.value = true;
                         for (Chat c in chats.chats.where((c) => c.isGroup)) {

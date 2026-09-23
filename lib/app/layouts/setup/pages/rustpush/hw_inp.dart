@@ -616,7 +616,7 @@ class HwInpState extends OptimizedState<HwInp> {
                                     ),),
                                     const SizedBox(width: 10),
                                     Icon(
-                                      Icons.arrow_forward,
+                                      CupertinoIcons.arrow_right,
                                       color: hosted ? context.theme.colorScheme.onPrimary : Colors.transparent,
                                     ),
                                   ],
@@ -677,7 +677,7 @@ class HwInpState extends OptimizedState<HwInp> {
                                         )),
                                         const SizedBox(width: 10),
                                         Icon(
-                                          Icons.arrow_forward,
+                                          CupertinoIcons.arrow_right,
                                           color: hosted ? null : Colors.transparent,
                                         ),
                                       ]),
@@ -913,7 +913,7 @@ class HwInpState extends OptimizedState<HwInp> {
                                         style: context.theme.textTheme.bodyLarge!
                                             .apply(fontSizeFactor: 1.1, color: context.theme.colorScheme.onBackground)),
                                     const SizedBox(width: 10),
-                                    Icon(Icons.qr_code, color: context.theme.colorScheme.onBackground, size: 20),
+                                    Icon(CupertinoIcons.qrcode, color: context.theme.colorScheme.onBackground, size: 20),
                                   ],
                                 ),
                               ),
@@ -955,7 +955,7 @@ class HwInpState extends OptimizedState<HwInp> {
                                             style: context.theme.textTheme.bodyLarge!
                                                 .apply(fontSizeFactor: 1.1, color: Colors.white)),
                                         const SizedBox(width: 10),
-                                        const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                                        const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                                       ],
                                     )),
                                     if (loading)
@@ -1038,7 +1038,7 @@ class HwInpState extends OptimizedState<HwInp> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.security,
+                  CupertinoIcons.lock_shield,
                   size: 40,
                   color: Colors.blue,
                 ),

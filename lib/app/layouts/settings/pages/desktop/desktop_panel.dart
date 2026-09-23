@@ -9,6 +9,7 @@ import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:reorderables/reorderables.dart';
@@ -385,7 +386,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             top: size * 0.035,
                                             right: size * 0.15,
                                             child: Center(
-                                              child: Icon(Icons.more_horiz,
+                                              child: Icon(CupertinoIcons.ellipsis,
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
                                           ),
@@ -393,7 +394,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             top: size * 0.035,
                                             right: size * 0.05,
                                             child: Center(
-                                              child: Icon(Icons.close_rounded,
+                                              child: Icon(CupertinoIcons.xmark,
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
                                           ),
@@ -527,7 +528,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             top: size * 0.035,
                                             right: size * 0.15,
                                             child: Center(
-                                              child: Icon(Icons.more_horiz,
+                                              child: Icon(CupertinoIcons.ellipsis,
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
                                           ),
@@ -535,7 +536,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             top: size * 0.035,
                                             right: size * 0.05,
                                             child: Center(
-                                              child: Icon(Icons.close_rounded,
+                                              child: Icon(CupertinoIcons.xmark,
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
                                           ),

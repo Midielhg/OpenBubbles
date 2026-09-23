@@ -19,6 +19,7 @@ import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:dpad/dpad.dart';
 import 'package:faker/faker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -600,7 +601,7 @@ class ChatLeadingState extends OptimizedState<ChatLeading> {
                   height: 40,
                   child: Center(
                     child: Icon(
-                      Icons.check,
+                      CupertinoIcons.checkmark,
                       color: context.theme.colorScheme.onPrimary,
                       size: 20,
                     ),

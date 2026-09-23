@@ -12,6 +12,7 @@ import 'package:bluebubbles/app/layouts/setup/setup_view.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:confetti/confetti.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -163,7 +164,7 @@ class _SyncProgressState extends OptimizedState<SyncProgress> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.upload, color: context.theme.colorScheme.onBackground, size: 20),
+                      Icon(CupertinoIcons.square_arrow_up, color: context.theme.colorScheme.onBackground, size: 20),
                       const SizedBox(width: 10),
                       Text("Restore Backups",
                           style: context.theme.textTheme.bodyLarge!.apply(fontSizeFactor: 1.1, color: context.theme.colorScheme.onBackground)),
@@ -218,7 +219,7 @@ class _SyncProgressState extends OptimizedState<SyncProgress> {
                           builder: (context, _, anim) {
                             return const Padding(
                               padding: EdgeInsets.only(left: 0.0),
-                              child: Icon(Icons.check, color: Colors.white, size: 25),
+                              child: Icon(CupertinoIcons.checkmark, color: Colors.white, size: 25),
                             );
                           },
                         ),

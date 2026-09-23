@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -72,7 +73,7 @@ Future<bool> showCustomHeadersDialog(BuildContext context) async {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete),
+                              icon: const Icon(CupertinoIcons.trash),
                               onPressed: () {
                                 keyControllers.removeAt(index);
                                 valueControllers.removeAt(index);
@@ -97,7 +98,7 @@ Future<bool> showCustomHeadersDialog(BuildContext context) async {
                     });
                   },
                   icon: const Icon(
-                    Icons.add,
+                    CupertinoIcons.add,
                     size: 24.0,
                   ),
                   label: const Text('Add Header'), // <-- Text

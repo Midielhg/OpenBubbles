@@ -227,7 +227,7 @@ class _ConversationDetailsState extends OptimizedState<ConversationDetails> with
                         border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                       ),
                       child: Icon(
-                        Icons.add,
+                        CupertinoIcons.add,
                         color: context.theme.colorScheme.primary,
                         size: 20
                       ),
@@ -266,7 +266,7 @@ class _ConversationDetailsState extends OptimizedState<ConversationDetails> with
                               border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                           ),
                           child: Icon(
-                            Icons.more_horiz,
+                            CupertinoIcons.ellipsis,
                             color: context.theme.colorScheme.primary,
                             size: 20
                           ),
@@ -306,7 +306,7 @@ class _ConversationDetailsState extends OptimizedState<ConversationDetails> with
                           border: iOS ? null : Border.all(color: context.theme.colorScheme.error, width: 3)
                         ),
                         child: Icon(
-                          Icons.error_outline,
+                          CupertinoIcons.exclamationmark_circle,
                           color: context.theme.colorScheme.error,
                           size: 20
                         ),

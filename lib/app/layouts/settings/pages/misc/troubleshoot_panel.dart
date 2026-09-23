@@ -298,7 +298,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                         subtitle: "Allow app to run in the background via the OS. This may not do anything on some devices.",
                         trailing: Obx(() => !optimizationsDisabled.value
                             ? const NextButton()
-                            : Icon(Icons.check,
+                            : Icon(CupertinoIcons.checkmark,
                                 color: context.theme.colorScheme.outline))),
                   ]),
 
@@ -413,7 +413,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                           context.theme.colorScheme.primary),
                                     ))
-                                : Icon(Icons.check,
+                                : Icon(CupertinoIcons.checkmark,
                                     color: context.theme.colorScheme.outline))),
                     const SettingsDivider(padding: EdgeInsets.only(left: 16.0)),
                     SettingsTile(
@@ -451,7 +451,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                           context.theme.colorScheme.primary),
                                     ))
-                                : Icon(Icons.check,
+                                : Icon(CupertinoIcons.checkmark,
                                     color: context.theme.colorScheme.outline)))
                   ]),
               if (usingRustPush)
@@ -497,7 +497,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
                             valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
-                          )) : Icon(Icons.check, color: context.theme.colorScheme.outline))
+                          )) : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline))
                       ),
                     SettingsTile(
                       title: "Reregister",
@@ -525,7 +525,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
                             valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
-                          )) : Icon(Icons.check, color: context.theme.colorScheme.outline))
+                          )) : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline))
                       ),
                     SettingsTile(
                       title: "Clear FaceTime Handles",
@@ -553,7 +553,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                           child: CircularProgressIndicator(
                             strokeWidth: 3,
                             valueColor: AlwaysStoppedAnimation<Color>(context.theme.colorScheme.primary),
-                          )) : Icon(Icons.check, color: context.theme.colorScheme.outline))
+                          )) : Icon(CupertinoIcons.checkmark, color: context.theme.colorScheme.outline))
                       )
                   ]),
                 if(!kIsDesktop)
@@ -632,7 +632,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                     border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                   ),
                   child: Icon(
-                    Icons.add,
+                    CupertinoIcons.add,
                     color: context.theme.colorScheme.primary,
                     size: 20
                   ),
@@ -685,7 +685,7 @@ class _TroubleshootPanelState extends OptimizedState<TroubleshootPanel> {
                     border: iOS ? null : Border.all(color: context.theme.colorScheme.primary, width: 3)
                   ),
                   child: Icon(
-                    Icons.refresh,
+                    CupertinoIcons.arrow_clockwise,
                     color: context.theme.colorScheme.primary,
                     size: 20
                   ),

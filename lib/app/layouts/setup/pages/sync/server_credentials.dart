@@ -481,7 +481,7 @@ class _ServerCredentialsState extends OptimizedState<ServerCredentials> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.close, color: context.theme.colorScheme.onBackground, size: 20),
+                                      Icon(CupertinoIcons.xmark, color: context.theme.colorScheme.onBackground, size: 20),
                                       const SizedBox(width: 10),
                                       Text("Cancel",
                                           style: context.theme.textTheme.bodyLarge!
@@ -525,7 +525,7 @@ class _ServerCredentialsState extends OptimizedState<ServerCredentials> {
                                     children: [
                                       Text("Connect", style: context.theme.textTheme.bodyLarge!.apply(fontSizeFactor: 1.1, color: Colors.white)),
                                       const SizedBox(width: 10),
-                                      const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                                      const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                                     ],
                                   ),
                                 ),

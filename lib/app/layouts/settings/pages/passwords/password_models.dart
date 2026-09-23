@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/helpers/types/helpers/date_helpers.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cbor/simple.dart';
 
@@ -86,13 +87,13 @@ class PasswordGroupStyle {
 PasswordGroupStyle styleForPasswordGroup(PasswordGroupType type) {
   switch (type) {
     case PasswordGroupType.web:
-      return const PasswordGroupStyle(Icons.public, Colors.blueAccent);
+      return const PasswordGroupStyle(CupertinoIcons.globe, Colors.blueAccent);
     case PasswordGroupType.passkeys:
-      return const PasswordGroupStyle(Icons.key, Colors.deepPurple);
+      return const PasswordGroupStyle(CupertinoIcons.lock, Colors.deepPurple);
     case PasswordGroupType.codes:
-      return const PasswordGroupStyle(Icons.security, Colors.teal);
+      return const PasswordGroupStyle(CupertinoIcons.lock_shield, Colors.teal);
     case PasswordGroupType.wifi:
-      return const PasswordGroupStyle(Icons.wifi, Colors.orangeAccent);
+      return const PasswordGroupStyle(CupertinoIcons.wifi, Colors.orangeAccent);
   }
 }
 

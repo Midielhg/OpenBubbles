@@ -349,7 +349,7 @@ class PhoneNumberState extends OptimizedState<PhoneNumber> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.arrow_back, color: context.theme.colorScheme.onBackground, size: 20),
+                                    Icon(CupertinoIcons.arrow_left, color: context.theme.colorScheme.onBackground, size: 20),
                                     const SizedBox(width: 10),
                                     Text("Back",
                                         style: context.theme.textTheme.bodyLarge!
@@ -418,7 +418,7 @@ class PhoneNumberState extends OptimizedState<PhoneNumber> {
                                             style: context.theme.textTheme.bodyLarge!
                                                 .apply(fontSizeFactor: 1.1, color: showContinue ? Colors.white : context.theme.colorScheme.onBackground)),
                                         const SizedBox(width: 10),
-                                        Icon(Icons.arrow_forward, color: showContinue ? Colors.white : context.theme.colorScheme.onBackground, size: 20),
+                                        Icon(CupertinoIcons.arrow_right, color: showContinue ? Colors.white : context.theme.colorScheme.onBackground, size: 20),
                                       ],
                                     ),),
                                     if (controller.phoneValidating.value)

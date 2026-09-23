@@ -83,7 +83,7 @@ class _ReplyHolderState extends OptimizedState<ReplyHolder> {
                   constraints: kIsWeb || kIsDesktop ? null : const BoxConstraints(maxWidth: 30),
                   padding: EdgeInsets.symmetric(horizontal: kIsWeb || kIsDesktop ? 12 : 8, vertical: kIsWeb || kIsDesktop ? 20 : 5),
                   icon: Icon(
-                    Icons.close,
+                    CupertinoIcons.xmark,
                     color: context.theme.colorScheme.properOnSurface,
                     size: 17,
                   ),

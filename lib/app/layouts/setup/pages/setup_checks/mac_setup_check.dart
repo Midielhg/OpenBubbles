@@ -1,5 +1,6 @@
 import 'package:bluebubbles/helpers/ui/theme_helpers.dart';
 import 'package:bluebubbles/app/layouts/setup/pages/page_template.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -50,7 +51,7 @@ class MacSetupCheck extends StatelessWidget {
                       style: context.theme.textTheme.bodyLarge!.apply(fontSizeFactor: 1.1, color: Colors.white)
                     ),
                     const SizedBox(width: 10),
-                    const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                    const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                   ],
                 ),
               ),

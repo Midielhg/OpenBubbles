@@ -334,7 +334,7 @@ Future<void> showConversationTileMenu(
                   Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: Icon(
-                      Icons.delete_forever_outlined,
+                      CupertinoIcons.trash,
                       color: context.theme.colorScheme.properOnSurface,
                     ),
                   ),
@@ -418,7 +418,7 @@ void showSnackbar(String title, String message, {int animationMs = 250, int dura
 }
 
 Widget getIndicatorIcon(SocketState socketState, {double size = 24, bool showAlpha = true}) {
-  return Icon(Icons.fiber_manual_record, color: getIndicatorColor(socketState).withAlpha(showAlpha ? 200 : 255), size: size);
+  return Icon(CupertinoIcons.circle_fill, color: getIndicatorColor(socketState).withAlpha(showAlpha ? 200 : 255), size: size);
 }
 
 Color getIndicatorColor(SocketState socketState) {
@@ -527,7 +527,7 @@ Future<void> paintGroupAvatar({
       double radius = realSize * 0.5;
       canvas.drawCircle(_offset, radius, paint);
 
-      IconData icon = Icons.people;
+      IconData icon = CupertinoIcons.person_2;
 
       TextPainter()
         ..textDirection = TextDirection.rtl
@@ -611,7 +611,7 @@ Future<void> paintAvatar(
   String? initials = handle == null ? "Y" : handle.initials;
 
   if (initials == null) {
-    IconData icon = Icons.person;
+    IconData icon = CupertinoIcons.person;
 
     TextPainter()
       ..textDirection = TextDirection.rtl

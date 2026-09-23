@@ -1071,7 +1071,7 @@ class PosterEditState
 
                     Get.back();
                   },
-                  child: const Icon(Icons.check, color: Colors.white,),
+                  child: const Icon(CupertinoIcons.checkmark, color: Colors.white,),
                 ),
               ),
               if (poster.type is api.PosterType_Monogram)
@@ -1296,7 +1296,7 @@ class PosterEditState
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
-                                            Icons.clear,
+                                            CupertinoIcons.xmark_circle_fill,
                                             color: deletingColors ? Colors.red[700] : null,
                                           ),
                                         ),
@@ -1390,7 +1390,7 @@ class PosterEditState
                                 print("here");
                                 _drawerAnimationController.reverse();
                               },
-                              child: Icon(Icons.clear, color: context.theme.colorScheme.outline, size: 22, ),
+                              child: Icon(CupertinoIcons.xmark_circle_fill, color: context.theme.colorScheme.outline, size: 22, ),
                             ),
                           ),
                         ],)

@@ -5,6 +5,7 @@ import 'package:bluebubbles/helpers/ui/ui_helpers.dart';
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -478,11 +479,11 @@ class ThemeSelector extends StatelessWidget {
                                           ),
                                           Positioned(
                                             top: 5, left: 5,
-                                            child: Icon(Icons.light_mode, color: Theme.of(context).primaryColor),
+                                            child: Icon(CupertinoIcons.sun_max, color: Theme.of(context).primaryColor),
                                           ),
                                           Positioned(
                                             bottom: 5, right: 5,
-                                            child: Icon(Icons.dark_mode, color: Theme.of(context).primaryColor),
+                                            child: Icon(CupertinoIcons.moon_fill, color: Theme.of(context).primaryColor),
                                           ),
                                         ]
                                     ),
@@ -671,7 +672,7 @@ class ThemeSelector extends StatelessWidget {
                     child: Material(
                       color: Theme.of(context).primaryColor, // button color
                       child: InkWell(
-                        child: const SizedBox(width: 60, height: 60, child: Icon(Icons.check, color: Colors.white)),
+                        child: const SizedBox(width: 60, height: 60, child: Icon(CupertinoIcons.checkmark, color: Colors.white)),
                         onTap: () async {
                           goToNextPage();
                         },
@@ -780,7 +781,7 @@ Widget buildConversationViewHeader(BuildContext context, Chat chat, ThemeData th
           padding: const EdgeInsets.only(right: 8.0),
           child: GestureDetector(
             child: Icon(
-              Icons.more_vert,
+              CupertinoIcons.ellipsis_vertical,
               color: fontColor,
             ),
             onTap: () {},

@@ -193,7 +193,7 @@ class _ChatInfoState extends OptimizedState<ChatInfo> {
                                 color: context.theme.colorScheme.tertiaryContainer,
                               ),
                               child: Icon(
-                                Icons.close,
+                                CupertinoIcons.xmark,
                                 color: context.theme.colorScheme.onTertiaryContainer,
                                 size: 20,
                               ),
@@ -263,7 +263,7 @@ class _ChatInfoState extends OptimizedState<ChatInfo> {
                     ),
                   ),
                 ),
-                trailing: Icon(Icons.edit_outlined, color: context.theme.colorScheme.onBackground),
+                trailing: Icon(CupertinoIcons.pencil, color: context.theme.colorScheme.onBackground),
               ),
             ),
           ),
@@ -278,7 +278,7 @@ class _ChatInfoState extends OptimizedState<ChatInfo> {
                   updatePhoto();
                 },
                 title: Text("Update group photo", style: context.theme.textTheme.bodyLarge!),
-                trailing: Icon(Icons.edit_outlined, color: context.theme.colorScheme.onBackground),
+                trailing: Icon(CupertinoIcons.pencil, color: context.theme.colorScheme.onBackground),
               ),
             ),
           ),
@@ -295,7 +295,7 @@ class _ChatInfoState extends OptimizedState<ChatInfo> {
                       },
                       title: Text("Remove group photo",
                           style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.error)),
-                      trailing: Icon(Icons.close, color: context.theme.colorScheme.error),
+                      trailing: Icon(CupertinoIcons.xmark, color: context.theme.colorScheme.error),
                     ),
                   ),
                 )

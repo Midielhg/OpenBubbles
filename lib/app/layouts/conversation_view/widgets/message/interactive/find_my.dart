@@ -423,7 +423,7 @@ class _FindMyState extends OptimizedState<FindMy> with AutomaticKeepAliveClientM
               const SizedBox(width: 5,),
               Text(getExpiry(), style: const TextStyle(fontSize: 15, color: Colors.white))
             ],) : const Row(children: [
-              Icon(Icons.warning_rounded, size: 15, color: Colors.white),
+              Icon(CupertinoIcons.exclamationmark_triangle_fill, size: 15, color: Colors.white),
               SizedBox(width: 5,),
               Text("Not Live", style: TextStyle(fontSize: 15, color: Colors.white))
             ],),

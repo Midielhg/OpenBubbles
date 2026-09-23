@@ -582,7 +582,7 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
                   iOS
                       ? CupertinoIcons.add_circled_solid
                       : material
-                          ? Icons.add_circle_outline
+                          ? CupertinoIcons.add_circled
                           : Icons.add,
                   color: context.theme.colorScheme.outline,
                   size: 28,

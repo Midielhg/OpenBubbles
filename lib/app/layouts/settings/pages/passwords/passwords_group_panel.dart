@@ -7,6 +7,7 @@ import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -456,7 +457,7 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
     return FloatingActionButton(
       backgroundColor: context.theme.colorScheme.primary,
       child: Icon(
-        Icons.add,
+        CupertinoIcons.add,
         color: context.theme.colorScheme.onPrimary,
         size: 22,
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bluebubbles/helpers/ui/theme_helpers.dart';
 import 'package:bluebubbles/app/layouts/setup/setup_view.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -212,7 +213,7 @@ class PageButtons extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_back, color: context.theme.colorScheme.onBackground, size: 20),
+                Icon(CupertinoIcons.arrow_left, color: context.theme.colorScheme.onBackground, size: 20),
                 const SizedBox(width: 10),
                 Text("Back", style: context.theme.textTheme.bodyLarge!.apply(fontSizeFactor: 1.1, color: context.theme.colorScheme.onBackground)),
               ],
@@ -265,7 +266,7 @@ class PageButtons extends StatelessWidget {
                       builder: (context, anim, _) {
                         return Padding(
                           padding: EdgeInsets.only(left: anim),
-                          child: const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                          child: const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                         );
                       },
                     ),

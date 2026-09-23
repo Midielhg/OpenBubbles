@@ -24,6 +24,7 @@ import 'package:collection/collection.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' hide Priority;
 import 'package:flutter/services.dart';
@@ -394,7 +395,7 @@ class Main extends StatelessWidget {
                                     child: SizedBox(
                                         width: 60,
                                         height: 60,
-                                        child: Icon(Icons.lock_open, color: context.theme.colorScheme.onPrimary)),
+                                        child: Icon(CupertinoIcons.lock_open, color: context.theme.colorScheme.onPrimary)),
                                     onTap: () async {
                                       final localAuth = LocalAuthentication();
                                       bool didAuthenticate = await localAuth.authenticate(

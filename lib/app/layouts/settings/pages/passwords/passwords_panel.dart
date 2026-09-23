@@ -753,7 +753,7 @@ class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
       if (query.isNotEmpty)
         IconButton(
           onPressed: () => query = "",
-          icon: const Icon(Icons.clear),
+          icon: const Icon(CupertinoIcons.xmark_circle_fill),
         ),
     ];
   }
@@ -762,7 +762,7 @@ class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
   Widget? buildLeading(BuildContext context) {
     return IconButton(
       onPressed: () => close(context, null),
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(CupertinoIcons.arrow_left),
     );
   }
 
@@ -803,7 +803,7 @@ class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
           leading: Icon(style.icon, color: style.color),
           title: Text(item.entry.item.title),
           subtitle: Text(item.subtitle),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const Icon(CupertinoIcons.chevron_right),
         );
       },
     );

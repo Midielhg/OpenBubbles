@@ -316,7 +316,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                           padding: const EdgeInsets.only(right: 15),
                           child: !isSearching
                               ? InkWell(
-                                  child: Icon(Icons.arrow_forward, color: context.theme.colorScheme.primary),
+                                  child: Icon(CupertinoIcons.arrow_right, color: context.theme.colorScheme.primary),
                                   onTap: () {
                                     search(textEditingController.text);
                                   })
@@ -407,7 +407,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                                 padding: EdgeInsets.all(8.0),
                                 child: Text("Search Device"),
                               ),
-                              Icon(Icons.storage_outlined, size: 16),
+                              Icon(CupertinoIcons.tray_2, size: 16),
                             ],
                           ),
                           const Row(
@@ -416,7 +416,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                                 padding: EdgeInsets.all(8.0),
                                 child: Text("Search Mac"),
                               ),
-                              Icon(Icons.cloud_outlined, size: 16),
+                              Icon(CupertinoIcons.cloud, size: 16),
                             ],
                           ),
                         ],
@@ -598,7 +598,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                             children: [
                               RawChip(
                                 tapEnabled: true,
-                                deleteIcon: const Icon(Icons.close, size: 16),
+                                deleteIcon: const Icon(CupertinoIcons.xmark, size: 16),
                                 side: BorderSide(color: context.theme.colorScheme.outline.withOpacity(0.1)),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 avatar: CircleAvatar(
@@ -653,7 +653,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                               ),
                               RawChip(
                                 tapEnabled: true,
-                                deleteIcon: const Icon(Icons.close, size: 16),
+                                deleteIcon: const Icon(CupertinoIcons.xmark, size: 16),
                                 side: BorderSide(color: context.theme.colorScheme.outline.withOpacity(0.1)),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 avatar: CircleAvatar(
@@ -705,7 +705,7 @@ class SearchViewState extends OptimizedState<SearchView> {
                               if (showSenderFilter)
                                 RawChip(
                                   tapEnabled: true,
-                                  deleteIcon: const Icon(Icons.close, size: 16),
+                                  deleteIcon: const Icon(CupertinoIcons.xmark, size: 16),
                                   side: BorderSide(color: context.theme.colorScheme.outline.withOpacity(0.1)),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                   avatar: CircleAvatar(

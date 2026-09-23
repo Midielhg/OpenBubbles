@@ -15,6 +15,7 @@ import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -440,7 +441,7 @@ class CupertinoConversationListState
                                     child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add, color: context.theme.colorScheme.onSurface,),
+                                      Icon(CupertinoIcons.add, color: context.theme.colorScheme.onSurface,),
                                       const SizedBox(width: 5,),
                                       Text(
                                         "Add your number",

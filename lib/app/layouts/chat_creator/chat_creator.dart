@@ -662,7 +662,7 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                             padding: EdgeInsets.all(8.0),
                             child: Text("Text Message"),
                           ),
-                          Icon(Icons.messenger_outline, size: 16),
+                          Icon(CupertinoIcons.chat_bubble, size: 16),
                         ],
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -34,23 +35,23 @@ Future<DateTime?> showTimeframePicker(String title, BuildContext context,
     // Morning, Afternoon, Evening, Night, based on the time of day.
     // If it's > 1 day, show a calendar icon, if > 1 week show a week icon
     // If it's a month, show a month icon
-    IconData icon = Icons.calendar_today;
+    IconData icon = CupertinoIcons.calendar;
     if (entry.value >= 1 && entry.value < 24) {
       if (tmpDate.hour >= 6 && tmpDate.hour < 12) {
-        icon = Icons.wb_sunny;
+        icon = CupertinoIcons.sun_max;
       } else if (tmpDate.hour >= 12 && tmpDate.hour < 17) {
-        icon = Icons.wb_cloudy;
+        icon = CupertinoIcons.cloud;
       } else if (tmpDate.hour >= 17 && tmpDate.hour < 20) {
-        icon = Icons.brightness_3;
+        icon = CupertinoIcons.moon;
       } else if (tmpDate.hour >= 20 || tmpDate.hour < 6) {
-        icon = Icons.nights_stay;
+        icon = CupertinoIcons.moon_stars;
       }
     } else if (entry.value == 24) {
-      icon = Icons.calendar_today;
+      icon = CupertinoIcons.calendar;
     } else if (entry.value == 168) {
-      icon = Icons.calendar_view_week;
+      icon = CupertinoIcons.calendar;
     } else if (entry.value == 720) {
-      icon = Icons.calendar_view_month;
+      icon = CupertinoIcons.calendar;
     }
 
     String dateStr;
@@ -143,7 +144,7 @@ Future<DateTime?> showTimeframePicker(String title, BuildContext context,
             children: [
               Row(
                 children: [
-                  Icon(Icons.edit_calendar_outlined, color: context.theme.colorScheme.secondary),
+                  Icon(CupertinoIcons.calendar_badge_plus, color: context.theme.colorScheme.secondary),
                   Container(
                     constraints: const BoxConstraints(minWidth: 5),
                   ),

@@ -6,6 +6,7 @@ import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -71,7 +72,7 @@ class _MaterialHeaderState extends CustomState<MaterialHeader, void, Conversatio
                                               },
                                               padding: EdgeInsets.zero,
                                               icon: Icon(
-                                                Icons.arrow_back,
+                                                CupertinoIcons.arrow_left,
                                                 color: context.theme.colorScheme.properOnSurface,
                                               ),
                                             ),
@@ -134,7 +135,7 @@ class _MaterialHeaderState extends CustomState<MaterialHeader, void, Conversatio
                                 controller.clearSelectedChats();
                               },
                               icon: Icon(
-                                Icons.close,
+                                CupertinoIcons.xmark,
                                 color: context.theme.colorScheme.primary,
                               ),
                             ),

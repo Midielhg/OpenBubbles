@@ -255,7 +255,7 @@ class _AppleId2FAState extends OptimizedState<AppleId2FA> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.arrow_back, color: context.theme.colorScheme.onBackground, size: 20),
+                                    Icon(CupertinoIcons.arrow_left, color: context.theme.colorScheme.onBackground, size: 20),
                                     const SizedBox(width: 10),
                                     Text("Back",
                                         style: context.theme.textTheme.bodyLarge!
@@ -321,7 +321,7 @@ class _AppleId2FAState extends OptimizedState<AppleId2FA> {
                                             style: context.theme.textTheme.bodyLarge!
                                                 .apply(fontSizeFactor: 1.1, color: Colors.white)),
                                         const SizedBox(width: 10),
-                                        const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                                        const Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 20),
                                       ],
                                     ),),
                                     if (loading)

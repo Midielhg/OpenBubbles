@@ -4,6 +4,7 @@ import 'package:bluebubbles/app/wrappers/theme_switcher.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -103,7 +104,7 @@ class _SharedPasswordsState extends OptimizedState<SharedPasswords>
               ),
               const SizedBox(width: 8),
               Icon(
-                Icons.chevron_right,
+                CupertinoIcons.chevron_right,
                 color: context.theme.colorScheme.outline,
                 size: 22,
               ),
