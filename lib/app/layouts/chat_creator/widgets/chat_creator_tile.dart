@@ -6,6 +6,7 @@ import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/string_utils.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -41,8 +42,8 @@ class _ChatCreatorTileState extends OptimizedState<ChatCreatorTile> with Automat
     return ListTile(
         mouseCursor: MouseCursor.defer,
         enableFeedback: true,
-        dense: ss.settings.denseChatTiles.value,
-        minVerticalPadding: 10,
+        dense: macLook || ss.settings.denseChatTiles.value,
+        minVerticalPadding: macLook ? 6 : 10,
         horizontalTitleGap: 10,
         title: RichText(
           text: TextSpan(
@@ -81,7 +82,7 @@ class _ChatCreatorTileState extends OptimizedState<ChatCreatorTile> with Automat
                   editable: false,
                 ),
         ),
-        trailing: widget.chat == null || !widget.showTrailing
+        trailing: macLook || widget.chat == null || !widget.showTrailing
             ? null
             : Icon(!material ? CupertinoIcons.forward : Icons.arrow_forward,
                 color: context.theme.colorScheme.bubble(context, widget.chat!.isIMessage)));

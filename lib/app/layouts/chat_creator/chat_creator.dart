@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:bluebubbles/app/components/custom_text_editing_controllers.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/layouts/chat_creator/widgets/chat_creator_tile.dart';
 import 'package:bluebubbles/app/layouts/conversation_view/pages/conversation_view.dart';
 import 'package:bluebubbles/app/layouts/conversation_view/widgets/text_field/conversation_text_field.dart';
@@ -410,78 +411,31 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        systemNavigationBarColor: ss.settings.immersiveMode.value
-            ? Colors.transparent
-            : context.theme.colorScheme.background, // navigation bar color
-        systemNavigationBarIconBrightness: context.theme.colorScheme.brightness.opposite,
-        statusBarColor: Colors.transparent, // status bar color
-        statusBarIconBrightness: context.theme.colorScheme.brightness.opposite,
-      ),
-      child: Scaffold(
-        backgroundColor: ss.settings.windowEffect.value != WindowEffect.disabled
-            ? Colors.transparent
-            : context.theme.colorScheme.background,
-        appBar: PreferredSize(
-          preferredSize: Size(ns.width(context), kIsDesktop ? 90 : 50),
-          child: AppBar(
-            systemOverlayStyle: context.theme.colorScheme.brightness == Brightness.dark
-                ? SystemUiOverlayStyle.light
-                : SystemUiOverlayStyle.dark,
-            toolbarHeight: kIsDesktop ? 90 : 50,
-            elevation: 0,
-            scrolledUnderElevation: 3,
-            surfaceTintColor: context.theme.colorScheme.primary,
-            leading: buildBackButton(context),
-            backgroundColor: Colors.transparent,
-            centerTitle: ss.settings.skin.value == Skins.iOS,
-            title: Text(
-              "New Conversation",
-              style: context.theme.textTheme.titleLarge,
-            ),
-            actions: [
-              if (!canCreateGroupChats)
-                IconButton(
-                  icon: Icon(iOS ? CupertinoIcons.exclamationmark_circle : Icons.error_outline,
-                      color: context.theme.colorScheme.error),
-                  onPressed: () {
-                    showDialog(
-                        barrierDismissible: false,
-                        context: Get.context!,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text(
-                              "Group Chat Creation",
-                              style: context.theme.textTheme.titleLarge,
-                            ),
-                            content: Text(
-                                "Creating group chats from BlueBubbles is not possible on macOS 11 (Big Sur) and later due to limitations from Apple. You must setup the Private API to gain this feature.",
-                                style: context.theme.textTheme.bodyLarge),
-                            backgroundColor: context.theme.colorScheme.properSurface,
-                            actions: <Widget>[
-                              TextButton(
-                                child: Text("Close",
-                                    style: context.theme.textTheme.bodyLarge!
-                                        .copyWith(color: context.theme.colorScheme.primary)),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                            ],
-                          );
-                        });
-                  },
-                ),
-            ],
+  /// macOS: suggestions only while typing, in a floating glass card under the To field (the empty
+  /// new-message pane stays empty, like Messages). Elsewhere the list fills the page as before.
+  Widget _suggestionsFrame(Widget list) {
+    if (!macLook) return list;
+    if (addressController.text.trim().isEmpty) return const SizedBox.expand();
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 380),
+          child: GlassSurface(
+            borderRadius: BorderRadius.circular(14),
+            blur: 24,
+            fillOpacity: 0.9,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Material(type: MaterialType.transparency, child: list),
           ),
         ),
-        body: FocusScope(
-          child: Column(
-            children: [
-              Padding(
+      ),
+    );
+  }
+
+  Widget _buildToRow(BuildContext context) {
+    return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                 child: Row(
                   children: [
@@ -523,7 +477,7 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                                                             .bubble(context, false)
                                                             .withOpacity(0.2)
                                                         : context.theme.colorScheme.properSurface,
-                                                borderRadius: BorderRadius.circular(5),
+                                                borderRadius: BorderRadius.circular(macLook ? 999 : 5),
                                                 clipBehavior: Clip.antiAlias,
                                                 child: InkWell(
                                                   onTap: () {
@@ -638,8 +592,100 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                     ),
                   ],
                 ),
-              ),
-              if (backend.supportsSmsForwarding())
+              );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        systemNavigationBarColor: ss.settings.immersiveMode.value
+            ? Colors.transparent
+            : context.theme.colorScheme.background, // navigation bar color
+        systemNavigationBarIconBrightness: context.theme.colorScheme.brightness.opposite,
+        statusBarColor: Colors.transparent, // status bar color
+        statusBarIconBrightness: context.theme.colorScheme.brightness.opposite,
+      ),
+      child: Scaffold(
+        backgroundColor: ss.settings.windowEffect.value != WindowEffect.disabled
+            ? Colors.transparent
+            : context.theme.colorScheme.background,
+        appBar: macLook
+            ? PreferredSize(
+                preferredSize: Size(ns.width(context), 76),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 8),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Glass.border(context), width: 0.5)),
+                  ),
+                  // macOS Messages: the recipient field is the toolbar
+                  child: Row(
+                    children: [
+                      buildBackButton(context),
+                      const SizedBox(width: 6),
+                      Expanded(child: _buildToRow(context)),
+                    ],
+                  ),
+                ),
+              )
+            : PreferredSize(
+          preferredSize: Size(ns.width(context), kIsDesktop ? 90 : 50),
+          child: AppBar(
+            systemOverlayStyle: context.theme.colorScheme.brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark,
+            toolbarHeight: kIsDesktop ? 90 : 50,
+            elevation: 0,
+            scrolledUnderElevation: 3,
+            surfaceTintColor: context.theme.colorScheme.primary,
+            leading: buildBackButton(context),
+            backgroundColor: Colors.transparent,
+            centerTitle: ss.settings.skin.value == Skins.iOS,
+            title: Text(
+              "New Conversation",
+              style: context.theme.textTheme.titleLarge,
+            ),
+            actions: [
+              if (!canCreateGroupChats)
+                IconButton(
+                  icon: Icon(iOS ? CupertinoIcons.exclamationmark_circle : Icons.error_outline,
+                      color: context.theme.colorScheme.error),
+                  onPressed: () {
+                    showDialog(
+                        barrierDismissible: false,
+                        context: Get.context!,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text(
+                              "Group Chat Creation",
+                              style: context.theme.textTheme.titleLarge,
+                            ),
+                            content: Text(
+                                "Creating group chats from BlueBubbles is not possible on macOS 11 (Big Sur) and later due to limitations from Apple. You must setup the Private API to gain this feature.",
+                                style: context.theme.textTheme.bodyLarge),
+                            backgroundColor: context.theme.colorScheme.properSurface,
+                            actions: <Widget>[
+                              TextButton(
+                                child: Text("Close",
+                                    style: context.theme.textTheme.bodyLarge!
+                                        .copyWith(color: context.theme.colorScheme.primary)),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          );
+                        });
+                  },
+                ),
+            ],
+          ),
+        ),
+        body: FocusScope(
+          child: Column(
+            children: [
+              if (!macLook) _buildToRow(context),
+              if (!macLook && backend.supportsSmsForwarding())
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 15.0).add(const EdgeInsets.only(bottom: 5.0)),
                   child: ToggleButtons(
@@ -715,7 +761,7 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                     return AnimatedSwitcher(
                       duration: const Duration(milliseconds: 150),
                       child: fakeController.value == null
-                          ? CustomScrollView(
+                          ? _suggestionsFrame(CustomScrollView(
                               shrinkWrap: true,
                               physics: ThemeSwitcher.getScrollPhysics(),
                               slivers: <Widget>[
@@ -842,7 +888,7 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                                   ),
                                 ),
                               ],
-                            )
+                            ))
                           : Container(
                               color: Colors.transparent,
                               child: MessagesView(
