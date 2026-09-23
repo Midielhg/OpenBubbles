@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/profile/posterkit.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/profile/outlook_connect.dart';
+import 'package:bluebubbles/services/network/outlook_contacts.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/profile/profile_scaffold.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/theming/avatar/avatar_crop.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
@@ -580,6 +582,15 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                           cs.refreshContacts();
                         },
                       ),
+                      // Outlook / Exchange is merged in addition to the provider above
+                      Obx(() => SettingsTile(
+                        title: "Outlook / Exchange",
+                        subtitle: OutlookContacts.accountRx.value == null
+                            ? "Not connected. Add your Microsoft 365 contacts"
+                            : "Connected as ${OutlookContacts.accountRx.value}",
+                        onTap: () => showOutlookContactsFlow(context),
+                        trailing: const NextButton(),
+                      )),
                       if (ss.settings.contactSyncProvider.value == "Google" && googleCreds.value == null)
                       SettingsTile(
                         title: "Sign In",

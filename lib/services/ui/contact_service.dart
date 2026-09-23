@@ -9,6 +9,7 @@ import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:bluebubbles/objectbox.g.dart';
+import 'package:bluebubbles/services/network/outlook_contacts.dart';
 import 'package:bluebubbles/utils/string_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:fast_contacts/fast_contacts.dart' hide Contact, StructuredName;
@@ -94,7 +95,7 @@ class ContactsService extends GetxService {
       // ("Maybe:") contacts are local and kept.
       if (kIsDesktop && fullNetworkSync && _contacts.isNotEmpty) {
         final keep = _contacts.map((e) => e.id).toSet();
-        final stale = Database.contacts.getAll().where((c) => !c.isShared && !keep.contains(c.id)).toList();
+        final stale = Database.contacts.getAll().where((c) => !c.isShared && !c.id.startsWith('outlook:') && !keep.contains(c.id)).toList();
         for (final c in stale) {
           for (final h in Database.handles.query(Handle_.contactRelation.equals(c.dbId!)).build().find()) {
             h.contactRelation.target = null;
@@ -415,6 +416,14 @@ class ContactsService extends GetxService {
           } else {
             print('  DELETE ${ch.href}');
           }
+        }
+      }
+      // Outlook / Exchange contacts are merged alongside the CardDAV provider
+      if (OutlookContacts.connected) {
+        try {
+          networkContacts.addAll(await OutlookContacts.fetchContacts());
+        } catch (e, st) {
+          Logger.error("Outlook contacts: fetch failed", error: e, trace: st);
         }
       }
       return networkContacts;
