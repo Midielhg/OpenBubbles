@@ -649,38 +649,109 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   /// A person's location follows their own iPhone: when a family member's iPhone reported more recently
   /// than their Find My Friends location, the person's pin and row use the iPhone's. Family members are
   /// matched to friends by first name, since the two services don't share an id.
-  void _syncFriendsWithDevices() {
-    if (friends.isEmpty || deviceOwners.isEmpty) return;
-    final phones = <String, FindMyDevice>{};
-    for (final d in devices) {
-      final owner = d.id == null ? null : deviceOwners[d.id]?.toLowerCase();
-      final ts = d.location?.timeStamp;
-      if (owner == null || ts == null || d.location?.latitude == null || _deviceIcon(d) != Icons.phone_iphone) continue;
-      if ((phones[owner]?.location?.timeStamp ?? 0) < ts) phones[owner] = d;
+  static const _kFriendLinks = "findMyFriendDeviceLinks";
+
+  /// Friend address (lowercased) -> device name, chosen with "Use Location From...".
+  Map<String, String> get _friendLinks {
+    try {
+      final raw = ss.prefs.getString(_kFriendLinks);
+      return raw == null ? {} : Map<String, String>.from(jsonDecode(raw));
+    } catch (_) {
+      return {};
     }
-    if (phones.isEmpty) return;
+  }
+
+  Future<void> _setFriendLink(FindMyFriend f, String? deviceName) async {
+    final address = f.handle?.address.toLowerCase();
+    if (address == null) return;
+    final links = _friendLinks;
+    if (deviceName == null) {
+      links.remove(address);
+    } else {
+      links[address] = deviceName;
+    }
+    await ss.prefs.setString(_kFriendLinks, jsonEncode(links));
+  }
+
+  static final _deviceWords = RegExp(r"\b(iphone|ipad|ipod|watch|apple|macbook|air|pro|max|mini|plus|mac|imac|airpods|de|of|\(\d+\)|#\d+)\b");
+
+  /// Whose device this is by its name: "Cely's iPhone" -> cely, "iPhone de Michel" -> michel,
+  /// "Claritza" -> claritza.
+  static String? _nameOwner(String? deviceName) {
+    if (deviceName == null) return null;
+    var n = deviceName.toLowerCase().replaceAll("\u2019", "'");
+    final possessive = RegExp(r"^(.+?)'s\b").firstMatch(n);
+    if (possessive != null) return possessive.group(1)!.trim().split(RegExp(r"\s+")).first;
+    n = n.replaceAll(_deviceWords, " ").replaceAll(RegExp(r"[^a-z\u00c0-\u024f ]"), " ").trim();
+    return n.isEmpty ? null : n.split(RegExp(r"\s+")).first;
+  }
+
+  /// Names a friend could go by: contact display name, given and family names, email local part.
+  static Set<String> _friendNames(FindMyFriend f) {
+    final names = <String>{};
+    void add(String? v) {
+      for (final t in (v ?? "").toLowerCase().split(RegExp(r"[\s._@-]+"))) {
+        if (t.isNotEmpty) names.add(t);
+      }
+    }
+    add(f.handle?.displayName);
+    add(f.title);
+    add(f.handle?.contact?.structuredName?.givenName);
+    add(f.handle?.contact?.structuredName?.familyName);
+    return names;
+  }
+
+  /// "clari" ~ "claritza": one name starts with the other and the shared part is at least 4 letters.
+  static bool _namesMatch(String a, String b) {
+    final short = a.length <= b.length ? a : b;
+    final long = a.length <= b.length ? b : a;
+    return short.length >= 4 && long.startsWith(short);
+  }
+
+  /// The device whose location a friend should show: the one picked with "Use Location From...", or else
+  /// the newest iPhone whose family owner or name matches the friend.
+  FindMyDevice? _deviceForFriend(FindMyFriend f) {
+    final located = devices.where((d) => d.location?.latitude != null && d.location?.timeStamp != null).toList();
+    final linked = _friendLinks[f.handle?.address.toLowerCase()];
+    if (linked != null) {
+      for (final d in located) {
+        if (d.name == linked) return d;
+      }
+      return null;
+    }
+    final names = _friendNames(f);
+    if (names.isEmpty) return null;
+    FindMyDevice? best;
+    for (final d in located) {
+      if (_deviceIcon(d) != Icons.phone_iphone) continue;
+      final owners = <String>{
+        if (d.id != null && deviceOwners[d.id] != null) deviceOwners[d.id]!.toLowerCase().split(RegExp(r"\s+")).first,
+        if (_nameOwner(d.name) != null) _nameOwner(d.name)!,
+      };
+      final matches = owners.any((o) => names.any((n) => n == o || _namesMatch(n, o)));
+      if (matches && (best == null || best.location!.timeStamp! < d.location!.timeStamp!)) best = d;
+    }
+    return best;
+  }
+
+  /// A person's location follows their own iPhone: when it reported more recently than their Find My
+  /// Friends location (or they have none), the person's pin and row use the iPhone's.
+  void _syncFriendsWithDevices() {
+    if (friends.isEmpty || devices.isEmpty) return;
     var changed = false;
     friends = friends.map((f) {
-      final name = (f.handle?.displayName ?? f.title ?? "").trim().toLowerCase();
-      final first = name.split(RegExp(r"\s+")).first;
-      // the contact may be saved under a nickname ("Mamá"); its given name is what Apple's family uses
-      final given = (f.handle?.contact?.structuredName?.givenName ?? "").trim().toLowerCase().split(RegExp(r"\s+")).first;
-      FindMyDevice? phone = phones[first] ?? (given.isEmpty ? null : phones[given]);
-      if (phone == null) {
-        for (final e in phones.entries) {
-          if (name.startsWith(e.key)) phone = e.value;
-        }
-      }
+      final phone = _deviceForFriend(f);
       if (phone == null) return f;
       final phoneTime = DateTime.fromMillisecondsSinceEpoch(phone.location!.timeStamp!);
-      if (f.lastUpdated != null && !phoneTime.isAfter(f.lastUpdated!) && f.latitude != null) return f;
+      final hasOwn = (f.latitude ?? 0) != 0 && (f.longitude ?? 0) != 0;
+      if (hasOwn && f.lastUpdated != null && !phoneTime.isAfter(f.lastUpdated!)) return f;
+      if (f.latitude == phone.location!.latitude && f.longitude == phone.location!.longitude && f.lastUpdated == phoneTime) return f;
       changed = true;
-      final samePlace = f.latitude == phone.location!.latitude && f.longitude == phone.location!.longitude;
       return FindMyFriend(
         latitude: phone.location!.latitude,
         longitude: phone.location!.longitude,
-        longAddress: samePlace ? f.longAddress : null,
-        shortAddress: samePlace ? f.shortAddress : "From ${phone.name ?? "their iPhone"}",
+        longAddress: null,
+        shortAddress: "From ${phone.name ?? "their iPhone"}",
         title: f.title,
         subtitle: f.subtitle,
         handle: f.handle,
@@ -696,6 +767,40 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     for (final f in friendsWithLocation) {
       buildFriendMarker(f);
     }
+  }
+
+  /// "Use Location From...": pick which device's location this person shows (remembered), or automatic.
+  Future<void> _pickDeviceForFriend(FindMyFriend f) async {
+    final options = devices.where((d) => !d.isConsideredAccessory && d.name != null).toList()
+      ..sort((a, b) => a.name!.compareTo(b.name!));
+    final current = _friendLinks[f.handle?.address.toLowerCase()];
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text("Use location for ${f.handle?.displayName ?? f.title ?? "this person"} from"),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(""),
+            child: Text("Automatic (match by name)", style: TextStyle(fontWeight: current == null ? FontWeight.w600 : null)),
+          ),
+          for (final d in options)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(d.name),
+              child: Row(
+                children: [
+                  FindMyDeviceBadge(icon: _deviceIcon(d), imageUrl: findMyDeviceImageUrl(d.deviceClass, d.rawDeviceModel), size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(d.name!, style: TextStyle(fontWeight: current == d.name ? FontWeight.w600 : null))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await _setFriendLink(f, picked.isEmpty ? null : picked);
+    // start from the friend's own Find My Friends data again, then re-apply
+    getLocations(refreshDevices: false);
   }
 
   /// Fallback when the normal (relay-backed) path fails: devices from a saved icloud.com session.
@@ -1248,6 +1353,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                               const Icon(CupertinoIcons.largecircle_fill_circle),
                             if (item.locatingInProgress)
                               buildProgressIndicator(context),
+                            Padding(padding: const EdgeInsets.only(left: 8), child: GlassCircleButton(icon: CupertinoIcons.link, size: 30, iconSize: 14, tooltip: "Use Location From...", onTap: () => _pickDeviceForFriend(item))),
                             Padding(padding: const EdgeInsets.only(left: 8), child: GlassCircleButton(icon: CupertinoIcons.arrow_turn_up_right, size: 30, iconSize: 15, tooltip: "Directions", color: context.theme.colorScheme.primary, onTap: () async { await MapsLauncher.launchCoordinates(item.latitude!, item.longitude!); })),
                           ],
                         ) : null,
@@ -1323,6 +1429,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                                 leading: ContactAvatarWidget(handle: item.handle),
                                 title: Text(item.handle?.displayName ?? item.title ?? "Unknown Friend"),
                                 subtitle: Text(ss.settings.redactedMode.value ? "Location" : (item.longAddress ?? "No location found")),
+                                trailing: GlassCircleButton(icon: CupertinoIcons.link, size: 30, iconSize: 14, tooltip: "Use Location From...", onTap: () => _pickDeviceForFriend(item)),
                                 onTap: () async {
                                   await api.selectFriend(config: pushService.state!.osConfig, client: fmfClient!, friend: item.id);
                                 },
