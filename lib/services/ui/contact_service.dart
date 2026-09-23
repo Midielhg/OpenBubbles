@@ -8,6 +8,7 @@ import 'package:bluebubbles/main.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
+import 'package:bluebubbles/objectbox.g.dart';
 import 'package:bluebubbles/utils/string_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:fast_contacts/fast_contacts.dart' hide Contact, StructuredName;
@@ -52,7 +53,7 @@ class ContactsService extends GetxService {
     }
   }
 
-  Future<List<List<int>>> refreshContacts() async {
+  Future<List<List<int>>> refreshContacts({bool fullNetworkSync = false}) async {
     if (!(await hasContactAccess)) return [];
 
     // Check if the user is on v1.5.2 or newer
@@ -88,6 +89,21 @@ class ContactsService extends GetxService {
           newContacts[i].dbId = ids[i];
         }
       }
+      // After a full CardDAV download the fetched set is authoritative: drop cached network contacts
+      // that are no longer in it (older duplicates with other ids, nameless copies). Shared
+      // ("Maybe:") contacts are local and kept.
+      if (kIsDesktop && fullNetworkSync && _contacts.isNotEmpty) {
+        final keep = _contacts.map((e) => e.id).toSet();
+        final stale = Database.contacts.getAll().where((c) => !c.isShared && !keep.contains(c.id)).toList();
+        for (final c in stale) {
+          for (final h in Database.handles.query(Handle_.contactRelation.equals(c.dbId!)).build().find()) {
+            h.contactRelation.target = null;
+            Database.handles.put(h);
+          }
+        }
+        Database.contacts.removeMany(stale.map((c) => c.dbId!).toList());
+        Logger.info("Contact sync: removed ${stale.length} stale cached contacts");
+      }
     }
     // load stored handles
     final List<Handle> handles = [];
@@ -106,7 +122,7 @@ class ContactsService extends GetxService {
     // Desktop syncs CardDAV incrementally (ctag/sync-token persist in settings), so _contacts only holds
     // what changed this run. Match against every stored contact, or handles whose contact was synced
     // earlier never get linked.
-    final matchContacts = kIsDesktop ? Database.contacts.getAll().where((c) => !c.isShared).toList() : _contacts;
+    final matchContacts = kIsDesktop ? Database.contacts.getAll().where((c) => !c.isShared && c.displayName.trim().isNotEmpty).toList() : _contacts;
     final handlesToSearch = List<Handle>.from(handles);
     for (Contact c in matchContacts) {
       final handles = matchContactToHandles(c, handlesToSearch);
@@ -124,6 +140,9 @@ class ContactsService extends GetxService {
           }
 
           if (h.contactRelation.target == null) {
+            changedIds.last.add(h.id!);
+          } else if (kIsDesktop && h.contactRelation.target!.dbId != c.dbId && !c.isShared) {
+            // relinking to a different (e.g. now-named) contact must refresh the chat list too
             changedIds.last.add(h.id!);
           } else if (c.isShared) {
             // we have an existing contact, and we're shared.

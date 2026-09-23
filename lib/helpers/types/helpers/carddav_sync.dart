@@ -667,8 +667,15 @@ class CardDavClient {
     final fn = _rawVCardValues(vcard, 'FN').firstOrNull ?? _rawVCardValues(vcard, 'ORG').firstOrNull?.split(';').first;
     return contacts.Contact(
       // cards without a parsed id would all share "" and overwrite each other; the card URL is unique
-      id: contact.id.isNotEmpty ? contact.id : href.toString(),
-      displayName: contact.displayName.trim().isNotEmpty ? contact.displayName : (fn ?? ""),
+      // path only: iCloud serves the same card from p49-/p50-contacts hosts
+      id: contact.id.isNotEmpty ? contact.id : href.path,
+      // cards that only carry N (first/last) parse with an empty displayName, which rendered the chat
+      // as a bare number; build it from the structured name, then FN, then ORG
+      displayName: contact.displayName.trim().isNotEmpty
+          ? contact.displayName
+          : [name.prefix, name.first, name.middle, name.last, name.suffix].where((e) => e.trim().isNotEmpty).join(' ').trim().isNotEmpty
+              ? [name.prefix, name.first, name.middle, name.last, name.suffix].where((e) => e.trim().isNotEmpty).join(' ').trim()
+              : (fn ?? ""),
       phones: phones,
       emails: emails,
       structuredName: structured.StructuredName(
