@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'api.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `bin_deserialize_16`, `config`, `encrypt`, `get_login_config`, `get_password`, `handle_2fa`, `handle_circle`, `handle_photostream`, `migrate`, `plist_to_bin`, `plist_to_buf`, `plist_to_string`, `reset_user`, `shared_items`, `subscribe_streams`, `wrap_sink`
+// These functions are ignored because they are not marked as `pub`: `bin_deserialize_16`, `config`, `encrypt`, `get_login_config`, `get_password`, `handle_2fa`, `handle_circle`, `handle_photostream`, `migrate`, `plist_to_bin`, `plist_to_buf`, `plist_to_string`, `remove_dir_manually`, `reset_user`, `shared_items`, `subscribe_streams`, `wrap_sink`
 // These functions are ignored because they have generic arguments: `bin_deserialize`, `bin_serialize`
 // These types are ignored because they are not used by any `pub` functions: `AnisetteState`, `DaemonData`, `FLUTTER_RUST_BRIDGE_HANDLER`, `GSAConfig`, `NSArrayClass`, `NSArrayIconArray`, `NSArrayImageArray`, `ProvisionedAnisette`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `deref`, `eq`, `fmt`, `get_files`, `initialize`, `spawn`
@@ -914,6 +914,30 @@ Future<(CircleClientSessionDefaultAnisetteProvider, LoginState, String?)>
         RustLib.instance.api
             .crateApiApiSend2FaToDevices(state: state, conn: conn);
 
+/// iCloud Keychain / escrow only accepts a PET from an interactive sign-in (password + 2FA). The silent
+/// background re-login done on every restore yields a PET escrow rejects with -3001, so re-authenticate
+/// the *existing* account in place (no new account, no IDS re-registration) and push 2FA to trusted devices.
+Future<CircleClientSessionDefaultAnisetteProvider> startKeychainReauth(
+        {required ArcMutexAppleAccountDefaultAnisetteProvider account,
+        required ApsConnection conn,
+        required String password}) =>
+    RustLib.instance.api.crateApiApiStartKeychainReauth(
+        account: account, conn: conn, password: password);
+
+/// Finish [start_keychain_reauth] with the 2FA code. Returns whether a fresh PET is now available.
+Future<bool> finishKeychainReauth(
+        {required CircleClientSessionDefaultAnisetteProvider client,
+        required ArcMutexAppleAccountDefaultAnisetteProvider account,
+        required ReceiverApsMessage watcher,
+        required ArcIdmsAuthListener idms,
+        required String code}) =>
+    RustLib.instance.api.crateApiApiFinishKeychainReauth(
+        client: client,
+        account: account,
+        watcher: watcher,
+        idms: idms,
+        code: code);
+
 Future<bool> isInClique(
         {required ArcKeychainClientDefaultAnisetteProvider keychain}) =>
     RustLib.instance.api.crateApiApiIsInClique(keychain: keychain);
@@ -1301,7 +1325,7 @@ abstract class MessageFlags implements RustOpaqueInterface {
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PushError>>
 abstract class PushError implements RustOpaqueInterface {}
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Receiver < APSMessage >>>
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Receiver < APSMessage >>>
 abstract class ReceiverApsMessage implements RustOpaqueInterface {}
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SavedHardwareState>>

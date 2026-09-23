@@ -2335,6 +2335,44 @@ pub async fn send_2fa_to_devices(state: &Arc<Mutex<AppleAccount<DefaultAnisetteP
     Ok((client_session, LoginState::Needs2FAVerification, sid))
 }
 
+/// iCloud Keychain / escrow only accepts a PET from an interactive sign-in (password + 2FA). The silent
+/// background re-login done on every restore yields a PET escrow rejects with -3001, so re-authenticate
+/// the *existing* account in place (no new account, no IDS re-registration) and push 2FA to trusted devices.
+pub async fn start_keychain_reauth(account: &Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>, conn: &APSConnection, password: String) -> anyhow::Result<CircleClientSession<DefaultAnisetteProvider>> {
+    let mut password_hasher = sha2::Sha256::new();
+    password_hasher.update(&password.as_bytes());
+    let hashed_password = password_hasher.finalize().to_vec();
+
+    let mut locked = account.lock().await;
+    let username = locked.username.clone().ok_or(anyhow!("No Apple Account username"))?;
+    locked.login_email_pass(&username, &hashed_password).await?;
+    let dsid = locked.spd.as_ref()
+        .and_then(|spd| spd.get("DsPrsId"))
+        .and_then(|v| v.as_unsigned_integer())
+        .ok_or(anyhow!("No DSID after sign-in"))?;
+    drop(locked);
+
+    Ok(CircleClientSession::new(dsid, account.clone(), conn.get_token().await).await?)
+}
+
+/// Finish [start_keychain_reauth] with the 2FA code. Returns whether a fresh PET is now available.
+pub async fn finish_keychain_reauth(client: &mut CircleClientSession<DefaultAnisetteProvider>, account: &Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>, watcher: &mut broadcast::Receiver<APSMessage>, idms: &Arc<IdmsAuthListener>, code: String) -> anyhow::Result<bool> {
+    client.send_code(&code).await?;
+
+    tokio::time::timeout(Duration::from_secs(30), async {
+        Ok::<_, PushError>(loop {
+            let msg = watcher.recv().await.unwrap();
+            if let Some(IdmsMessage::CircleRequest(c, _)) = idms.handle(msg)? {
+                if let Some(state) = client.handle_circle_request(&c).await? {
+                    break state;
+                }
+            }
+        })
+    }).await.map_err(|_| anyhow!("Timed out waiting for the 2FA confirmation"))??;
+
+    Ok(account.lock().await.get_pet().is_some())
+}
+
 #[frb(type_64bit_int)]
 pub struct ViableBottle {
     pub escrow: EscrowData,

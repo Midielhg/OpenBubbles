@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.3.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1267927268;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 39202388;
 
 // Section: executor
 
@@ -5321,6 +5321,117 @@ fn wire__crate__api__api__ffi_file_packager_default_impl(
                         Result::<_, ()>::Ok(crate::api::api::FFIFilePackager::default())?;
                     Ok(output_ok)
                 })())
+            }
+        },
+    )
+}
+fn wire__crate__api__api__finish_keychain_reauth_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "finish_keychain_reauth",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_client = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                    CircleClientSession<DefaultAnisetteProvider>,
+                >,
+            >>::sse_decode(&mut deserializer);
+            let api_account = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                    Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>,
+                >,
+            >>::sse_decode(&mut deserializer);
+            let api_watcher = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Receiver<APSMessage>>,
+            >>::sse_decode(&mut deserializer);
+            let api_idms = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<IdmsAuthListener>>,
+            >>::sse_decode(&mut deserializer);
+            let api_code = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let mut api_client_guard = None;
+                        let mut api_account_guard = None;
+                        let mut api_watcher_guard = None;
+                        let mut api_idms_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_client,
+                                        0,
+                                        true,
+                                    ),
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_account,
+                                        1,
+                                        false,
+                                    ),
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_watcher,
+                                        2,
+                                        true,
+                                    ),
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_idms, 3, false,
+                                    ),
+                                ],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => {
+                                    api_client_guard =
+                                        Some(api_client.lockable_decode_async_ref_mut().await)
+                                }
+                                1 => {
+                                    api_account_guard =
+                                        Some(api_account.lockable_decode_async_ref().await)
+                                }
+                                2 => {
+                                    api_watcher_guard =
+                                        Some(api_watcher.lockable_decode_async_ref_mut().await)
+                                }
+                                3 => {
+                                    api_idms_guard =
+                                        Some(api_idms.lockable_decode_async_ref().await)
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        let mut api_client_guard = api_client_guard.unwrap();
+                        let api_account_guard = api_account_guard.unwrap();
+                        let mut api_watcher_guard = api_watcher_guard.unwrap();
+                        let api_idms_guard = api_idms_guard.unwrap();
+                        let output_ok = crate::api::api::finish_keychain_reauth(
+                            &mut *api_client_guard,
+                            &*api_account_guard,
+                            &mut *api_watcher_guard,
+                            &*api_idms_guard,
+                            api_code,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
             }
         },
     )
@@ -12477,6 +12588,85 @@ fn wire__crate__api__api__shared_push_state_restore_impl(
                         let output_ok = Result::<_, ()>::Ok(
                             crate::api::api::SharedPushState::restore(api_path).await,
                         )?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__api__start_keychain_reauth_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "start_keychain_reauth",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_account = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                    Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>,
+                >,
+            >>::sse_decode(&mut deserializer);
+            let api_conn = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSConnection>,
+            >>::sse_decode(&mut deserializer);
+            let api_password = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let mut api_account_guard = None;
+                        let mut api_conn_guard = None;
+                        let decode_indices_ =
+                            flutter_rust_bridge::for_generated::lockable_compute_decode_order(
+                                vec![
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_account,
+                                        0,
+                                        false,
+                                    ),
+                                    flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                        &api_conn, 1, false,
+                                    ),
+                                ],
+                            );
+                        for i in decode_indices_ {
+                            match i {
+                                0 => {
+                                    api_account_guard =
+                                        Some(api_account.lockable_decode_async_ref().await)
+                                }
+                                1 => {
+                                    api_conn_guard =
+                                        Some(api_conn.lockable_decode_async_ref().await)
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        let api_account_guard = api_account_guard.unwrap();
+                        let api_conn_guard = api_conn_guard.unwrap();
+                        let output_ok = crate::api::api::start_keychain_reauth(
+                            &*api_account_guard,
+                            &*api_conn_guard,
+                            api_password,
+                        )
+                        .await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -23050,164 +23240,168 @@ fn pde_ffi_dispatcher_primary_impl(
         107 => {
             wire__crate__api__api__ffi_file_packager_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        108 => wire__crate__api__api__from_poster_impl(port, ptr, rust_vec_len, data_len),
-        109 => wire__crate__api__api__from_poster_save_impl(port, ptr, rust_vec_len, data_len),
-        110 => wire__crate__api__api__from_transcript_poster_save_impl(
+        108 => {
+            wire__crate__api__api__finish_keychain_reauth_impl(port, ptr, rust_vec_len, data_len)
+        }
+        109 => wire__crate__api__api__from_poster_impl(port, ptr, rust_vec_len, data_len),
+        110 => wire__crate__api__api__from_poster_save_impl(port, ptr, rust_vec_len, data_len),
+        111 => wire__crate__api__api__from_transcript_poster_save_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        111 => wire__crate__api__api__ft_sessions_impl(port, ptr, rust_vec_len, data_len),
-        112 => wire__crate__api__api__generate_udid_impl(port, ptr, rust_vec_len, data_len),
-        113 => wire__crate__api__api__get_2fa_code_impl(port, ptr, rust_vec_len, data_len),
-        114 => wire__crate__api__api__get_2fa_sms_opts_impl(port, ptr, rust_vec_len, data_len),
-        115 => wire__crate__api__api__get_albums_impl(port, ptr, rust_vec_len, data_len),
-        116 => wire__crate__api__api__get_anisette_headers_impl(port, ptr, rust_vec_len, data_len),
-        118 => {
+        112 => wire__crate__api__api__ft_sessions_impl(port, ptr, rust_vec_len, data_len),
+        113 => wire__crate__api__api__generate_udid_impl(port, ptr, rust_vec_len, data_len),
+        114 => wire__crate__api__api__get_2fa_code_impl(port, ptr, rust_vec_len, data_len),
+        115 => wire__crate__api__api__get_2fa_sms_opts_impl(port, ptr, rust_vec_len, data_len),
+        116 => wire__crate__api__api__get_albums_impl(port, ptr, rust_vec_len, data_len),
+        117 => wire__crate__api__api__get_anisette_headers_impl(port, ptr, rust_vec_len, data_len),
+        119 => {
             wire__crate__api__api__get_background_following_impl(port, ptr, rust_vec_len, data_len)
         }
-        119 => wire__crate__api__api__get_beacon_items_impl(port, ptr, rust_vec_len, data_len),
-        120 => wire__crate__api__api__get_bottles_impl(port, ptr, rust_vec_len, data_len),
-        121 => wire__crate__api__api__get_contacts_headers_impl(port, ptr, rust_vec_len, data_len),
-        122 => wire__crate__api__api__get_device_info_impl(port, ptr, rust_vec_len, data_len),
-        123 => wire__crate__api__api__get_devices_impl(port, ptr, rust_vec_len, data_len),
-        124 => wire__crate__api__api__get_entitlements_impl(port, ptr, rust_vec_len, data_len),
-        125 => wire__crate__api__api__get_following_impl(port, ptr, rust_vec_len, data_len),
-        126 => wire__crate__api__api__get_ft_link_impl(port, ptr, rust_vec_len, data_len),
-        127 => wire__crate__api__api__get_groups_impl(port, ptr, rust_vec_len, data_len),
-        128 => wire__crate__api__api__get_handles_impl(port, ptr, rust_vec_len, data_len),
-        129 => wire__crate__api__api__get_my_phone_handles_impl(port, ptr, rust_vec_len, data_len),
-        130 => wire__crate__api__api__get_passkeys_impl(port, ptr, rust_vec_len, data_len),
-        131 => wire__crate__api__api__get_passwords_impl(port, ptr, rust_vec_len, data_len),
-        132 => wire__crate__api__api__get_passwords_meta_impl(port, ptr, rust_vec_len, data_len),
-        133 => wire__crate__api__api__get_quota_info_impl(port, ptr, rust_vec_len, data_len),
-        134 => wire__crate__api__api__get_regstate_impl(port, ptr, rust_vec_len, data_len),
-        135 => wire__crate__api__api__get_sms_targets_impl(port, ptr, rust_vec_len, data_len),
-        136 => wire__crate__api__api__get_syncstatus_impl(port, ptr, rust_vec_len, data_len),
-        137 => wire__crate__api__api__get_token_impl(port, ptr, rust_vec_len, data_len),
-        138 => wire__crate__api__api__get_user_name_impl(port, ptr, rust_vec_len, data_len),
-        139 => wire__crate__api__api__get_wifi_passwords_impl(port, ptr, rust_vec_len, data_len),
-        141 => wire__crate__api__api__invalidate_id_cache_impl(port, ptr, rust_vec_len, data_len),
-        142 => wire__crate__api__api__invite_to_channel_impl(port, ptr, rust_vec_len, data_len),
-        143 => wire__crate__api__api__invite_user_impl(port, ptr, rust_vec_len, data_len),
-        144 => wire__crate__api__api__is_in_clique_impl(port, ptr, rust_vec_len, data_len),
-        145 => {
+        120 => wire__crate__api__api__get_beacon_items_impl(port, ptr, rust_vec_len, data_len),
+        121 => wire__crate__api__api__get_bottles_impl(port, ptr, rust_vec_len, data_len),
+        122 => wire__crate__api__api__get_contacts_headers_impl(port, ptr, rust_vec_len, data_len),
+        123 => wire__crate__api__api__get_device_info_impl(port, ptr, rust_vec_len, data_len),
+        124 => wire__crate__api__api__get_devices_impl(port, ptr, rust_vec_len, data_len),
+        125 => wire__crate__api__api__get_entitlements_impl(port, ptr, rust_vec_len, data_len),
+        126 => wire__crate__api__api__get_following_impl(port, ptr, rust_vec_len, data_len),
+        127 => wire__crate__api__api__get_ft_link_impl(port, ptr, rust_vec_len, data_len),
+        128 => wire__crate__api__api__get_groups_impl(port, ptr, rust_vec_len, data_len),
+        129 => wire__crate__api__api__get_handles_impl(port, ptr, rust_vec_len, data_len),
+        130 => wire__crate__api__api__get_my_phone_handles_impl(port, ptr, rust_vec_len, data_len),
+        131 => wire__crate__api__api__get_passkeys_impl(port, ptr, rust_vec_len, data_len),
+        132 => wire__crate__api__api__get_passwords_impl(port, ptr, rust_vec_len, data_len),
+        133 => wire__crate__api__api__get_passwords_meta_impl(port, ptr, rust_vec_len, data_len),
+        134 => wire__crate__api__api__get_quota_info_impl(port, ptr, rust_vec_len, data_len),
+        135 => wire__crate__api__api__get_regstate_impl(port, ptr, rust_vec_len, data_len),
+        136 => wire__crate__api__api__get_sms_targets_impl(port, ptr, rust_vec_len, data_len),
+        137 => wire__crate__api__api__get_syncstatus_impl(port, ptr, rust_vec_len, data_len),
+        138 => wire__crate__api__api__get_token_impl(port, ptr, rust_vec_len, data_len),
+        139 => wire__crate__api__api__get_user_name_impl(port, ptr, rust_vec_len, data_len),
+        140 => wire__crate__api__api__get_wifi_passwords_impl(port, ptr, rust_vec_len, data_len),
+        142 => wire__crate__api__api__invalidate_id_cache_impl(port, ptr, rust_vec_len, data_len),
+        143 => wire__crate__api__api__invite_to_channel_impl(port, ptr, rust_vec_len, data_len),
+        144 => wire__crate__api__api__invite_user_impl(port, ptr, rust_vec_len, data_len),
+        145 => wire__crate__api__api__is_in_clique_impl(port, ptr, rust_vec_len, data_len),
+        146 => {
             wire__crate__api__api__join_clique_with_bottle_impl(port, ptr, rust_vec_len, data_len)
         }
-        146 => wire__crate__api__api__make_anisette_impl(port, ptr, rust_vec_len, data_len),
-        150 => wire__crate__api__api__make_cloudkit_impl(port, ptr, rust_vec_len, data_len),
-        151 => wire__crate__api__api__make_facetime_impl(port, ptr, rust_vec_len, data_len),
-        152 => wire__crate__api__api__make_find_my_friends_impl(port, ptr, rust_vec_len, data_len),
-        153 => wire__crate__api__api__make_find_my_phone_impl(port, ptr, rust_vec_len, data_len),
-        154 => wire__crate__api__api__make_findmy_impl(port, ptr, rust_vec_len, data_len),
-        155 => wire__crate__api__api__make_idms_impl(port, ptr, rust_vec_len, data_len),
-        156 => wire__crate__api__api__make_imclient_impl(port, ptr, rust_vec_len, data_len),
-        158 => wire__crate__api__api__make_passwords_impl(port, ptr, rust_vec_len, data_len),
-        159 => wire__crate__api__api__make_profiles_impl(port, ptr, rust_vec_len, data_len),
-        160 => wire__crate__api__api__make_shared_streams_impl(port, ptr, rust_vec_len, data_len),
-        161 => wire__crate__api__api__make_statuskit_impl(port, ptr, rust_vec_len, data_len),
-        163 => {
+        147 => wire__crate__api__api__make_anisette_impl(port, ptr, rust_vec_len, data_len),
+        151 => wire__crate__api__api__make_cloudkit_impl(port, ptr, rust_vec_len, data_len),
+        152 => wire__crate__api__api__make_facetime_impl(port, ptr, rust_vec_len, data_len),
+        153 => wire__crate__api__api__make_find_my_friends_impl(port, ptr, rust_vec_len, data_len),
+        154 => wire__crate__api__api__make_find_my_phone_impl(port, ptr, rust_vec_len, data_len),
+        155 => wire__crate__api__api__make_findmy_impl(port, ptr, rust_vec_len, data_len),
+        156 => wire__crate__api__api__make_idms_impl(port, ptr, rust_vec_len, data_len),
+        157 => wire__crate__api__api__make_imclient_impl(port, ptr, rust_vec_len, data_len),
+        159 => wire__crate__api__api__make_passwords_impl(port, ptr, rust_vec_len, data_len),
+        160 => wire__crate__api__api__make_profiles_impl(port, ptr, rust_vec_len, data_len),
+        161 => wire__crate__api__api__make_shared_streams_impl(port, ptr, rust_vec_len, data_len),
+        162 => wire__crate__api__api__make_statuskit_impl(port, ptr, rust_vec_len, data_len),
+        164 => {
             wire__crate__api__api__message_parts_raw_text_impl(port, ptr, rust_vec_len, data_len)
         }
-        165 => {
+        166 => {
             wire__crate__api__api__my_async_runtime_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        166 => wire__crate__api__api__new_msg_impl(port, ptr, rust_vec_len, data_len),
-        177 => {
+        167 => wire__crate__api__api__new_msg_impl(port, ptr, rust_vec_len, data_len),
+        178 => {
             wire__crate__api__api__pack_transcript_poster_impl(port, ptr, rust_vec_len, data_len)
         }
-        178 => wire__crate__api__api__parse_poster_impl(port, ptr, rust_vec_len, data_len),
-        179 => wire__crate__api__api__parse_poster_save_impl(port, ptr, rust_vec_len, data_len),
-        180 => {
+        179 => wire__crate__api__api__parse_poster_impl(port, ptr, rust_vec_len, data_len),
+        180 => wire__crate__api__api__parse_poster_save_impl(port, ptr, rust_vec_len, data_len),
+        181 => {
             wire__crate__api__api__parse_transcript_poster_impl(port, ptr, rust_vec_len, data_len)
         }
-        184 => wire__crate__api__api__provisioned_flavor_default_impl(
+        185 => wire__crate__api__api__provisioned_flavor_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        185 => wire__crate__api__api__ptr_to_dart_impl(port, ptr, rust_vec_len, data_len),
-        186 => wire__crate__api__api__query_handle_impl(port, ptr, rust_vec_len, data_len),
-        188 => wire__crate__api__api__recv_wait_impl(port, ptr, rust_vec_len, data_len),
-        189 => wire__crate__api__api__refresh_background_following_impl(
+        186 => wire__crate__api__api__ptr_to_dart_impl(port, ptr, rust_vec_len, data_len),
+        187 => wire__crate__api__api__query_handle_impl(port, ptr, rust_vec_len, data_len),
+        189 => wire__crate__api__api__recv_wait_impl(port, ptr, rust_vec_len, data_len),
+        190 => wire__crate__api__api__refresh_background_following_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        190 => wire__crate__api__api__refresh_devices_impl(port, ptr, rust_vec_len, data_len),
-        191 => wire__crate__api__api__refresh_following_impl(port, ptr, rust_vec_len, data_len),
-        192 => wire__crate__api__api__register_ids_impl(port, ptr, rust_vec_len, data_len),
-        193 => wire__crate__api__api__remove_album_impl(port, ptr, rust_vec_len, data_len),
-        194 => wire__crate__api__api__remove_user_impl(port, ptr, rust_vec_len, data_len),
-        195 => wire__crate__api__api__rename_group_impl(port, ptr, rust_vec_len, data_len),
-        196 => wire__crate__api__api__report_messages_impl(port, ptr, rust_vec_len, data_len),
-        197 => wire__crate__api__api__request_handles_impl(port, ptr, rust_vec_len, data_len),
-        199 => wire__crate__api__api__reset_channel_keys_impl(port, ptr, rust_vec_len, data_len),
-        200 => wire__crate__api__api__reset_clique_impl(port, ptr, rust_vec_len, data_len),
-        201 => wire__crate__api__api__reset_state_impl(port, ptr, rust_vec_len, data_len),
-        202 => wire__crate__api__api__restore_account_impl(port, ptr, rust_vec_len, data_len),
-        205 => wire__crate__api__api__restore_user_impl(port, ptr, rust_vec_len, data_len),
-        207 => wire__crate__api__api__save_attachment_impl(port, ptr, rust_vec_len, data_len),
-        208 => wire__crate__api__api__save_attachments_impl(port, ptr, rust_vec_len, data_len),
-        209 => wire__crate__api__api__save_chats_impl(port, ptr, rust_vec_len, data_len),
-        211 => wire__crate__api__api__save_messages_impl(port, ptr, rust_vec_len, data_len),
-        212 => wire__crate__api__api__save_passkey_impl(port, ptr, rust_vec_len, data_len),
-        213 => wire__crate__api__api__save_password_impl(port, ptr, rust_vec_len, data_len),
-        214 => wire__crate__api__api__save_password_meta_impl(port, ptr, rust_vec_len, data_len),
-        215 => wire__crate__api__api__save_user_impl(port, ptr, rust_vec_len, data_len),
-        217 => wire__crate__api__api__save_wifi_password_impl(port, ptr, rust_vec_len, data_len),
-        218 => {
+        191 => wire__crate__api__api__refresh_devices_impl(port, ptr, rust_vec_len, data_len),
+        192 => wire__crate__api__api__refresh_following_impl(port, ptr, rust_vec_len, data_len),
+        193 => wire__crate__api__api__register_ids_impl(port, ptr, rust_vec_len, data_len),
+        194 => wire__crate__api__api__remove_album_impl(port, ptr, rust_vec_len, data_len),
+        195 => wire__crate__api__api__remove_user_impl(port, ptr, rust_vec_len, data_len),
+        196 => wire__crate__api__api__rename_group_impl(port, ptr, rust_vec_len, data_len),
+        197 => wire__crate__api__api__report_messages_impl(port, ptr, rust_vec_len, data_len),
+        198 => wire__crate__api__api__request_handles_impl(port, ptr, rust_vec_len, data_len),
+        200 => wire__crate__api__api__reset_channel_keys_impl(port, ptr, rust_vec_len, data_len),
+        201 => wire__crate__api__api__reset_clique_impl(port, ptr, rust_vec_len, data_len),
+        202 => wire__crate__api__api__reset_state_impl(port, ptr, rust_vec_len, data_len),
+        203 => wire__crate__api__api__restore_account_impl(port, ptr, rust_vec_len, data_len),
+        206 => wire__crate__api__api__restore_user_impl(port, ptr, rust_vec_len, data_len),
+        208 => wire__crate__api__api__save_attachment_impl(port, ptr, rust_vec_len, data_len),
+        209 => wire__crate__api__api__save_attachments_impl(port, ptr, rust_vec_len, data_len),
+        210 => wire__crate__api__api__save_chats_impl(port, ptr, rust_vec_len, data_len),
+        212 => wire__crate__api__api__save_messages_impl(port, ptr, rust_vec_len, data_len),
+        213 => wire__crate__api__api__save_passkey_impl(port, ptr, rust_vec_len, data_len),
+        214 => wire__crate__api__api__save_password_impl(port, ptr, rust_vec_len, data_len),
+        215 => wire__crate__api__api__save_password_meta_impl(port, ptr, rust_vec_len, data_len),
+        216 => wire__crate__api__api__save_user_impl(port, ptr, rust_vec_len, data_len),
+        218 => wire__crate__api__api__save_wifi_password_impl(port, ptr, rust_vec_len, data_len),
+        219 => {
             wire__crate__api__api__select_background_friend_impl(port, ptr, rust_vec_len, data_len)
         }
-        219 => wire__crate__api__api__select_friend_impl(port, ptr, rust_vec_len, data_len),
-        220 => wire__crate__api__api__send_impl(port, ptr, rust_vec_len, data_len),
-        221 => wire__crate__api__api__send_2fa_sms_impl(port, ptr, rust_vec_len, data_len),
-        222 => wire__crate__api__api__send_2fa_to_devices_impl(port, ptr, rust_vec_len, data_len),
-        224 => wire__crate__api__api__service_from_ptr_impl(port, ptr, rust_vec_len, data_len),
-        225 => wire__crate__api__api__set_identity_impl(port, ptr, rust_vec_len, data_len),
-        226 => wire__crate__api__api__set_profile_impl(port, ptr, rust_vec_len, data_len),
-        227 => wire__crate__api__api__set_status_impl(port, ptr, rust_vec_len, data_len),
-        228 => wire__crate__api__api__setup_push_impl(port, ptr, rust_vec_len, data_len),
-        229 => {
+        220 => wire__crate__api__api__select_friend_impl(port, ptr, rust_vec_len, data_len),
+        221 => wire__crate__api__api__send_impl(port, ptr, rust_vec_len, data_len),
+        222 => wire__crate__api__api__send_2fa_sms_impl(port, ptr, rust_vec_len, data_len),
+        223 => wire__crate__api__api__send_2fa_to_devices_impl(port, ptr, rust_vec_len, data_len),
+        225 => wire__crate__api__api__service_from_ptr_impl(port, ptr, rust_vec_len, data_len),
+        226 => wire__crate__api__api__set_identity_impl(port, ptr, rust_vec_len, data_len),
+        227 => wire__crate__api__api__set_profile_impl(port, ptr, rust_vec_len, data_len),
+        228 => wire__crate__api__api__set_status_impl(port, ptr, rust_vec_len, data_len),
+        229 => wire__crate__api__api__setup_push_impl(port, ptr, rust_vec_len, data_len),
+        230 => {
             wire__crate__api__api__shared_push_state_restore_impl(port, ptr, rust_vec_len, data_len)
         }
-        230 => wire__crate__api__api__subscribe_impl(port, ptr, rust_vec_len, data_len),
-        232 => wire__crate__api__api__subscribe_token_impl(port, ptr, rust_vec_len, data_len),
-        233 => wire__crate__api__api__sync_attachments_impl(port, ptr, rust_vec_len, data_len),
-        234 => wire__crate__api__api__sync_chats_impl(port, ptr, rust_vec_len, data_len),
-        235 => wire__crate__api__api__sync_messages_impl(port, ptr, rust_vec_len, data_len),
-        236 => wire__crate__api__api__sync_now_impl(port, ptr, rust_vec_len, data_len),
-        237 => wire__crate__api__api__sync_passwords_impl(port, ptr, rust_vec_len, data_len),
-        238 => wire__crate__api__api__sync_wifi_passwords_impl(port, ptr, rust_vec_len, data_len),
-        240 => wire__crate__api__api__teardown_2fa_impl(port, ptr, rust_vec_len, data_len),
-        241 => {
+        231 => wire__crate__api__api__start_keychain_reauth_impl(port, ptr, rust_vec_len, data_len),
+        232 => wire__crate__api__api__subscribe_impl(port, ptr, rust_vec_len, data_len),
+        234 => wire__crate__api__api__subscribe_token_impl(port, ptr, rust_vec_len, data_len),
+        235 => wire__crate__api__api__sync_attachments_impl(port, ptr, rust_vec_len, data_len),
+        236 => wire__crate__api__api__sync_chats_impl(port, ptr, rust_vec_len, data_len),
+        237 => wire__crate__api__api__sync_messages_impl(port, ptr, rust_vec_len, data_len),
+        238 => wire__crate__api__api__sync_now_impl(port, ptr, rust_vec_len, data_len),
+        239 => wire__crate__api__api__sync_passwords_impl(port, ptr, rust_vec_len, data_len),
+        240 => wire__crate__api__api__sync_wifi_passwords_impl(port, ptr, rust_vec_len, data_len),
+        242 => wire__crate__api__api__teardown_2fa_impl(port, ptr, rust_vec_len, data_len),
+        243 => {
             wire__crate__api__api__transcript_poster_save_impl(port, ptr, rust_vec_len, data_len)
         }
-        242 => wire__crate__api__api__try_auth_impl(port, ptr, rust_vec_len, data_len),
-        243 => wire__crate__api__api__try_icloud_login_impl(port, ptr, rust_vec_len, data_len),
-        244 => wire__crate__api__api__unsubscribe_impl(port, ptr, rust_vec_len, data_len),
-        245 => {
+        244 => wire__crate__api__api__try_auth_impl(port, ptr, rust_vec_len, data_len),
+        245 => wire__crate__api__api__try_icloud_login_impl(port, ptr, rust_vec_len, data_len),
+        246 => wire__crate__api__api__unsubscribe_impl(port, ptr, rust_vec_len, data_len),
+        247 => {
             wire__crate__api__api__update_account_headers_impl(port, ptr, rust_vec_len, data_len)
         }
-        246 => wire__crate__api__api__update_beacon_name_impl(port, ptr, rust_vec_len, data_len),
-        247 => wire__crate__api__api__upload_attachment_impl(port, ptr, rust_vec_len, data_len),
-        248 => {
+        248 => wire__crate__api__api__update_beacon_name_impl(port, ptr, rust_vec_len, data_len),
+        249 => wire__crate__api__api__upload_attachment_impl(port, ptr, rust_vec_len, data_len),
+        250 => {
             wire__crate__api__api__upload_cloud_attachments_impl(port, ptr, rust_vec_len, data_len)
         }
-        249 => wire__crate__api__api__upload_group_photo_impl(port, ptr, rust_vec_len, data_len),
-        250 => wire__crate__api__api__upload_mmcs_impl(port, ptr, rust_vec_len, data_len),
-        251 => wire__crate__api__api__use_link_for_impl(port, ptr, rust_vec_len, data_len),
-        253 => wire__crate__api__api__validate_cert_impl(port, ptr, rust_vec_len, data_len),
-        254 => wire__crate__api__api__validate_relay_impl(port, ptr, rust_vec_len, data_len),
-        255 => wire__crate__api__api__validate_targets_impl(port, ptr, rust_vec_len, data_len),
-        256 => {
+        251 => wire__crate__api__api__upload_group_photo_impl(port, ptr, rust_vec_len, data_len),
+        252 => wire__crate__api__api__upload_mmcs_impl(port, ptr, rust_vec_len, data_len),
+        253 => wire__crate__api__api__use_link_for_impl(port, ptr, rust_vec_len, data_len),
+        255 => wire__crate__api__api__validate_cert_impl(port, ptr, rust_vec_len, data_len),
+        256 => wire__crate__api__api__validate_relay_impl(port, ptr, rust_vec_len, data_len),
+        257 => wire__crate__api__api__validate_targets_impl(port, ptr, rust_vec_len, data_len),
+        258 => {
             wire__crate__api__api__validate_targets_facetime_impl(port, ptr, rust_vec_len, data_len)
         }
-        257 => wire__crate__api__api__verify_2fa_impl(port, ptr, rust_vec_len, data_len),
-        258 => wire__crate__api__api__verify_2fa_sms_impl(port, ptr, rust_vec_len, data_len),
+        259 => wire__crate__api__api__verify_2fa_impl(port, ptr, rust_vec_len, data_len),
+        260 => wire__crate__api__api__verify_2fa_sms_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -23393,48 +23587,48 @@ fn pde_ffi_dispatcher_sync_impl(
         101 => wire__crate__api__api__encode_messageproto2_impl(ptr, rust_vec_len, data_len),
         102 => wire__crate__api__api__encode_messageproto3_impl(ptr, rust_vec_len, data_len),
         103 => wire__crate__api__api__encode_messageproto4_impl(ptr, rust_vec_len, data_len),
-        117 => wire__crate__api__api__get_available_user_impl(ptr, rust_vec_len, data_len),
-        140 => wire__crate__api__api__import_watcher_impl(ptr, rust_vec_len, data_len),
-        147 => wire__crate__api__api__make_circle_sessions_impl(ptr, rust_vec_len, data_len),
-        148 => wire__crate__api__api__make_client_session_impl(ptr, rust_vec_len, data_len),
-        149 => wire__crate__api__api__make_cloud_messages_client_impl(ptr, rust_vec_len, data_len),
-        157 => wire__crate__api__api__make_keychain_impl(ptr, rust_vec_len, data_len),
-        162 => wire__crate__api__api__make_token_provider_impl(ptr, rust_vec_len, data_len),
-        164 => wire__crate__api__api__ms_to_date_impl(ptr, rust_vec_len, data_len),
-        167 => wire__crate__api__api__new_ngm_identity_impl(ptr, rust_vec_len, data_len),
-        168 => wire__crate__api__api__ns_attributed_string_decode_impl(ptr, rust_vec_len, data_len),
-        169 => wire__crate__api__api__ns_attributed_string_encode_impl(ptr, rust_vec_len, data_len),
-        170 => wire__crate__api__api__ns_null_impl(ptr, rust_vec_len, data_len),
-        171 => wire__crate__api__api__ns_number_decode_impl(ptr, rust_vec_len, data_len),
-        172 => wire__crate__api__api__ns_number_encode_impl(ptr, rust_vec_len, data_len),
-        173 => wire__crate__api__api__ns_string_decode_impl(ptr, rust_vec_len, data_len),
-        174 => wire__crate__api__api__ns_string_encode_impl(ptr, rust_vec_len, data_len),
-        175 => wire__crate__api__api__nscoder_decode_impl(ptr, rust_vec_len, data_len),
-        176 => wire__crate__api__api__nscoder_encode_impl(ptr, rust_vec_len, data_len),
-        181 => {
+        118 => wire__crate__api__api__get_available_user_impl(ptr, rust_vec_len, data_len),
+        141 => wire__crate__api__api__import_watcher_impl(ptr, rust_vec_len, data_len),
+        148 => wire__crate__api__api__make_circle_sessions_impl(ptr, rust_vec_len, data_len),
+        149 => wire__crate__api__api__make_client_session_impl(ptr, rust_vec_len, data_len),
+        150 => wire__crate__api__api__make_cloud_messages_client_impl(ptr, rust_vec_len, data_len),
+        158 => wire__crate__api__api__make_keychain_impl(ptr, rust_vec_len, data_len),
+        163 => wire__crate__api__api__make_token_provider_impl(ptr, rust_vec_len, data_len),
+        165 => wire__crate__api__api__ms_to_date_impl(ptr, rust_vec_len, data_len),
+        168 => wire__crate__api__api__new_ngm_identity_impl(ptr, rust_vec_len, data_len),
+        169 => wire__crate__api__api__ns_attributed_string_decode_impl(ptr, rust_vec_len, data_len),
+        170 => wire__crate__api__api__ns_attributed_string_encode_impl(ptr, rust_vec_len, data_len),
+        171 => wire__crate__api__api__ns_null_impl(ptr, rust_vec_len, data_len),
+        172 => wire__crate__api__api__ns_number_decode_impl(ptr, rust_vec_len, data_len),
+        173 => wire__crate__api__api__ns_number_encode_impl(ptr, rust_vec_len, data_len),
+        174 => wire__crate__api__api__ns_string_decode_impl(ptr, rust_vec_len, data_len),
+        175 => wire__crate__api__api__ns_string_encode_impl(ptr, rust_vec_len, data_len),
+        176 => wire__crate__api__api__nscoder_decode_impl(ptr, rust_vec_len, data_len),
+        177 => wire__crate__api__api__nscoder_encode_impl(ptr, rust_vec_len, data_len),
+        182 => {
             wire__crate__api__api__password_manager_meta_get_data_impl(ptr, rust_vec_len, data_len)
         }
-        182 => wire__crate__api__api__password_manager_meta_get_password_data_impl(
+        183 => wire__crate__api__api__password_manager_meta_get_password_data_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        183 => wire__crate__api__api__password_manager_totp_generate_otp_impl(
+        184 => wire__crate__api__api__password_manager_totp_generate_otp_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        187 => wire__crate__api__api__read_hardware_impl(ptr, rust_vec_len, data_len),
-        198 => wire__crate__api__api__reset_anisette_impl(ptr, rust_vec_len, data_len),
-        203 => wire__crate__api__api__restore_attachment_impl(ptr, rust_vec_len, data_len),
-        204 => wire__crate__api__api__restore_cloud_chat_impl(ptr, rust_vec_len, data_len),
-        206 => wire__crate__api__api__restore_users_impl(ptr, rust_vec_len, data_len),
-        210 => wire__crate__api__api__save_cloud_chat_impl(ptr, rust_vec_len, data_len),
-        216 => wire__crate__api__api__save_users_impl(ptr, rust_vec_len, data_len),
-        223 => wire__crate__api__api__send_daemon_impl(ptr, rust_vec_len, data_len),
-        231 => wire__crate__api__api__subscribe_conn_impl(ptr, rust_vec_len, data_len),
-        239 => wire__crate__api__api__systemtime_to_millis_impl(ptr, rust_vec_len, data_len),
-        252 => wire__crate__api__api__utm_now_impl(ptr, rust_vec_len, data_len),
+        188 => wire__crate__api__api__read_hardware_impl(ptr, rust_vec_len, data_len),
+        199 => wire__crate__api__api__reset_anisette_impl(ptr, rust_vec_len, data_len),
+        204 => wire__crate__api__api__restore_attachment_impl(ptr, rust_vec_len, data_len),
+        205 => wire__crate__api__api__restore_cloud_chat_impl(ptr, rust_vec_len, data_len),
+        207 => wire__crate__api__api__restore_users_impl(ptr, rust_vec_len, data_len),
+        211 => wire__crate__api__api__save_cloud_chat_impl(ptr, rust_vec_len, data_len),
+        217 => wire__crate__api__api__save_users_impl(ptr, rust_vec_len, data_len),
+        224 => wire__crate__api__api__send_daemon_impl(ptr, rust_vec_len, data_len),
+        233 => wire__crate__api__api__subscribe_conn_impl(ptr, rust_vec_len, data_len),
+        241 => wire__crate__api__api__systemtime_to_millis_impl(ptr, rust_vec_len, data_len),
+        254 => wire__crate__api__api__utm_now_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -35052,14 +35246,14 @@ mod io {
     pub extern "C" fn frbgen_bluebubbles_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReceiverAPSMessage(
         ptr: *const std::ffi::c_void,
     ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Receiver < APSMessage >>>::increment_strong_count(ptr as _);
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Receiver < APSMessage >>>::increment_strong_count(ptr as _);
     }
 
     #[no_mangle]
     pub extern "C" fn frbgen_bluebubbles_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReceiverAPSMessage(
         ptr: *const std::ffi::c_void,
     ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Receiver < APSMessage >>>::decrement_strong_count(ptr as _);
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Receiver < APSMessage >>>::decrement_strong_count(ptr as _);
     }
 
     #[no_mangle]
@@ -35170,3 +35364,875 @@ mod io {
 }
 #[cfg(not(target_family = "wasm"))]
 pub use io::*;
+
+/// cbindgen:ignore
+#[cfg(target_family = "wasm")]
+mod web {
+    // This file is automatically generated, so please do not edit it.
+    // Generated by `flutter_rust_bridge`@ 2.3.0.
+
+    // Section: imports
+
+    use super::*;
+    use crate::api::api::*;
+    use crate::*;
+    use flutter_rust_bridge::for_generated::byteorder::{
+        NativeEndian, ReadBytesExt, WriteBytesExt,
+    };
+    use flutter_rust_bridge::for_generated::wasm_bindgen;
+    use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
+    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+    use flutter_rust_bridge::{Handler, IntoIntoDart};
+
+    // Section: boilerplate
+
+    flutter_rust_bridge::frb_generated_boilerplate_web!();
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSConnection(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSConnection>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSConnection(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSConnection>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSState>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSState>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSWatcher(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSWatcher>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAPSWatcher(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<APSWatcher>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcAnisetteClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ArcAnisetteClient<DefaultAnisetteProvider>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcAnisetteClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ArcAnisetteClient<DefaultAnisetteProvider>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcCloudKitClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<CloudKitClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcCloudKitClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<CloudKitClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcCloudMessagesClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<CloudMessagesClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcCloudMessagesClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<CloudMessagesClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcFTClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < FTClient >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcFTClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < FTClient >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcFindMyClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<FindMyClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcFindMyClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<FindMyClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcIMClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < IMClient >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcIMClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < IMClient >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcIdmsAuthListener(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < IdmsAuthListener >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcIdmsAuthListener(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < IdmsAuthListener >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcKeychainClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<KeychainClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcKeychainClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<KeychainClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexAppleAccountDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexAppleAccountDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<AppleAccount<DefaultAnisetteProvider>>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexOptionCircleClientSessionDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<Option<CircleClientSession<DefaultAnisetteProvider>>>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexOptionCircleClientSessionDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<Option<CircleClientSession<DefaultAnisetteProvider>>>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexVecActiveCircleSession(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<Vec<ActiveCircleSession>>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexVecActiveCircleSession(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<Mutex<Vec<ActiveCircleSession>>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcPasswordManagerDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<PasswordManager<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcPasswordManagerDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<PasswordManager<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcProfilesClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<ProfilesClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcProfilesClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<ProfilesClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSenderPushMessage(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < Sender < PushMessage > >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSenderPushMessage(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < Sender < PushMessage > >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSharedPushState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < SharedPushState >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSharedPushState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < SharedPushState >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcStatusKitClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<StatusKitClient<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcStatusKitClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<StatusKitClient<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcTokenProviderDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<TokenProvider<DefaultAnisetteProvider>>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcTokenProviderDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                Arc<TokenProvider<DefaultAnisetteProvider>>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAsset(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Asset>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAsset(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Asset>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChannelInterestToken(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChannelInterestToken>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChannelInterestToken(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ChannelInterestToken>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCircleClientSessionDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                CircleClientSession<DefaultAnisetteProvider>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCircleClientSessionDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                CircleClientSession<DefaultAnisetteProvider>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationLink(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationLink>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationLink(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationLink>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationParticipant(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationParticipant>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerConversationParticipant(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ConversationParticipant>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Date>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Date>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEscrowData(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<EscrowData>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerEscrowData(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<EscrowData>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFindMyFriendsClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FindMyFriendsClient<DefaultAnisetteProvider>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFindMyFriendsClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FindMyFriendsClient<DefaultAnisetteProvider>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFindMyPhoneClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FindMyPhoneClient<DefaultAnisetteProvider>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFindMyPhoneClientDefaultAnisetteProvider(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FindMyPhoneClient<DefaultAnisetteProvider>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperAttachmentMeta(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper<AttachmentMeta>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperAttachmentMeta(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper<AttachmentMeta>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperChatProto(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < ChatProto >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperChatProto(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < ChatProto >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto2(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto2 >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto2(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto2 >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto3(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto3 >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto3(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto3 >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto4(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto4 >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerGZipWrapperMessageProto4(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<GZipWrapper < MessageProto4 >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIDSNGMIdentity(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IDSNGMIdentity>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIDSNGMIdentity(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IDSNGMIdentity>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIDSUser(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IDSUser>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIDSUser(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IDSUser>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerJoinedOSConfig(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<JoinedOSConfig>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerJoinedOSConfig(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<JoinedOSConfig>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocationReport(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocationReport>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocationReport(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocationReport>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMessageFlags(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<MessageFlags>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMessageFlags(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<MessageFlags>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNSArrayLPIconMetadata(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NSArray < LPIconMetadata >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNSArrayLPIconMetadata(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NSArray < LPIconMetadata >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNSArrayLPImageMetadata(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NSArray < LPImageMetadata >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNSArrayLPImageMetadata(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NSArray < LPImageMetadata >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPushError(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PushError>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPushError(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PushError>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReceiverAPSMessage(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Receiver < APSMessage >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReceiverAPSMessage(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Receiver < APSMessage >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSavedHardwareState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SavedHardwareState>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSavedHardwareState(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SavedHardwareState>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSender(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Sender < () >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSender(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Sender < () >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerStCollapsedValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<StCollapsedValue>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerStCollapsedValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<StCollapsedValue>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSyncManagerDefaultAnisetteProviderMyFilePackager(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SyncManager<DefaultAnisetteProvider, MyFilePackager>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSyncManagerDefaultAnisetteProviderMyFilePackager(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SyncManager<DefaultAnisetteProvider, MyFilePackager>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSystemTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SystemTime>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSystemTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SystemTime>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVerifyBody(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VerifyBody>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVerifyBody(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<VerifyBody>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerViableBottle(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ViableBottle>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerViableBottle(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ViableBottle>>::decrement_strong_count(ptr as _);
+    }
+}
+#[cfg(target_family = "wasm")]
+pub use web::*;

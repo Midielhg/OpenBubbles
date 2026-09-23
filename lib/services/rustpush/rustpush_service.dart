@@ -4334,11 +4334,90 @@ class RustPushService extends GetxService {
     return isInClique;
   }
 
+  /// Escrow only accepts a PET from an interactive (password + 2FA) sign-in; the silent background
+  /// re-login yields one it rejects with -3001. On that error, re-authenticate and retry once.
+  Future<List<api.ViableBottle>> getBottlesWithReauth() async {
+    try {
+      return await wrapPromise(api.getBottles(keychain: pushService.state!.icloudServices!.keychain!), "Fetching Bottles...");
+    } catch (e) {
+      final msg = e.toString();
+      if (!msg.contains("-3001") && !msg.contains("Authentication failed")) rethrow;
+      if (!await reauthForKeychain()) rethrow;
+      return await wrapPromise(api.getBottles(keychain: pushService.state!.icloudServices!.keychain!), "Fetching Bottles...");
+    }
+  }
+
+  Future<bool> reauthForKeychain() async {
+    final state = pushService.state!;
+    final account = state.icloudServices!.account;
+    final password = await _promptKeychainText(
+      title: "Verify your Apple Account",
+      message: "iCloud Keychain needs a recent sign-in. Enter the password for ${ss.settings.iCloudAccount.value}, then approve the code on one of your trusted Apple devices.",
+      hint: "Password",
+      obscure: true,
+      action: "Continue",
+    );
+    if (password == null || password.isEmpty) return false;
+    // subscribe before triggering 2FA so the circle messages aren't missed
+    final watcher = api.subscribeConn(conn: state.conn);
+    final session = await wrapPromise(api.startKeychainReauth(account: account, conn: state.conn, password: password), "Signing in...");
+    final code = await _promptKeychainText(
+      title: "Enter Verification Code",
+      message: "Enter the 6-digit code shown on your iPhone, iPad or Mac.",
+      hint: "Code",
+      number: true,
+      action: "Verify",
+    );
+    if (code == null || code.isEmpty) return false;
+    return await wrapPromise(
+      api.finishKeychainReauth(client: session, account: account, watcher: watcher, idms: state.idmsClient, code: code.trim()),
+      "Verifying...",
+    );
+  }
+
+  Future<String?> _promptKeychainText({required String title, required String message, required String hint, bool obscure = false, bool number = false, required String action}) async {
+    final controller = TextEditingController();
+    final context = Get.context!;
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.theme.colorScheme.properSurface,
+        title: Text(title, style: context.theme.textTheme.titleLarge),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: context.theme.textTheme.bodyLarge),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: obscure,
+              keyboardType: number ? TextInputType.number : TextInputType.visiblePassword,
+              decoration: InputDecoration(hintText: hint),
+              onSubmitted: (v) => Navigator.of(context).pop(v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: Text("Cancel", style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.primary)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: Text(action, style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.primary)),
+            onPressed: () => Navigator.of(context).pop(controller.text),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<bool> joinClique() async {
     var isInClique = await checkClique();
     if (isInClique) return true;
 
-    var bottles = await wrapPromise(api.getBottles(keychain: pushService.state!.icloudServices!.keychain!), "Fetching Bottles...");
+    var bottles = await getBottlesWithReauth();
 
     if (bottles.isEmpty) {
       await promptResetData(true);
