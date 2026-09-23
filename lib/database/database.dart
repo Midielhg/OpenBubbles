@@ -90,11 +90,15 @@ class Database {
         await ss.prefs.setString("selected-light", ThemesService.macLightName);
         await ss.prefs.setString("selected-dark", ThemesService.macDarkName);
         ss.settings.useWindowsAccent.value = false;
-        if (kIsDesktop && Platform.isWindows) {
-          ss.settings.windowEffect.value = WindowEffect.mica;
-        }
         await ss.saveSettings();
         await ss.prefs.setBool("macosLookApplied", true);
+      }
+      // desktop is an iMessage replica: always the iOS skin, never a window effect (no settings for either)
+      if (kIsDesktop && (ss.settings.skin.value != Skins.iOS || ss.settings.windowEffect.value != WindowEffect.disabled)) {
+        ss.settings.skin.value = Skins.iOS;
+        ss.settings.windowEffect.value = WindowEffect.disabled;
+        await ss.prefs.setString('window-effect', WindowEffect.disabled.toString());
+        await ss.saveSettings();
       }
     } catch (e, s) {
       Logger.error("Failed to apply macOS themes!", error: e, trace: s);

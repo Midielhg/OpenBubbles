@@ -1,7 +1,6 @@
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
-import 'package:bluebubbles/utils/window_effects.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/theming/avatar/custom_avatar_color_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/theming/avatar/custom_avatar_panel.dart';
@@ -16,7 +15,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:idb_shim/idb.dart';
@@ -119,10 +117,13 @@ class _ThemingPanelState extends CustomState<ThemingPanel, void, ThemingPanelCon
                     )),
                   ],
                 ),
+                // desktop is always the iOS skin with no window effect (the Messages look), so neither is offered
+                if (!kIsDesktop)
                 SettingsHeader(
                     iosSubtitle: iosSubtitle,
                     materialSubtitle: materialSubtitle,
-                    text: "Skin${kIsDesktop ? "" : " and Layout"}"),
+                    text: "Skin and Layout"),
+                if (!kIsDesktop)
                 SettingsSection(
                   backgroundColor: tileColor,
                   children: [
@@ -184,110 +185,6 @@ class _ThemingPanelState extends CustomState<ThemingPanel, void, ThemingPanelCon
                       ),
                   ],
                 ),
-                if (kIsDesktop && Platform.isWindows)
-                  SettingsHeader(
-                    iosSubtitle: iosSubtitle,
-                    materialSubtitle: materialSubtitle,
-                    text: "Window Effect",
-                  ),
-                if (kIsDesktop && Platform.isWindows)
-                  SettingsSection(
-                    backgroundColor: tileColor,
-                    children: [
-                      Obx(() => SettingsOptions<WindowEffect>(
-                          initial: ss.settings.windowEffect.value,
-                          options: WindowEffects.effects,
-                          textProcessing: (WindowEffect effect) => effect.toString().substring("WindowEffect.".length),
-                          onChanged: (WindowEffect? effect) async {
-                            bool defaultOpacityLight = ss.settings.windowEffectCustomOpacityLight.value == WindowEffects.defaultOpacity(dark: false);
-                            bool defaultOpacityDark = ss.settings.windowEffectCustomOpacityDark.value == WindowEffects.defaultOpacity(dark: true);
-                            effect ??= WindowEffect.disabled;
-                            ss.settings.windowEffect.value = effect;
-                            if (defaultOpacityLight) {
-                              ss.settings.windowEffectCustomOpacityLight.value = WindowEffects.defaultOpacity(dark: false);
-                            }
-                            if (defaultOpacityDark) {
-                              ss.settings.windowEffectCustomOpacityDark.value = WindowEffects.defaultOpacity(dark: true);
-                            }
-                            await ss.prefs.setString('window-effect', effect.toString());
-                            await WindowEffects.setEffect(color: context.theme.colorScheme.background);
-                            saveSettings();
-                          },
-                          title: "Window Effect",
-                          subtitle: "${WindowEffects.descriptions[ss.settings.windowEffect.value]}\n\nOperating System Version: ${Platform.operatingSystemVersion}\nBuild number: ${parsedWindowsVersion()}${parsedWindowsVersion() < 22000 && ss.settings.windowEffect.value == WindowEffect.acrylic ? "\n\n⚠️ This effect causes window movement lag on Windows 10" : ""}",
-                          secondaryColor: headerColor,
-                          capitalize: true,
-                        ),
-                      ),
-                      if (ss.settings.skin.value == Skins.iOS)
-                        Obx(() => SettingsSubtitle(
-                              unlimitedSpace: true,
-                              subtitle: "${WindowEffects.descriptions[ss.settings.windowEffect.value]}\n\nOperating System Version: ${Platform.operatingSystemVersion}\nBuild number: ${parsedWindowsVersion()}${parsedWindowsVersion() < 22000 && ss.settings.windowEffect.value == WindowEffect.acrylic ? "\n\n⚠️ This effect causes window movement lag on Windows 10" : ""}",
-                        )),
-                      Obx(() {
-                        if (WindowEffects.dependsOnColor() && !WindowEffects.isDark(color: context.theme.colorScheme.background)) {
-                          return SettingsTile(
-                            title: "Background Opacity (Light)",
-                            trailing: ss.settings.windowEffectCustomOpacityLight.value != WindowEffects.defaultOpacity(dark: false) ? ElevatedButton(
-                              onPressed: () {
-                                ss.settings.windowEffectCustomOpacityLight.value = WindowEffects.defaultOpacity(dark: false);
-                                saveSettings();
-                              },
-                              child: const Text("Reset to Default"),
-                            ) : null,
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                      Obx(() {
-                        if (WindowEffects.dependsOnColor() && !WindowEffects.isDark(color: context.theme.colorScheme.background)) {
-                          return SettingsSlider(
-                            startingVal: ss.settings.windowEffectCustomOpacityLight.value,
-                            max: 1,
-                            min: 0,
-                            divisions: 100,
-                            formatValue: (value) => value.toStringAsFixed(2),
-                            update: (value) => ss.settings.windowEffectCustomOpacityLight.value = value,
-                            onChangeEnd: (value) {
-                              saveSettings();
-                            },
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                      Obx(() {
-                        if (WindowEffects.dependsOnColor() && WindowEffects.isDark(color: context.theme.colorScheme.background)) {
-                          return SettingsTile(
-                            title: "Background Opacity (Dark)",
-                            trailing: ss.settings.windowEffectCustomOpacityDark.value != WindowEffects.defaultOpacity(dark: true) ? ElevatedButton(
-                              onPressed: () {
-                                ss.settings.windowEffectCustomOpacityDark.value = WindowEffects.defaultOpacity(dark: true);
-                                saveSettings();
-                              },
-                              child: const Text("Reset to Default"),
-                            ) : null,
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                      Obx(() {
-                        if (WindowEffects.dependsOnColor() && WindowEffects.isDark(color: context.theme.colorScheme.background)) {
-                          return SettingsSlider(
-                            startingVal: ss.settings.windowEffectCustomOpacityDark.value,
-                            max: 1,
-                            min: 0,
-                            divisions: 100,
-                            formatValue: (value) => value.toStringAsFixed(2),
-                            update: (value) => ss.settings.windowEffectCustomOpacityDark.value = value,
-                            onChangeEnd: (value) {
-                              saveSettings();
-                            },
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }),
-                    ]
-                  ),
                 SettingsHeader(
                     iosSubtitle: iosSubtitle,
                     materialSubtitle: materialSubtitle,
