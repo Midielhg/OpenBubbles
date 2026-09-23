@@ -217,7 +217,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
               shortAddress: e.lastLocation?.address != null ? "${e.lastLocation?.address?.locality}, ${e.lastLocation?.address?.stateCode ?? e.lastLocation?.address?.countryCode}" : null,
               title: null, 
               subtitle: null, 
-              handle: Handle.findOne(addressAndService: Tuple2(e.invitationAcceptedHandles.first, "iMessage")) ?? Handle(address: e.invitationAcceptedHandles.first), 
+              handle: _friendHandle(e.invitationAcceptedHandles.first), 
               lastUpdated: e.lastLocation?.timestamp != null ? DateTime.fromMillisecondsSinceEpoch(e.lastLocation!.timestamp) : null,
               status: null, 
               locatingInProgress: false,
@@ -233,6 +233,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       for (FindMyFriend e in friendsWithLocation) {
         buildFriendMarker(e);
       }
+      _syncFriendsWithDevices();
       setState(() {
         fetching2 = false;
         refreshing2 = false;
@@ -554,12 +555,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
           child: Row(
             children: [
               FindMyDeviceBadge(
-                icon: findMyDeviceIcon(
-                  deviceClass: item.deviceClass,
-                  model: item.rawDeviceModel ?? item.deviceModel,
-                  displayName: item.deviceDisplayName,
-                  name: item.name,
-                ),
+                icon: _deviceIcon(item),
+                imageUrl: findMyDeviceImageUrl(item.deviceClass, item.rawDeviceModel),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -607,29 +604,97 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
 
   String _deviceKey(FindMyDevice item) => item.id ?? item.address?.uniqueValue ?? item.name ?? item.hashCode.toString();
 
+  IconData _deviceIcon(FindMyDevice item) => findMyDeviceIcon(
+        deviceClass: item.deviceClass,
+        model: item.rawDeviceModel ?? item.deviceModel,
+        displayName: item.deviceDisplayName,
+        name: item.name,
+        accessory: item.isConsideredAccessory,
+      );
+
   void _buildDeviceMarkers(List<FindMyDevice> devices) {
     markers.removeWhere((k, v) => (v.key as ValueKey?)?.value.toString().startsWith('device-') ?? false);
     for (FindMyDevice e in devices.where((e) => e.location?.latitude != null && e.location?.longitude != null)) {
+      final key = ValueKey('device-${e.id ?? randomString(6)}');
+      final point = LatLng(e.location!.latitude!, e.location!.longitude!);
+      if (e.isConsideredAccessory) {
+        // items keep the teardrop with their emoji
+        markers[e.id ?? randomString(6)] = Marker(
+          key: key,
+          point: point,
+          width: FindMyTeardropPin.size.width,
+          height: FindMyTeardropPin.size.height,
+          child: FindMyTeardropPin(
+            child: e.role?['emoji'] != null
+                ? Text(e.role!['emoji'], style: const TextStyle(fontSize: 14, fontFamily: 'Apple Color Emoji'))
+                : Icon(_deviceIcon(e), color: Colors.white, size: 15),
+          ),
+          alignment: Alignment.topCenter,
+        );
+        continue;
+      }
+      // devices: a white circle with the product photo, centered on the location, like Find My
       markers[e.id ?? randomString(6)] = Marker(
-        key: ValueKey('device-${e.id ?? randomString(6)}'),
-        point: LatLng(e.location!.latitude!, e.location!.longitude!),
-        width: FindMyTeardropPin.size.width,
-        height: FindMyTeardropPin.size.height,
-        child: FindMyTeardropPin(
-          child: e.role?['emoji'] != null
-              ? Text(e.role!['emoji'], style: const TextStyle(fontSize: 14, fontFamily: 'Apple Color Emoji'))
-              : Icon(
-                  (e.isMac ?? false)
-                      ? CupertinoIcons.desktopcomputer
-                      : e.isConsideredAccessory
-                          ? CupertinoIcons.headphones
-                          : CupertinoIcons.device_phone_portrait,
-                  color: Colors.white,
-                  size: 15,
-                ),
-        ),
-        alignment: Alignment.topCenter,
+        key: key,
+        point: point,
+        width: 42,
+        height: 42,
+        child: FindMyDeviceBadge(icon: _deviceIcon(e), imageUrl: findMyDeviceImageUrl(e.deviceClass, e.rawDeviceModel), size: 40),
+        alignment: Alignment.center,
       );
+    }
+    _syncFriendsWithDevices();
+  }
+
+  /// A person's location follows their own iPhone: when a family member's iPhone reported more recently
+  /// than their Find My Friends location, the person's pin and row use the iPhone's. Family members are
+  /// matched to friends by first name, since the two services don't share an id.
+  void _syncFriendsWithDevices() {
+    if (friends.isEmpty || deviceOwners.isEmpty) return;
+    final phones = <String, FindMyDevice>{};
+    for (final d in devices) {
+      final owner = d.id == null ? null : deviceOwners[d.id]?.toLowerCase();
+      final ts = d.location?.timeStamp;
+      if (owner == null || ts == null || d.location?.latitude == null || _deviceIcon(d) != Icons.phone_iphone) continue;
+      if ((phones[owner]?.location?.timeStamp ?? 0) < ts) phones[owner] = d;
+    }
+    if (phones.isEmpty) return;
+    var changed = false;
+    friends = friends.map((f) {
+      final name = (f.handle?.displayName ?? f.title ?? "").trim().toLowerCase();
+      final first = name.split(RegExp(r"\s+")).first;
+      // the contact may be saved under a nickname ("Mamá"); its given name is what Apple's family uses
+      final given = (f.handle?.contact?.structuredName?.givenName ?? "").trim().toLowerCase().split(RegExp(r"\s+")).first;
+      FindMyDevice? phone = phones[first] ?? (given.isEmpty ? null : phones[given]);
+      if (phone == null) {
+        for (final e in phones.entries) {
+          if (name.startsWith(e.key)) phone = e.value;
+        }
+      }
+      if (phone == null) return f;
+      final phoneTime = DateTime.fromMillisecondsSinceEpoch(phone.location!.timeStamp!);
+      if (f.lastUpdated != null && !phoneTime.isAfter(f.lastUpdated!) && f.latitude != null) return f;
+      changed = true;
+      final samePlace = f.latitude == phone.location!.latitude && f.longitude == phone.location!.longitude;
+      return FindMyFriend(
+        latitude: phone.location!.latitude,
+        longitude: phone.location!.longitude,
+        longAddress: samePlace ? f.longAddress : null,
+        shortAddress: samePlace ? f.shortAddress : "From ${phone.name ?? "their iPhone"}",
+        title: f.title,
+        subtitle: f.subtitle,
+        handle: f.handle,
+        lastUpdated: phoneTime,
+        status: f.status,
+        locatingInProgress: f.locatingInProgress,
+        id: f.id,
+      );
+    }).toList();
+    if (!changed) return;
+    friendsWithLocation = friends.where((item) => (item.latitude ?? 0) != 0 && (item.longitude ?? 0) != 0).toList();
+    friendsWithoutLocation = friends.where((item) => (item.latitude ?? 0) == 0 && (item.longitude ?? 0) == 0).toList();
+    for (final f in friendsWithLocation) {
+      buildFriendMarker(f);
     }
   }
 
@@ -652,6 +717,17 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       setState(() => fetching = true);
       getLocations();
     }
+  }
+
+  /// The friend's handle with its contact attached. Someone you've never messaged at this address has no
+  /// saved handle, so without this their row showed the raw email instead of the contact's name.
+  Handle _friendHandle(String address) {
+    final handle = Handle.findOne(addressAndService: Tuple2(address, "iMessage")) ?? Handle(address: address);
+    if (handle.contact == null) {
+      final contact = cs.getContact(address);
+      if (contact != null) handle.contactRelation.target = contact;
+    }
+    return handle;
   }
 
   void buildFriendMarker(FindMyFriend friend) {

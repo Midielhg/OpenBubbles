@@ -184,15 +184,26 @@ IconData findMyDeviceIcon({String? deviceClass, String? model, String? displayNa
   return Icons.phone_iphone;
 }
 
-/// The circled device image in front of each row (and the owner-grouped list), like Find My's.
+/// Apple's product image for a device, the one icloud.com's Find My shows. It needs the exact
+/// deviceClass ("iPhone", "iPad", "Watch", "MacBookAir", ...) and rawDeviceModel ("iPhone15,2"); models
+/// Apple has no image for redirect to apple.com, which fails to decode and falls back to the glyph.
+String? findMyDeviceImageUrl(String? deviceClass, String? rawDeviceModel) {
+  if (deviceClass == null || deviceClass.isEmpty || rawDeviceModel == null || rawDeviceModel.isEmpty) return null;
+  return "https://statici.icloud.com/fmipmobile/deviceImages-9.0/${Uri.encodeComponent(deviceClass)}/${Uri.encodeComponent(rawDeviceModel)}/online-infobox__2x.png";
+}
+
+/// The circled device image in front of each row and on the map, like Find My's: the product photo
+/// when Apple has one, otherwise a glyph.
 class FindMyDeviceBadge extends StatelessWidget {
-  const FindMyDeviceBadge({super.key, required this.icon, this.size = 34});
+  const FindMyDeviceBadge({super.key, required this.icon, this.imageUrl, this.size = 34});
   final IconData icon;
+  final String? imageUrl;
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final glyph = Icon(icon, size: size * 0.55, color: dark ? Colors.white.withOpacity(0.9) : const Color(0xFF3A3A3C));
     return Container(
       width: size,
       height: size,
@@ -200,9 +211,21 @@ class FindMyDeviceBadge extends StatelessWidget {
         color: dark ? const Color(0xFF3A3A3C) : Colors.white,
         shape: BoxShape.circle,
         border: Border.all(color: dark ? Colors.white.withOpacity(0.12) : const Color(0x1F3C3C43), width: 0.5),
-        boxShadow: const [BoxShadow(color: Color(0x2414120F), blurRadius: 3, offset: Offset(0, 1))],
+        boxShadow: const [BoxShadow(color: Color(0x3314120F), blurRadius: 4, offset: Offset(0, 1))],
       ),
-      child: Icon(icon, size: size * 0.55, color: dark ? Colors.white.withOpacity(0.9) : const Color(0xFF3A3A3C)),
+      alignment: Alignment.center,
+      child: imageUrl == null
+          ? glyph
+          : Padding(
+              padding: EdgeInsets.all(size * 0.14),
+              child: Image.network(
+                imageUrl!,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => glyph,
+                loadingBuilder: (context, child, progress) => progress == null ? child : glyph,
+              ),
+            ),
     );
   }
 }

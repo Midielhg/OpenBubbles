@@ -290,7 +290,8 @@ class ContactsService extends GetxService {
     final numericAddress = h.address.numericOnly();
     for (Contact c in contacts) {
       final numericPhones = c.phones.map((e) => e.numericOnly()).toList();
-      if (h.address.contains("@") && c.emails.contains(h.address)) {
+      // emails are case-insensitive (Find My and iMessage report them however they were typed)
+      if (h.address.contains("@") && c.emails.any((e) => e.toLowerCase() == h.address.toLowerCase())) {
         contact = c;
         break;
       } else {
