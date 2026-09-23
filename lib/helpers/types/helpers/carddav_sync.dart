@@ -542,7 +542,7 @@ class CardDavClient {
     final inlinePhoto = _extractInlinePhotoBytes(vcard);
     if (inlinePhoto != null && inlinePhoto.isNotEmpty) {
       contact.photo = inlinePhoto;
-      return _toMyContact(contact);
+      return _toMyContact(contact, vcard, href);
     }
     final photoUri = _extractPhotoUri(vcard, href);
     if (photoUri != null && (contact.photo == null || contact.photo!.isEmpty)) {
@@ -551,7 +551,7 @@ class CardDavClient {
         contact.photo = photoBytes;
       }
     }
-    return _toMyContact(contact);
+    return _toMyContact(contact, vcard, href);
   }
 
   Uint8List? _extractInlinePhotoBytes(String vcard) {
@@ -641,19 +641,34 @@ class CardDavClient {
     return results.whereType<T>().toList();
   }
 
-  contacts.Contact _toMyContact(Contact contact) {
+  /// Values of every TEL / EMAIL line, including Apple's grouped form ("item1.TEL;type=CELL:+1...")
+  /// and URI values ("TEL;VALUE=uri:tel:+1..."), which the vCard parser can miss.
+  static List<String> _rawVCardValues(String vcard, String prop) {
+    final unfolded = vcard.replaceAll(RegExp(r'\r?\n[ \t]'), '');
+    final re = RegExp(r'^(?:[A-Za-z0-9-]+\.)?' + prop + r'(?:;[^:]*)?:(.*?)\r?$', caseSensitive: false, multiLine: true);
+    return re.allMatches(unfolded).map((m) {
+      var v = m.group(1)!.trim();
+      if (v.toLowerCase().startsWith('tel:')) v = v.substring(4);
+      if (v.toLowerCase().startsWith('mailto:')) v = v.substring(7);
+      return v;
+    }).where((v) => v.isNotEmpty).toList();
+  }
+
+  contacts.Contact _toMyContact(Contact contact, String vcard, Uri href) {
     final name = contact.name;
-    final phones = contact.phones
-        .map((p) => p.number.trim())
-        .where((p) => p.isNotEmpty)
-        .toList();
-    final emails = contact.emails
-        .map((e) => e.address.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final phones = <String>{
+      ...contact.phones.map((p) => p.number.trim()),
+      ..._rawVCardValues(vcard, 'TEL'),
+    }.where((p) => p.isNotEmpty).toList();
+    final emails = <String>{
+      ...contact.emails.map((e) => e.address.trim()),
+      ..._rawVCardValues(vcard, 'EMAIL'),
+    }.where((e) => e.isNotEmpty).toList();
+    final fn = _rawVCardValues(vcard, 'FN').firstOrNull ?? _rawVCardValues(vcard, 'ORG').firstOrNull?.split(';').first;
     return contacts.Contact(
-      id: contact.id,
-      displayName: contact.displayName,
+      // cards without a parsed id would all share "" and overwrite each other; the card URL is unique
+      id: contact.id.isNotEmpty ? contact.id : href.toString(),
+      displayName: contact.displayName.trim().isNotEmpty ? contact.displayName : (fn ?? ""),
       phones: phones,
       emails: emails,
       structuredName: structured.StructuredName(

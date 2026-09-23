@@ -2697,11 +2697,11 @@ class RustPushService extends GetxService {
       }
       // One-time full re-download: earlier incremental syncs (with persisted ctags/tokens) may have
       // missed contacts, and nothing would ever re-fetch them.
-      if (!(ss.prefs.getBool("contactsFullResync1") ?? false)) {
+      if (!(ss.prefs.getBool("contactsFullResync2") ?? false)) {
         ss.settings.ctags.clear();
         ss.settings.tokens.clear();
         ss.saveSettings();
-        await ss.prefs.setBool("contactsFullResync1", true);
+        await ss.prefs.setBool("contactsFullResync2", true);
         Logger.info("Contact sync: forcing a full re-download");
       }
       try {
