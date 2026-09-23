@@ -631,7 +631,8 @@ impl SharedPushState {
             anisette: anisette.clone(),
             conn: conn.clone(),
             icloud_services: if let Some(account) = &account {
-                let token_provider = make_token_provider(account, config);
+                // cached on disk so iCloud features keep working across restarts while the relay Mac sleeps
+                let token_provider = TokenProvider::new_cached(account.clone(), config.config(), PathBuf::from_str(&path).unwrap().join("mobileme.plist"));
                 let cloudkit = make_cloudkit(path.clone(), &anisette, config, &token_provider).await.expect("todo remove");
                 let keychain = make_keychain(path.clone(), &cloudkit, &anisette, config, &token_provider);
 
@@ -2207,8 +2208,13 @@ pub async fn do_login(path: String, account: &Arc<Mutex<AppleAccount<DefaultAnis
     } else {
         login_apple_delegates(&*account, None, &*os_config.config(), &[LoginDelegate::IDS, LoginDelegate::MobileMe]).await?
     };
-    
-    
+
+    // new sign-in: replace any saved MobileMe tokens (possibly another account's) with these
+    let _ = std::fs::remove_file(conf_dir.join("mobileme.plist"));
+    if let Some(mobileme) = &delegates.mobileme {
+        rustpush::save_mobileme_cache(&conf_dir.join("mobileme.plist"), mobileme, std::time::SystemTime::now());
+    }
+
     plist::to_file_xml(conf_dir.join("gsa.plist"), &GSAConfig {
         username: account.username.clone().unwrap(),
         encrypted_password: GSAConfig::encrypt(&account.hashed_password.clone().unwrap())?,
@@ -2742,6 +2748,7 @@ fn reset_user(path: &str) {
     let dir = PathBuf::from_str(path).unwrap();
 
     let _ = std::fs::remove_file(dir.join("gsa.plist"));
+    let _ = std::fs::remove_file(dir.join("mobileme.plist"));
     let _ = std::fs::remove_file(dir.join("findmy.plist"));
     let _ = std::fs::remove_file(dir.join("facetime.plist"));
     let _ = std::fs::remove_file(dir.join("cloudkit.plist"));

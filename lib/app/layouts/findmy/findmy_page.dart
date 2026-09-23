@@ -15,6 +15,7 @@ import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
+import 'package:bluebubbles/services/network/icloud_web_findmy.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
@@ -133,6 +134,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   /// will return the data for both endpoints. A server update will fix this, but for now,
   /// we will "patch" it by only "refreshing" devices when the user manually refreshes the data.
   bool _relayOfflineShown = false;
+  // devices currently come from the icloud.com session rather than the relay-backed path
+  bool usingWebFindMy = false;
 
   /// Find My on a relay registration needs the Mac helper online; say so once instead of spinning.
   void _noteRelayOffline(Object e) {
@@ -457,35 +460,15 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       }
 
       this.devices = devices;
-
-      for (FindMyDevice e in devices.where((e) => e.location?.latitude != null && e.location?.longitude != null)) {
-          markers[e.id ?? randomString(6)] = Marker(
-            key: ValueKey('device-${e.id ?? randomString(6)}'),
-            point: LatLng(e.location!.latitude!, e.location!.longitude!),
-            width: FindMyTeardropPin.size.width,
-            height: FindMyTeardropPin.size.height,
-            child: FindMyTeardropPin(
-              child: e.role?['emoji'] != null
-                  ? Text(e.role!['emoji'], style: const TextStyle(fontSize: 14, fontFamily: 'Apple Color Emoji'))
-                  : Icon(
-                      (e.isMac ?? false)
-                          ? CupertinoIcons.desktopcomputer
-                          : e.isConsideredAccessory
-                              ? CupertinoIcons.headphones
-                              : CupertinoIcons.device_phone_portrait,
-                      color: Colors.white,
-                      size: 15,
-                    ),
-            ),
-            alignment: Alignment.topCenter,
-          );
-        }
+      usingWebFindMy = false;
+      _buildDeviceMarkers(devices);
       setState(() {
         fetching = false;
         refreshing = false;
       });
     } catch (e, s) {
       Logger.error("Failed to parse FindMy Devices location data!", error: e, trace: s);
+      if (await _loadDevicesFromWeb()) return;
       _noteRelayOffline(e);
       setState(() {
         fetching = null;
@@ -511,6 +494,53 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     //     }
     //   });
     // }
+  }
+
+  void _buildDeviceMarkers(List<FindMyDevice> devices) {
+    markers.removeWhere((k, v) => (v.key as ValueKey?)?.value.toString().startsWith('device-') ?? false);
+    for (FindMyDevice e in devices.where((e) => e.location?.latitude != null && e.location?.longitude != null)) {
+      markers[e.id ?? randomString(6)] = Marker(
+        key: ValueKey('device-${e.id ?? randomString(6)}'),
+        point: LatLng(e.location!.latitude!, e.location!.longitude!),
+        width: FindMyTeardropPin.size.width,
+        height: FindMyTeardropPin.size.height,
+        child: FindMyTeardropPin(
+          child: e.role?['emoji'] != null
+              ? Text(e.role!['emoji'], style: const TextStyle(fontSize: 14, fontFamily: 'Apple Color Emoji'))
+              : Icon(
+                  (e.isMac ?? false)
+                      ? CupertinoIcons.desktopcomputer
+                      : e.isConsideredAccessory
+                          ? CupertinoIcons.headphones
+                          : CupertinoIcons.device_phone_portrait,
+                  color: Colors.white,
+                  size: 15,
+                ),
+        ),
+        alignment: Alignment.topCenter,
+      );
+    }
+  }
+
+  /// Fallback when the normal (relay-backed) path fails: devices from a saved icloud.com session.
+  Future<bool> _loadDevicesFromWeb() async {
+    final devices = await ICloudWebFindMy.fetchDevices();
+    if (devices == null || !mounted) return false;
+    this.devices = devices;
+    _buildDeviceMarkers(devices);
+    setState(() {
+      usingWebFindMy = true;
+      fetching = false;
+      refreshing = false;
+    });
+    return true;
+  }
+
+  Future<void> _signInWeb() async {
+    if (await ICloudWebFindMy.signIn(context)) {
+      setState(() => fetching = true);
+      getLocations();
+    }
   }
 
   void buildFriendMarker(FindMyFriend friend) {
@@ -622,8 +652,40 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                       ),
                     ),
                     if (fetching == true) buildProgressIndicator(context, size: 15),
+                    if (fetching == null && ICloudWebFindMy.supported && !ICloudWebFindMy.connected)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Column(
+                          children: [
+                            Text("Your Mac relay may be offline. You can still see your devices through iCloud.com.",
+                                style: context.theme.textTheme.bodySmall, textAlign: TextAlign.center),
+                            const SizedBox(height: 8),
+                            TextButton(onPressed: _signInWeb, child: const Text("Sign in with iCloud.com")),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
+              ),
+            ),
+          if (usingWebFindMy && devices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text("Showing devices from iCloud.com because your Mac relay is offline.",
+                        style: context.theme.textTheme.bodySmall!.copyWith(color: context.theme.colorScheme.outline)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      await ICloudWebFindMy.signOut();
+                      setState(() => usingWebFindMy = false);
+                      getLocations();
+                    },
+                    child: const Text("Sign out of iCloud.com"),
+                  ),
+                ],
               ),
             ),
           if (devicesWithLocation.isNotEmpty)
