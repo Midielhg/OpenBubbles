@@ -6,7 +6,8 @@ import 'dart:ui';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
 import 'package:bluebubbles/app/layouts/findmy/findmy_location_clipper.dart';
-import 'package:bluebubbles/app/layouts/findmy/findmy_pin_clipper.dart';
+import 'package:bluebubbles/app/layouts/findmy/findmy_map_markers.dart';
+import 'package:bluebubbles/app/layouts/findmy/findmy_map_style.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/app/wrappers/theme_switcher.dart';
@@ -34,6 +35,7 @@ import 'package:tuple/tuple.dart';
 import 'package:universal_io/io.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 
 class FindMyPage extends StatefulWidget {
   FindMyPage({super.key, this.defaultFriend});
@@ -53,6 +55,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   final PopupController popupController = PopupController();
   final MapController mapController = MapController();
   final completer = Completer<void>();
+  vmt.Style? mapStyle;
+  bool mapStyleFailed = false;
 
   StreamSubscription? locationSub;
   List<FindMyDevice> devices = [];
@@ -86,6 +90,9 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       tabController.index = 1;
     }
     getLocations();
+    FindMyMapStyle.load().then((style) {
+      if (mounted) setState(() => style == null ? mapStyleFailed = true : mapStyle = style);
+    });
 
     myTimer = Timer.periodic(const Duration(seconds: 5), (timer) => getLocations());
 
@@ -125,6 +132,17 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   /// however, the refresh friends endpoint does. The way this was coded assumes that the server
   /// will return the data for both endpoints. A server update will fix this, but for now,
   /// we will "patch" it by only "refreshing" devices when the user manually refreshes the data.
+  bool _relayOfflineShown = false;
+
+  /// Find My on a relay registration needs the Mac helper online; say so once instead of spinning.
+  void _noteRelayOffline(Object e) {
+    if (_relayOfflineShown || !e.toString().contains("Relay device offline")) return;
+    _relayOfflineShown = true;
+    showSnackbar("Find My unavailable",
+        "Your Mac relay is offline. Wake your Mac and make sure the registration helper is running; this page retries automatically.",
+        durationMs: 6000);
+  }
+
   void getLocations({bool refreshFriends = true, bool refreshDevices = true}) async {
     if (!(Platform.isLinux && !kIsWeb)) {
       LocationPermission granted = await Geolocator.checkPermission();
@@ -158,15 +176,16 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     }
 
     var isNew = fmfClient == null;
-    fmfClient ??= await api.makeFindMyFriends(
-      path: pushService.statePath,
-      config: pushService.state!.osConfig,
-      aps: pushService.state!.conn,
-      anisette: pushService.state!.anisette,
-      provider: pushService.state!.icloudServices!.tokenProvider,
-    );
-
     try {
+      // inside the try: with a relay registration this needs the Mac online, and an escaped error left
+      // the friends list spinning forever while the 5s timer retried
+      fmfClient ??= await api.makeFindMyFriends(
+        path: pushService.statePath,
+        config: pushService.state!.osConfig,
+        aps: pushService.state!.conn,
+        anisette: pushService.state!.anisette,
+        provider: pushService.state!.icloudServices!.tokenProvider,
+      );
       if (refreshFriends && !isNew) {
         await api.refreshFollowing(config: pushService.state!.osConfig, client: fmfClient!);
       }
@@ -226,24 +245,23 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       }
     } catch (e, s) {
       Logger.error("Failed to parse FindMy Friends location data!", error: e, trace: s);
+      _noteRelayOffline(e);
       setState(() {
         fetching2 = null;
         refreshing2 = false;
       });
-      return;
+      // keep going: devices are fetched independently of friends
     }
 
     var isNewi = fmipClient == null;
-    fmipClient ??= await api.makeFindMyPhone(
-      config: pushService.state!.osConfig,
-      path: pushService.statePath,
-      aps: pushService.state!.conn,
-      anisette: pushService.state!.anisette,
-      provider: pushService.state!.icloudServices!.tokenProvider,
-    );
-
-
     try {
+      fmipClient ??= await api.makeFindMyPhone(
+        config: pushService.state!.osConfig,
+        path: pushService.statePath,
+        aps: pushService.state!.conn,
+        anisette: pushService.state!.anisette,
+        provider: pushService.state!.icloudServices!.tokenProvider,
+      );
       if (refreshDevices && !isNewi) {
         await api.refreshDevices(config: pushService.state!.osConfig, client: fmipClient!);
       }
@@ -444,34 +462,20 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
           markers[e.id ?? randomString(6)] = Marker(
             key: ValueKey('device-${e.id ?? randomString(6)}'),
             point: LatLng(e.location!.latitude!, e.location!.longitude!),
-            width: 30,
-            height: 35,
-            child: ClipShadowPath(
-              clipper: const FindMyPinClipper(),
-              shadow: const BoxShadow(
-                color: Colors.black,
-                blurRadius: 2,
-              ),
-              child: Container(
-                color: Colors.white,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 5.0),
-                    child: e.role?['emoji'] != null
-                        ? Text(e.role!['emoji'],
-                            style: context.theme.textTheme.bodyLarge!.copyWith(fontFamily: 'Apple Color Emoji'))
-                        : Icon(
-                            (e.isMac ?? false)
-                                ? CupertinoIcons.desktopcomputer
-                                : e.isConsideredAccessory
-                                    ? CupertinoIcons.headphones
-                                    : CupertinoIcons.device_phone_portrait,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                  ),
-                ),
-              ),
+            width: FindMyTeardropPin.size.width,
+            height: FindMyTeardropPin.size.height,
+            child: FindMyTeardropPin(
+              child: e.role?['emoji'] != null
+                  ? Text(e.role!['emoji'], style: const TextStyle(fontSize: 14, fontFamily: 'Apple Color Emoji'))
+                  : Icon(
+                      (e.isMac ?? false)
+                          ? CupertinoIcons.desktopcomputer
+                          : e.isConsideredAccessory
+                              ? CupertinoIcons.headphones
+                              : CupertinoIcons.device_phone_portrait,
+                      color: Colors.white,
+                      size: 15,
+                    ),
             ),
             alignment: Alignment.topCenter,
           );
@@ -482,6 +486,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       });
     } catch (e, s) {
       Logger.error("Failed to parse FindMy Devices location data!", error: e, trace: s);
+      _noteRelayOffline(e);
       setState(() {
         fetching = null;
         refreshing = false;
@@ -512,19 +517,12 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     markers[friend.handle?.uniqueAddressAndService ?? randomString(6)] = Marker(
       key: ValueKey('friend-${friend.handle?.uniqueAddressAndService ?? randomString(6)}'),
       point: LatLng(friend.latitude!, friend.longitude!),
-      width: 35,
-      height: 35,
-      child: Container(
-        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(3),
-            child:
-            ContactAvatarWidget(editable: false, handle: friend.handle ?? Handle(address: friend.title ?? "Unknown")),
-          ),
-        ),
+      width: 38,
+      height: 38,
+      child: FindMyAvatarPin(
+        child: ContactAvatarWidget(editable: false, handle: friend.handle ?? Handle(address: friend.title ?? "Unknown")),
       ),
-      alignment: Alignment.topCenter,
+      alignment: Alignment.center,
     );
   }
 
@@ -532,8 +530,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     markers['current'] = Marker(
       key: const ValueKey('current'),
       point: LatLng(pos.latitude, pos.longitude),
-      width: 25,
-      height: 55,
+      width: 56,
+      height: 56,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -555,24 +553,10 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                 ),
               ),
             ),
-          Container(
-            width: 25,
-            height: 25,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            padding: const EdgeInsets.all(5),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.theme.colorScheme.primary,
-              ),
-            ),
-          ),
+          const FindMyYouAreHere(),
         ],
       ),
-      alignment: Alignment.topCenter,
+      alignment: Alignment.center,
     );
   }
 
@@ -1750,6 +1734,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
         minZoom: 1.0,
         maxZoom: 18.0,
         initialCenter: location == null ? savedLocation : LatLng(location!.latitude, location!.longitude),
+        backgroundColor: FindMapColors.land,
         onTap: (_, __) => popupController.hideAllPopups(),
         // Hide popup when the map is tapped.
         keepAlive: true,
@@ -1763,10 +1748,20 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
         },
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.bluebubbles.app',
-        ),
+        // DealFinder's Apple Maps-style vector map; plain OSM raster only if that style can't load
+        if (mapStyle != null)
+          vmt.VectorTileLayer(
+            theme: mapStyle!.theme,
+            sprites: mapStyle!.sprites,
+            tileProviders: mapStyle!.providers,
+            layerMode: vmt.VectorTileLayerMode.vector,
+            tileOffset: vmt.TileOffset.mapbox,
+          )
+        else if (mapStyleFailed)
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.bluebubbles.app',
+          ),
         PopupMarkerLayer(
           options: PopupMarkerLayerOptions(
             onPopupEvent: (ev, m) async {
@@ -1783,14 +1778,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                 if (key?.value.contains("device")) {
                   String prefix = key!.value.replaceFirst("device-", "");
                   final item = devices.firstWhere((e) => e.id == prefix);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 5.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: context.theme.colorScheme.properSurface.withOpacity(0.8),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(10, 10, 0, 10),
+                  return FindMyPopupCard(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1821,20 +1810,12 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                             ),
                           )
                         ],
-                      )
-                    ),
+                      ),
                   );
                 } else {
                   String prefix = key!.value.replaceFirst("friend-", "");
                   final item = friends.firstWhere((e) => e.handle?.uniqueAddressAndService == prefix);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 5.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: context.theme.colorScheme.properSurface.withOpacity(0.8),
-                      ),
-                      padding: const EdgeInsets.all(10),
+                  return FindMyPopupCard(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1848,13 +1829,17 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                             Text("${item.status!.name.capitalize!} Location", style: context.theme.textTheme.bodySmall),
                         ],
                       ),
-                    ),
                   );
                 }
               },
             ),
           ),
         ),
+        if (mapStyle != null)
+          const SimpleAttributionWidget(
+            source: Text(FindMyMapStyle.attribution),
+            backgroundColor: Color(0xCCFFFFFF),
+          ),
       ],
     );
   }

@@ -215,6 +215,8 @@ dependencies:
   google_sign_in_all_platforms: ^1.0.0
   cbor: ^6.3.5
   dpad: ^2.0.2
+  vector_map_tiles: ^8.0.0
+  vector_tile_renderer: ^5.2.1
 
 
 dependency_overrides:
@@ -309,6 +311,7 @@ flutter:
     - assets/reactions/laugh-black.svg
     - assets/reactions/question-black.svg
     - assets/reactions/love-black.svg
+    - assets/maps/map-style.json
     - assets/icon/moon.svg
     - assets/icon/bb-icon.svg
     - assets/images/google-sign-in.png
