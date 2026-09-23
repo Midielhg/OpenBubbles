@@ -246,3 +246,54 @@ class GlassSegmented extends StatelessWidget {
     );
   }
 }
+
+/// A Liquid Glass popover opening upward from the widget at [anchorContext] (the + and emoji buttons):
+/// left edges aligned, or right edges with [alignRight]. Dismissed by clicking outside or Esc; the
+/// builder can pop a result with Navigator.of(context).pop(value).
+Future<T?> showGlassPopover<T>({
+  required BuildContext anchorContext,
+  required double width,
+  required WidgetBuilder builder,
+  bool alignRight = false,
+  EdgeInsets padding = const EdgeInsets.all(6),
+  double radius = 18,
+}) {
+  final box = anchorContext.findRenderObject() as RenderBox;
+  final origin = box.localToGlobal(Offset.zero);
+  return showGeneralDialog<T>(
+    context: anchorContext,
+    barrierDismissible: true,
+    barrierLabel: "Dismiss",
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (context, _, __) {
+      final screen = MediaQuery.of(context).size;
+      final left = (alignRight ? origin.dx + box.size.width - width : origin.dx).clamp(8.0, screen.width - width - 8);
+      return Stack(
+        children: [
+          Positioned(
+            left: left,
+            bottom: screen.height - origin.dy + 8,
+            width: width,
+            child: GlassSurface(
+              borderRadius: BorderRadius.circular(radius),
+              blur: 24,
+              fillOpacity: 0.78,
+              padding: padding,
+              child: Material(type: MaterialType.transparency, child: builder(context)),
+            ),
+          ),
+        ],
+      );
+    },
+    // geometry springs, opacity is a plain fade
+    transitionBuilder: (context, animation, _, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      child: ScaleTransition(
+        scale: Tween(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: animation, curve: const GlassSpring())),
+        alignment: alignRight ? Alignment.bottomRight : Alignment.bottomLeft,
+        child: child,
+      ),
+    ),
+  );
+}

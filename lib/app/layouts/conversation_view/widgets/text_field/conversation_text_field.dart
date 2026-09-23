@@ -76,6 +76,63 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
   bool get showAttachmentPicker => controller.showAttachmentPicker;
 
   late final double emojiPickerHeight = max(256, context.height * 0.4);
+
+  /// Emoji picker for the glass popover: transparent so the glass shows through, with a search row.
+  Widget _glassEmojiPicker(BuildContext context) {
+    return Theme(
+      data: context.theme.copyWith(canvasColor: Colors.transparent),
+      child: EmojiPicker(
+        textEditingController: proxyController,
+        scrollController: ScrollController(),
+        config: Config(
+          height: 380,
+          checkPlatformCompatibility: true,
+          emojiViewConfig: EmojiViewConfig(
+            emojiSizeMax: 26,
+            backgroundColor: Colors.transparent,
+            columns: 9,
+            noRecents: Text("No Recents", style: context.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.outline)),
+          ),
+          swapCategoryAndBottomBar: true,
+          skinToneConfig: const SkinToneConfig(enabled: false),
+          categoryViewConfig: CategoryViewConfig(
+            backgroundColor: Colors.transparent,
+            dividerColor: Colors.transparent,
+            indicatorColor: context.theme.colorScheme.primary,
+            iconColorSelected: context.theme.colorScheme.primary,
+            iconColor: context.theme.colorScheme.outline,
+          ),
+          bottomActionBarConfig: BottomActionBarConfig(
+            customBottomActionBar: (Config config, EmojiViewState state, VoidCallback showSearchView) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                child: GlassPressable(
+                  onTap: showSearchView,
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: context.theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.08) : const Color(0x1F787880),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(children: [
+                      Icon(CupertinoIcons.search, size: 15, color: context.theme.colorScheme.outline),
+                      const SizedBox(width: 6),
+                      Text("Search emoji", style: context.theme.textTheme.bodyMedium!.copyWith(color: context.theme.colorScheme.outline)),
+                    ]),
+                  ),
+                ),
+              );
+            },
+          ),
+          searchViewConfig: SearchViewConfig(
+            backgroundColor: Colors.transparent,
+            buttonIconColor: context.theme.colorScheme.outline,
+          ),
+        ),
+      ),
+    );
+  }
   late final emojiColumns = ns.width(context) ~/ 56; // Intentionally not responsive to prevent rebuilds when resizing
   RxBool get showEmojiPicker => controller.showEmojiPicker;
 
@@ -727,14 +784,29 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
               if (kIsDesktop && iOS)
                 Padding(
                   padding: const EdgeInsets.only(left: 4, right: 10, bottom: 2),
-                  child: GlassCircleButton(
-                    icon: CupertinoIcons.smiley,
-                    iconSize: 20,
-                    tooltip: "Emoji",
-                    onTap: () {
-                      showEmojiPicker.value = !showEmojiPicker.value;
-                      (controller.editing.lastOrNull?.item3.focusNode ?? controller.lastFocusedNode).requestFocus();
-                    },
+                  child: Builder(
+                    builder: (buttonContext) => GlassCircleButton(
+                      icon: CupertinoIcons.smiley,
+                      iconSize: 20,
+                      tooltip: "Emoji",
+                      onTap: () async {
+                        final focus = controller.editing.lastOrNull?.item3.focusNode ?? controller.lastFocusedNode;
+                        if (!macLook) {
+                          showEmojiPicker.value = !showEmojiPicker.value;
+                          focus.requestFocus();
+                          return;
+                        }
+                        // stays open for several picks, like the macOS emoji popover; click outside or Esc closes it
+                        await showGlassPopover(
+                          anchorContext: buttonContext,
+                          width: 360,
+                          alignRight: true,
+                          padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+                          builder: (context) => SizedBox(height: 380, child: _glassEmojiPicker(context)),
+                        );
+                        focus.requestFocus();
+                      },
+                    ),
                   ),
                 ),
               if (samsung)
@@ -1432,33 +1504,18 @@ class _MacPlusButton extends StatelessWidget {
       iconSize: 20,
       tooltip: "Attach",
       onTap: () async {
-        final box = context.findRenderObject() as RenderBox;
-        final origin = box.localToGlobal(Offset.zero);
         final items = <(int, IconData, String)>[
           (0, CupertinoIcons.photo_on_rectangle, "Photos & Files"),
           if (onGif != null) (1, CupertinoIcons.sparkles, "GIF"),
           (2, CupertinoIcons.clock, "Schedule Send"),
           if (onLocation != null) (3, CupertinoIcons.location, "Share Location"),
         ];
-        final choice = await showGeneralDialog<int>(
-          context: context,
-          barrierDismissible: true,
-          barrierLabel: "Attach",
-          barrierColor: Colors.transparent,
-          transitionDuration: const Duration(milliseconds: 260),
-          pageBuilder: (context, _, __) => _GlassAttachMenu(
-            // anchored to the + button: left edges aligned, sitting just above it
-            left: origin.dx,
-            bottom: MediaQuery.of(context).size.height - origin.dy + 8,
-            items: items,
-          ),
-          transitionBuilder: (context, animation, _, child) => FadeTransition(
-            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-            child: ScaleTransition(
-              scale: Tween(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: animation, curve: const GlassSpring())),
-              alignment: Alignment.bottomLeft,
-              child: child,
-            ),
+        final choice = await showGlassPopover<int>(
+          anchorContext: context,
+          width: 220,
+          builder: (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [for (final item in items) _GlassMenuRow(value: item.$1, icon: item.$2, label: item.$3)],
           ),
         );
         switch (choice) {
@@ -1468,44 +1525,6 @@ class _MacPlusButton extends StatelessWidget {
           case 3: await onLocation?.call(); break;
         }
       },
-    );
-  }
-}
-
-/// The + menu as a Liquid Glass popover (blurred, saturated translucent panel, hairline border, one
-/// soft shadow), opening upward from the button it belongs to.
-class _GlassAttachMenu extends StatelessWidget {
-  const _GlassAttachMenu({required this.left, required this.bottom, required this.items});
-
-  final double left;
-  final double bottom;
-  final List<(int, IconData, String)> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = 220.0;
-    final screen = MediaQuery.of(context).size;
-    return Stack(
-      children: [
-        Positioned(
-          left: left.clamp(8.0, screen.width - width - 8),
-          bottom: bottom,
-          width: width,
-          child: GlassSurface(
-              borderRadius: BorderRadius.circular(18),
-              blur: 24,
-              fillOpacity: 0.78,
-              padding: const EdgeInsets.all(6),
-              child: Material(
-                type: MaterialType.transparency,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [for (final item in items) _GlassMenuRow(value: item.$1, icon: item.$2, label: item.$3)],
-                ),
-              ),
-            ),
-        ),
-      ],
     );
   }
 }
