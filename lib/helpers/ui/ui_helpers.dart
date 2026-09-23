@@ -76,7 +76,10 @@ Widget buildBackButton(BuildContext context, {EdgeInsets padding = EdgeInsets.ze
     // macOS: round glass back button
     return Padding(
       padding: padding,
-      child: Center(
+      // shrink-wrap: a plain Center would expand to the whole toolbar and centre the button there
+      child: Align(
+        widthFactor: 1,
+        heightFactor: 1,
         child: GlassCircleButton(
           icon: CupertinoIcons.chevron_left,
           iconSize: 17,
