@@ -38,6 +38,18 @@ class ConversationListController extends StatefulController {
   final ScrollController samsungScrollController = ScrollController();
   final FocusNode newMessageFocusNode = FocusNode(skipTraversal: true);
   final List<Chat> selectedChats = [];
+  /// inline sidebar search (desktop): filters the list in place instead of opening SearchView
+  final RxString searchQuery = "".obs;
+
+  bool matchesSearch(Chat chat) {
+    final q = searchQuery.value.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    if (chat.getTitle().toLowerCase().contains(q)) return true;
+    for (final h in chat.participants) {
+      if (h.displayName.toLowerCase().contains(q) || h.address.toLowerCase().contains(q)) return true;
+    }
+    return (chat.latestMessage.text ?? "").toLowerCase().contains(q);
+  }
   bool showMaterialFABText = true;
   double materialScrollStartPosition = 0;
 

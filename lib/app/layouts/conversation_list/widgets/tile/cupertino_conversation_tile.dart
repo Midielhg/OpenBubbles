@@ -70,8 +70,9 @@ class _CupertinoConversationTileState extends CustomState<CupertinoConversationT
                   child: ChatTitle(
                     parentController: controller,
                     style: context.theme.textTheme.bodyLarge!.copyWith(
-                        // macOS shows every name in semibold
+                        // macOS shows every name in semibold, at a smaller size
                         fontWeight: kIsDesktop || controller.shouldHighlight.value ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: kIsDesktop ? 14.5 : null,
                         color: controller.shouldHighlight.value ? context.theme.colorScheme.onBubble(context, controller.chat.isIMessage) : null),
                   ),
                 ),
@@ -127,7 +128,8 @@ class _CupertinoConversationTileState extends CustomState<CupertinoConversationT
                       color: controller.shouldHighlight.value
                           ? context.theme.colorScheme.onBubble(context, controller.chat.isIMessage).withOpacity(0.85)
                           : context.theme.colorScheme.outline,
-                      height: 1.5,
+                      height: kIsDesktop ? 1.3 : 1.5,
+                      fontSize: kIsDesktop ? 13.5 : null,
                     ),
                   ),
             ),
@@ -281,7 +283,7 @@ class _CupertinoTrailingState extends CustomState<CupertinoTrailing, void, Conve
                             : context.theme.colorScheme.outline,
                     fontWeight: controller.shouldHighlight.value ? FontWeight.w500 : null,
                   )
-                  .apply(fontSizeFactor: 1.1),
+                  .apply(fontSizeFactor: kIsDesktop ? 0.95 : 1.1),
               overflow: TextOverflow.clip,
             );
           }),

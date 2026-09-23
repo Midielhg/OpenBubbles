@@ -95,10 +95,17 @@ class _TabletModeWrapperState extends OptimizedState<TabletModeWrapper> {
                   // macOS Tahoe look: the chat list is a rounded card floating over the window
                   child: macLook ? Padding(
                     padding: const EdgeInsets.fromLTRB(8, 8, 0, 8),
-                    child: GlassSurface(
-                      borderRadius: BorderRadius.circular(16),
-                      blur: Glass.panelBlur,
-                      fillOpacity: context.theme.brightness == Brightness.dark ? 0.72 : 0.78,
+                    // Apple's sidebar is near-white (#F7F7F8), barely off the white chat area. Translucent
+                    // white over the gray Mica backdrop read as a heavy gray, so keep this almost opaque.
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: context.theme.brightness == Brightness.dark
+                            ? const Color(0xF2262628)
+                            : const Color(0xFAF7F7F8),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Glass.border(context), width: 0.5),
+                        boxShadow: Glass.shadow(context),
+                      ),
                       child: ClipRRect(borderRadius: BorderRadius.circular(16), child: widget.left),
                     ),
                   ) : widget.left,

@@ -198,7 +198,8 @@ class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
   _MacListHeaderDelegate(this.controller);
 
   final ConversationListController controller;
-  static const double _height = 100;
+  // 28 top (+8 card inset) puts the 34px row's centre at 52px, the same line as the conversation toolbar
+  static const double _height = 74;
 
   @override
   double get minExtent => _height;
@@ -211,61 +212,102 @@ class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     final scrolled = shrinkOffset > 0 || overlapsContent;
-    final title = controller.showArchivedChats
-        ? "Archive"
-        : controller.showUnknownSenders
-            ? "Unknown Senders"
-            : null;
     return ClipRect(
       child: BackdropFilter(
         filter: Glass.filter(scrolled ? Glass.chromeBlur : 0.01),
         child: Container(
           color: scrolled ? Glass.fill(context, opacity: 0.5) : Colors.transparent,
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          padding: const EdgeInsets.fromLTRB(14, 28, 14, 12),
+          // macOS Tahoe: the search field and the toolbar button share one row
+          child: Row(
             children: [
-              SizedBox(
-                height: 32,
-                child: Row(
-                  children: [
-                    if (title != null)
-                      Text(title, style: context.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
-                    const Spacer(),
-                    SyncIndicator(size: 16),
-                    const SizedBox(width: 8),
-                    const Material(
-                      color: Colors.transparent,
-                      shape: CircleBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: OverflowMenu(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              GlassPressable(
-                onTap: () => ns.pushLeft(context, SearchView()),
-                child: Container(
-                  height: 34,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: context.theme.brightness == Brightness.dark
-                        ? Colors.white.withOpacity(0.08)
-                        : const Color(0x14767680), // Apple tertiary system fill
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.search, size: 16, color: context.theme.colorScheme.outline),
-                      const SizedBox(width: 8),
-                      Text("Search", style: context.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.outline)),
-                    ],
-                  ),
-                ),
+              Expanded(child: _MacSearchField(controller: controller)),
+              const SizedBox(width: 8),
+              SyncIndicator(size: 16),
+              const Material(
+                color: Colors.transparent,
+                shape: CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: OverflowMenu(),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MacSearchField extends StatefulWidget {
+  const _MacSearchField({required this.controller});
+
+  final ConversationListController controller;
+
+  @override
+  State<_MacSearchField> createState() => _MacSearchFieldState();
+}
+
+class _MacSearchFieldState extends State<_MacSearchField> {
+  late final TextEditingController text = TextEditingController(text: widget.controller.searchQuery.value);
+  final FocusNode focus = FocusNode();
+
+  @override
+  void dispose() {
+    text.dispose();
+    focus.dispose();
+    super.dispose();
+  }
+
+  void _clear() {
+    text.clear();
+    widget.controller.searchQuery.value = "";
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outline = context.theme.colorScheme.outline;
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): () { _clear(); focus.unfocus(); }},
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: context.theme.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.08)
+              : const Color(0x14767680), // Apple tertiary system fill
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.search, size: 16, color: outline),
+            const SizedBox(width: 6),
+            Expanded(
+              child: TextField(
+                controller: text,
+                focusNode: focus,
+                style: context.textTheme.bodyLarge,
+                cursorColor: context.theme.colorScheme.primary,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: "Search",
+                  hintStyle: context.textTheme.bodyLarge!.copyWith(color: outline),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (v) {
+                  widget.controller.searchQuery.value = v;
+                  setState(() {});
+                },
+              ),
+            ),
+            if (text.text.isNotEmpty)
+              GlassPressable(
+                onTap: _clear,
+                tooltip: "Clear",
+                child: Icon(CupertinoIcons.xmark_circle_fill, size: 16, color: outline),
+              ),
+          ],
         ),
       ),
     );

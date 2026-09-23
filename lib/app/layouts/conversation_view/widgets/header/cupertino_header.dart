@@ -68,7 +68,7 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
       child: BackdropFilter(
           filter: ImageFilter.compose(
               // desktop: just a light scroll-edge blur under the floating controls
-              outer: ImageFilter.blur(sigmaX: kIsDesktop ? 10 : 30, sigmaY: kIsDesktop ? 10 : 30),
+              outer: ImageFilter.blur(sigmaX: kIsDesktop ? 5 : 30, sigmaY: kIsDesktop ? 5 : 30),
               inner: ColorFilter.matrix(
                 CupertinoTheme.maybeBrightnessOf(context) == Brightness.dark ? darkMatrix : lightMatrix,
               )),
@@ -101,7 +101,9 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
                       if (kIsDesktop && ss.settings.tabletMode.value && ns.isTabletMode(context))
                         // two-pane desktop: the left slot holds the compose button instead of "back"
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          // top 34 keeps the toolbar row below the Windows caption buttons; the sidebar's
+                          // toolbar row uses the same line (centre at 52px)
+                          padding: const EdgeInsets.only(top: 34),
                           child: Align(
                             alignment: Alignment.topLeft,
                             child: GlassCircleButton(
@@ -184,7 +186,8 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
                         ),
                       ),
                       Padding(
-                          padding: EdgeInsets.only(top: kIsDesktop ? 8 : 5),
+                          // desktop: same height as the compose button, and clear of the Windows caption buttons
+                          padding: EdgeInsets.only(top: kIsDesktop ? 34 : 5),
                           child: Align(alignment: Alignment.topRight, child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

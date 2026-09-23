@@ -30,7 +30,7 @@ class _InitialWidgetRightState extends OptimizedState<InitialWidgetRight> {
             ),
             // same floating compose button as the conversation toolbar, so it's always in one place
             Positioned(
-              top: 8,
+              top: 34,
               left: 20,
               child: GlassCircleButton(
                 icon: CupertinoIcons.square_pencil,

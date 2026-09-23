@@ -72,13 +72,18 @@ class CupertinoConversationListState
   Widget build(BuildContext context) {
     return Scaffold(
       // on desktop the list lives inside the floating glass card, which paints its own background
-      backgroundColor: kIsDesktop || ss.settings.windowEffect.value != WindowEffect.disabled
-          ? Colors.transparent
-          : context.theme.colorScheme.background,
+      // Paint the macOS sidebar color here too: a layer between the card and this page was tinting the
+      // list a heavy gray (measured #DFDFE0 vs the card's #F7F7F8).
+      backgroundColor: kIsDesktop
+          ? (context.theme.brightness == Brightness.dark ? const Color(0xFF262628) : const Color(0xFFF7F7F8))
+          : ss.settings.windowEffect.value != WindowEffect.disabled
+              ? Colors.transparent
+              : context.theme.colorScheme.background,
       extendBodyBehindAppBar: !showArchived && !showUnknown && !showDeleted,
-      // desktop uses the glass compose button in the conversation toolbar instead of a FAB
-      floatingActionButton: Obx(() =>
-          !kIsDesktop &&
+      // desktop uses the glass compose button in the conversation toolbar instead of a FAB. Keep this
+      // check outside the Obx: short-circuiting inside it means no Rx is read and GetX throws
+      // ("improper use of GetX"), which rendered an error box where the FAB would be.
+      floatingActionButton: kIsDesktop ? null : Obx(() =>
           !ss.settings.moveChatCreatorToHeader.value &&
                   !showArchived &&
                   !showUnknown &&
@@ -116,6 +121,10 @@ class CupertinoConversationListState
                           CupertinoHeader(controller: controller),
                         Obx(() {
                           ns.listener.value;
+                          // pinned avatars step aside while a search is active
+                          if (controller.searchQuery.value.trim().isNotEmpty) {
+                            return const SliverToBoxAdapter(child: SizedBox.shrink());
+                          }
                           final _chats = showDeleted
                               ? [].obs
                               : chats.chats
@@ -284,12 +293,19 @@ class CupertinoConversationListState
                           );
                         }),
                         Obx(() {
+                          final searching = controller.searchQuery.value.trim().isNotEmpty;
                           final _chats = showDeleted
                               ? deletedChats
-                              : chats.chats
-                                  .archivedHelper(showArchived)
-                                  .unknownSendersHelper(showUnknown)
-                                  .bigPinHelper(false);
+                              : searching
+                                  ? chats.chats
+                                      .archivedHelper(showArchived)
+                                      .unknownSendersHelper(showUnknown)
+                                      .where(controller.matchesSearch)
+                                      .toList()
+                                  : chats.chats
+                                      .archivedHelper(showArchived)
+                                      .unknownSendersHelper(showUnknown)
+                                      .bigPinHelper(false);
 
                           if (!chats.loadedChatBatch.value || _chats.isEmpty) {
                             return SliverToBoxAdapter(
