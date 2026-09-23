@@ -204,8 +204,10 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                         ss.settings.selectedActionIndices.value = selectedIndices;
                                         saveSettings();
                                       },
+                                      // one per saved action; ReactionTypes also has emoji/sticker tapbacks,
+                                      // which aren't notification actions and overran this list
                                       children: List.generate(
-                                        ReactionTypes.toList().length + 1,
+                                        ss.settings.actionList.length,
                                         (int index) => MouseRegion(
                                           cursor: SystemMouseCursors.click,
                                           onEnter: (event) => showButtons[index] = true,
@@ -399,9 +401,8 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             ss.settings.actionList.length,
                                             (index) => (!actualIndices.contains(index))
                                                 ? null
-                                                : Obx(
-                                                    () {
-                                                      context.width;
+                                                // built inline: a Positioned must be the Stack's direct child
+                                                : (() {
                                                       int _index = ss
                                                           .settings
                                                           .actionList
@@ -446,8 +447,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                                           ),
                                                         ),
                                                       );
-                                                    },
-                                                  ),
+                                                    })(),
                                           ).whereNotNull(),
                                         ],
                                       ),
