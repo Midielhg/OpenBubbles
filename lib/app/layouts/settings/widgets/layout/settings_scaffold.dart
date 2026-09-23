@@ -58,8 +58,9 @@ class SettingsScaffold extends StatelessWidget {
           child: Container(
             color: headerColor,
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
-            child: Stack(alignment: Alignment.center, children: [
-              Text(title, style: context.theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
+            // fill the bar so the back button/actions pin to its edges, not the title's
+            child: Stack(alignment: Alignment.center, fit: StackFit.expand, children: [
+              Center(child: Text(title, style: context.theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600))),
               if (Navigator.of(context).canPop())
                 Align(alignment: Alignment.centerLeft, child: buildBackButton(context)),
               if (actions.isNotEmpty)
