@@ -71,7 +71,7 @@ class _AboutPanelState extends OptimizedState<AboutPanel> {
   @override
   Widget build(BuildContext context) {
     return SettingsScaffold(
-        title: "About & Links",
+        title: "About",
         iosSubtitle: iosSubtitle,
         materialSubtitle: materialSubtitle,
         initialHeader: null,
@@ -162,55 +162,10 @@ class _AboutPanelState extends OptimizedState<AboutPanel> {
                   backgroundColor: tileColor,
                   children: [
                     SettingsTile(
-                      title: "OpenBubbles Website",
-                      subtitle: "Visit the OpenBubbles Homepage",
-                      onTap: () async {
-                        await launchUrl(Uri(scheme: "https", host: "openbubbles.app"), mode: LaunchMode.externalApplication);
-                      },
-                      leading: const SettingsLeadingIcon(
-                        iosIcon: CupertinoIcons.globe,
-                        materialIcon: Icons.language,
-                        containerColor: Colors.green,
-                      ),
-                      trailing: const NextButton()
-                    ),
-                    const SettingsDivider(),
-                    SettingsTile(
-                      title: "Make a Donation",
-                      subtitle: "Support the developers by making a one-time or recurring donation to the OpenBubbles Team!",
-                      onTap: () async {
-                        await launchUrl(Uri.parse("https://www.paypal.com/donate/?hosted_button_id=MUZH6LH6ZGN6G"), mode: LaunchMode.externalApplication);
-                      },
-                      leading: const SettingsLeadingIcon(
-                        iosIcon: CupertinoIcons.money_dollar_circle,
-                        materialIcon: Icons.attach_money,
-                        containerColor: Colors.green,
-                      ),
-                      isThreeLine: false,
-                    ),
-                    const SettingsDivider(),
-                    SettingsTile(
-                      title: "Documentation",
-                      subtitle: "Learn how to use OpenBubbles or fix common issues",
-                      onTap: () async {
-                        await launchUrl(Uri(scheme: "https", host: "openbubbles.app", path: "docs/faq.html"), mode: LaunchMode.externalApplication);
-                      },
-                      leading: const SettingsLeadingIcon(
-                        iosIcon: CupertinoIcons.doc_append,
-                        materialIcon: Icons.document_scanner,
-                        containerColor: Colors.blueAccent,
-                      ),
-                      trailing: const NextButton()
-                    ),
-                    const SettingsDivider(),
-                    SettingsTile(
                       title: "Source Code",
-                      subtitle: "View the source code for OpenBubbles, and contribute!",
+                      subtitle: "View the source code on GitHub, fork it and contribute",
                       onTap: () async {
-                        await launchUrl(Uri(scheme: "https", host: "github.com", path: "OpenBubbles/openbubbles-app"), mode: LaunchMode.externalApplication);
-                      },
-                      onLongPress: () async {
-                        await launchUrl(Uri(scheme: "https", host: "github.com", path: "OpenBubbles/openbubbles-app/issues"), mode: LaunchMode.externalApplication);
+                        await launchUrl(Uri(scheme: "https", host: "github.com", path: "Midielhg/OpenBubbles"), mode: LaunchMode.externalApplication);
                       },
                       leading: const SettingsLeadingIcon(
                         iosIcon: CupertinoIcons.chevron_left_slash_chevron_right,
@@ -238,7 +193,7 @@ class _AboutPanelState extends OptimizedState<AboutPanel> {
                       title: "Report a Bug",
                       subtitle: "Found a bug? Report it here!",
                       onTap: () async {
-                        await launchUrl(Uri(scheme: "https", host: "github.com", path: "OpenBubbles/openbubbles-app/issues"), mode: LaunchMode.externalApplication);
+                        await launchUrl(Uri(scheme: "https", host: "github.com", path: "Midielhg/OpenBubbles/issues"), mode: LaunchMode.externalApplication);
                       },
                       leading: const SettingsLeadingIcon(
                         iosIcon: CupertinoIcons.triangle_righthalf_fill,

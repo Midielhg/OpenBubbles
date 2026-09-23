@@ -37,11 +37,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:in_app_review/in_app_review.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:universal_io/io.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   SettingsPage({
@@ -876,46 +874,14 @@ class _SettingsPageState extends OptimizedState<SettingsPage> {
                               SettingsHeader(
                                   iosSubtitle: iosSubtitle,
                                   materialSubtitle: materialSubtitle,
-                                  text: "About & Links"),
+                                  text: "About"),
                               SettingsSection(
                                 backgroundColor: tileColor,
                                 children: [
-                                  if (!kIsWeb && (Platform.isAndroid || Platform.isWindows))
-                                    SettingsTile(
-                                      title: "Leave Us a Review",
-                                      subtitle: "Enjoying the app? Leave us a review on the ${Platform.isAndroid ? 'Google Play Store' : 'Microsoft Store'}!",
-                                      onTap: () async {
-                                        // Just open the listing for now. We don't want to actually open the dialog here.
-                                        // If a review has been left, nothing will happen if tapped, which we don't want.
-                                        final InAppReview inAppReview = InAppReview.instance;
-                                        inAppReview.openStoreListing(microsoftStoreId: '9P3XF8KJ0LSM');
-                                      },
-                                      leading: const SettingsLeadingIcon(
-                                        iosIcon: CupertinoIcons.star_fill,
-                                        materialIcon: Icons.star,
-                                        containerColor: Colors.blue,
-                                      ),
-                                      isThreeLine: false,
-                                    ),
-                                    if (!kIsWeb && (Platform.isAndroid || Platform.isWindows))
-                                  const SettingsDivider(),
-                                  SettingsTile(
-                                    title: "Join Our Discord",
-                                    subtitle: "Join our Discord server to chat with other OpenBubbles users and the developers",
-                                    onTap: () async {
-                                      await launchUrl(Uri(scheme: "https", host: "discord.gg", path: "qUB3ksM3Ry"), mode: LaunchMode.externalApplication);
-                                    },
-                                    leading: SettingsLeadingIcon(
-                                      iosIcon: Icons.discord,
-                                      materialIcon: Icons.discord,
-                                      containerColor: HexColor('#7785CC'),
-                                    ),
-                                  ),
-                                  const SettingsDivider(),
                                   SettingsTile(
                                     backgroundColor: tileColor,
-                                    title: "About & More",
-                                    subtitle: "Links, Changelog, & More",
+                                    title: "About",
+                                    subtitle: "Version, source code, licenses & more",
                                     onTap: () {
                                       ns.pushAndRemoveSettingsUntil(
                                         context,
