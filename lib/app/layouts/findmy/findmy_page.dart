@@ -91,6 +91,11 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       tabController.index = 1;
     }
     getLocations();
+    Future.delayed(const Duration(seconds: 8), () {
+      if (!mounted || fetching != true) return;
+      setState(() => _slowLoad = true);
+      if (ICloudWebFindMy.connected) _loadDevicesFromWeb();
+    });
     FindMyMapStyle.load().then((style) {
       if (mounted) setState(() => style == null ? mapStyleFailed = true : mapStyle = style);
     });
@@ -136,6 +141,9 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   bool _relayOfflineShown = false;
   // devices currently come from the icloud.com session rather than the relay-backed path
   bool usingWebFindMy = false;
+  // the relay-backed path can wait on a sleeping Mac; offer icloud.com once loading takes this long
+  static const _findMyTimeout = Duration(seconds: 45);
+  bool _slowLoad = false;
 
   /// Find My on a relay registration needs the Mac helper online; say so once instead of spinning.
   void _noteRelayOffline(Object e) {
@@ -264,9 +272,9 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
         aps: pushService.state!.conn,
         anisette: pushService.state!.anisette,
         provider: pushService.state!.icloudServices!.tokenProvider,
-      );
+      ).timeout(_findMyTimeout);
       if (refreshDevices && !isNewi) {
-        await api.refreshDevices(config: pushService.state!.osConfig, client: fmipClient!);
+        await api.refreshDevices(config: pushService.state!.osConfig, client: fmipClient!).timeout(_findMyTimeout);
       }
 
       var following = await api.getDevices(client: fmipClient!);
@@ -652,12 +660,14 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                       ),
                     ),
                     if (fetching == true) buildProgressIndicator(context, size: 15),
-                    if (fetching == null && ICloudWebFindMy.supported && !ICloudWebFindMy.connected)
+                    if ((fetching == null || (fetching == true && _slowLoad)) && ICloudWebFindMy.supported && !ICloudWebFindMy.connected)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Column(
                           children: [
-                            Text("Your Mac relay may be offline. You can still see your devices through iCloud.com.",
+                            Text(fetching == true
+                                    ? "This is taking a while — your Mac relay may be asleep. You can see your devices through iCloud.com instead."
+                                    : "Your Mac relay may be offline. You can still see your devices through iCloud.com.",
                                 style: context.theme.textTheme.bodySmall, textAlign: TextAlign.center),
                             const SizedBox(height: 8),
                             TextButton(onPressed: _signInWeb, child: const Text("Sign in with iCloud.com")),
