@@ -1434,21 +1434,32 @@ class _MacPlusButton extends StatelessWidget {
       onTap: () async {
         final box = context.findRenderObject() as RenderBox;
         final origin = box.localToGlobal(Offset.zero);
-        final choice = await showMenu<int>(
+        final items = <(int, IconData, String)>[
+          (0, CupertinoIcons.photo_on_rectangle, "Photos & Files"),
+          if (onGif != null) (1, CupertinoIcons.sparkles, "GIF"),
+          (2, CupertinoIcons.clock, "Schedule Send"),
+          if (onLocation != null) (3, CupertinoIcons.location, "Share Location"),
+        ];
+        final choice = await showGeneralDialog<int>(
           context: context,
-          position: RelativeRect.fromLTRB(origin.dx, origin.dy - 190, origin.dx + box.size.width, origin.dy),
-          color: Glass.fill(context, opacity: 0.94),
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: Glass.border(context), width: 0.5),
+          barrierDismissible: true,
+          barrierLabel: "Attach",
+          barrierColor: Colors.transparent,
+          transitionDuration: const Duration(milliseconds: 260),
+          pageBuilder: (context, _, __) => _GlassAttachMenu(
+            // anchored to the + button: left edges aligned, sitting just above it
+            left: origin.dx,
+            bottom: MediaQuery.of(context).size.height - origin.dy + 8,
+            items: items,
           ),
-          items: [
-            _item(context, 0, CupertinoIcons.photo_on_rectangle, "Photos & Files"),
-            if (onGif != null) _item(context, 1, CupertinoIcons.sparkles, "GIF"),
-            _item(context, 2, CupertinoIcons.clock, "Schedule Send"),
-            if (onLocation != null) _item(context, 3, CupertinoIcons.location, "Share Location"),
-          ],
+          transitionBuilder: (context, animation, _, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: ScaleTransition(
+              scale: Tween(begin: 0.92, end: 1.0).animate(CurvedAnimation(parent: animation, curve: const GlassSpring())),
+              alignment: Alignment.bottomLeft,
+              child: child,
+            ),
+          ),
         );
         switch (choice) {
           case 0: await onFiles(); break;
@@ -1459,14 +1470,89 @@ class _MacPlusButton extends StatelessWidget {
       },
     );
   }
+}
 
-  PopupMenuItem<int> _item(BuildContext context, int value, IconData icon, String label) => PopupMenuItem<int>(
-        value: value,
-        height: 38,
-        child: Row(children: [
-          Icon(icon, size: 18, color: context.theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          Text(label, style: context.theme.textTheme.bodyLarge),
-        ]),
-      );
+/// The + menu as a Liquid Glass popover (blurred, saturated translucent panel, hairline border, one
+/// soft shadow), opening upward from the button it belongs to.
+class _GlassAttachMenu extends StatelessWidget {
+  const _GlassAttachMenu({required this.left, required this.bottom, required this.items});
+
+  final double left;
+  final double bottom;
+  final List<(int, IconData, String)> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = 220.0;
+    final screen = MediaQuery.of(context).size;
+    return Stack(
+      children: [
+        Positioned(
+          left: left.clamp(8.0, screen.width - width - 8),
+          bottom: bottom,
+          width: width,
+          child: GlassSurface(
+              borderRadius: BorderRadius.circular(18),
+              blur: 24,
+              fillOpacity: 0.78,
+              padding: const EdgeInsets.all(6),
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [for (final item in items) _GlassMenuRow(value: item.$1, icon: item.$2, label: item.$3)],
+                ),
+              ),
+            ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GlassMenuRow extends StatefulWidget {
+  const _GlassMenuRow({required this.value, required this.icon, required this.label});
+  final int value;
+  final IconData icon;
+  final String label;
+
+  @override
+  State<_GlassMenuRow> createState() => _GlassMenuRowState();
+}
+
+class _GlassMenuRowState extends State<_GlassMenuRow> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = context.theme.colorScheme.primary;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.of(context).pop(widget.value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: _hover ? primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(children: [
+            Icon(widget.icon, size: 17, color: _hover ? Colors.white : primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                widget.label,
+                style: context.theme.textTheme.bodyMedium!.copyWith(fontSize: 13.5, color: _hover ? Colors.white : null),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
