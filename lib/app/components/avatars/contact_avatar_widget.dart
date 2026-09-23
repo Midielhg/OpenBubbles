@@ -203,9 +203,10 @@ class _ContactAvatarWidgetState extends OptimizedState<ContactAvatarWidget> {
                   return SizedBox.expand(
                     child: Image.memory(
                       avatar!,
-                      cacheHeight: size.toInt() * 2,
+                      // decode by width only: giving both sizes squashes non-square photos into a square
+                      // before BoxFit.cover gets to crop them
                       cacheWidth: size.toInt() * 2,
-                      filterQuality: FilterQuality.none,
+                      filterQuality: FilterQuality.medium,
                       fit: BoxFit.cover,
                       gaplessPlayback: true,
                     ),
