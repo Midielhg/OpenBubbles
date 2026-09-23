@@ -66,8 +66,10 @@ class _ContactAvatarGroupWidgetState extends OptimizedState<ContactAvatarGroupWi
         final avatarSize = widget.size * ss.settings.avatarScale.value;
         final maxAvatars = ss.settings.maxAvatarsInGroupWidget.value;
 
-        if (widget.chat?.customAvatarPath != null && !hide) {
-          dynamic file = File(widget.chat!.customAvatarPath!);
+        // an interrupted download can leave an empty file, which can't be decoded; fall back to initials
+        final avatarFile = widget.chat?.customAvatarPath == null ? null : File(widget.chat!.customAvatarPath!);
+        if (avatarFile != null && !hide && avatarFile.existsSync() && avatarFile.lengthSync() > 0) {
+          dynamic file = avatarFile;
           return CircleAvatar(
             key: ValueKey(widget.chat!.customAvatarPath!),
             radius: avatarSize / 2,

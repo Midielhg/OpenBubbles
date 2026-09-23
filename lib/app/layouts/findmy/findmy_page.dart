@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/layouts/findmy/findmy_location_clipper.dart';
 import 'package:bluebubbles/app/layouts/findmy/findmy_map_markers.dart';
 import 'package:bluebubbles/app/layouts/findmy/findmy_map_style.dart';
@@ -504,6 +505,8 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     // }
   }
 
+  String _deviceKey(FindMyDevice item) => item.id ?? item.address?.uniqueValue ?? item.name ?? item.hashCode.toString();
+
   void _buildDeviceMarkers(List<FindMyDevice> devices) {
     markers.removeWhere((k, v) => (v.key as ValueKey?)?.value.toString().startsWith('device-') ?? false);
     for (FindMyDevice e in devices.where((e) => e.location?.latitude != null && e.location?.longitude != null)) {
@@ -710,11 +713,11 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
-                    findChildIndexCallback: (key) => findChildIndexByKey(devicesWithLocation, key, (item) => item.address?.uniqueValue),
+                    findChildIndexCallback: (key) => findChildIndexByKey(devicesWithLocation, key, (item) => _deviceKey(item)),
                     itemBuilder: (context, i) {
                       final item = devicesWithLocation[i];
                       return ListTile(
-                        key: ValueKey(item.address?.uniqueValue),
+                        key: ValueKey(_deviceKey(item)),
                         mouseCursor: MouseCursor.defer,
                         title: Text(ss.settings.redactedMode.value ? "Device" : (item.name ?? "Unknown Device")),
                         onTap: item.location?.latitude != null && item.location?.longitude != null
@@ -730,21 +733,15 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                                 mapController.move(LatLng(item.location!.latitude!, item.location!.longitude!), 10);
                               }
                             : null,
-                        trailing: item.location?.latitude != null && item.location?.longitude != null ? ButtonTheme(
-                          minWidth: 1,
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              shape: const CircleBorder(),
-                              backgroundColor: context.theme.colorScheme.primaryContainer,
-                            ),
-                            onPressed: () async {
-                              await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
-                            },
-                            child: const Icon(
-                                Icons.directions,
-                                size: 20
-                            ),
-                          ),
+                        trailing: item.location?.latitude != null && item.location?.longitude != null ? GlassCircleButton(
+                          icon: CupertinoIcons.arrow_turn_up_right,
+                          size: 30,
+                          iconSize: 15,
+                          tooltip: "Directions",
+                          color: context.theme.colorScheme.primary,
+                          onTap: () async {
+                            await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
+                          },
                         ) : null,
                         onLongPress: () async {
                           const encoder = JsonEncoder.withIndent("     ");
@@ -822,11 +819,11 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
-                    findChildIndexCallback: (key) => findChildIndexByKey(itemsWithLocation, key, (item) => item.id ?? randomString(6)),
+                    findChildIndexCallback: (key) => findChildIndexByKey(itemsWithLocation, key, (item) => _deviceKey(item)),
                     itemBuilder: (context, i) {
                       final item = itemsWithLocation[i];
                       var tile = ListTile(
-                        key: ValueKey(item.id ?? randomString(6)),
+                        key: ValueKey(_deviceKey(item)),
                         title: Text(ss.settings.redactedMode.value ? "Item" : (item.name ?? "Unknown Item")),
                         subtitle: item.role?["sharingActive"] == 0 ? Column(
                           children: [
@@ -866,21 +863,15 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                           ],
                         )
                           : Text(ss.settings.redactedMode.value ? "Location" : (item.address?.label ?? item.address?.mapItemFullAddress ?? "No location found")),
-                        trailing: item.location?.latitude != null && item.location?.longitude != null ? ButtonTheme(
-                          minWidth: 1,
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              shape: const CircleBorder(),
-                              backgroundColor: context.theme.colorScheme.primaryContainer,
-                            ),
-                            onPressed: () async {
-                              await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
-                            },
-                            child: const Icon(
-                                Icons.directions,
-                                size: 20
-                            ),
-                          ),
+                        trailing: item.location?.latitude != null && item.location?.longitude != null ? GlassCircleButton(
+                          icon: CupertinoIcons.arrow_turn_up_right,
+                          size: 30,
+                          iconSize: 15,
+                          tooltip: "Directions",
+                          color: context.theme.colorScheme.primary,
+                          onTap: () async {
+                            await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
+                          },
                         ) : null,
                         onTap: item.location?.latitude != null && item.location?.longitude != null
                             ? () async {
@@ -1078,22 +1069,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                               const Icon(CupertinoIcons.largecircle_fill_circle),
                             if (item.locatingInProgress)
                               buildProgressIndicator(context),
-                            ButtonTheme(
-                              minWidth: 1,
-                              child: TextButton(
-                                style: TextButton.styleFrom(
-                                  shape: const CircleBorder(),
-                                  backgroundColor: context.theme.colorScheme.primaryContainer,
-                                ),
-                                onPressed: () async {
-                                  await MapsLauncher.launchCoordinates(item.latitude!, item.longitude!);
-                                },
-                                child: const Icon(
-                                    Icons.directions,
-                                    size: 20
-                                ),
-                              ),
-                            ),
+                            Padding(padding: const EdgeInsets.only(left: 8), child: GlassCircleButton(icon: CupertinoIcons.arrow_turn_up_right, size: 30, iconSize: 15, tooltip: "Directions", color: context.theme.colorScheme.primary, onTap: () async { await MapsLauncher.launchCoordinates(item.latitude!, item.longitude!); })),
                           ],
                         ) : null,
                         onTap: () async {
@@ -1865,22 +1841,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                             ],
                           ),
                           if (item.location?.latitude != null && item.location?.longitude != null)
-                          ButtonTheme(
-                            minWidth: 1,
-                            child: TextButton(
-                              style: TextButton.styleFrom(
-                                shape: const CircleBorder(),
-                                backgroundColor: context.theme.colorScheme.primaryContainer,
-                              ),
-                              onPressed: () async {
-                                await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
-                              },
-                              child: const Icon(
-                                  Icons.directions,
-                                  size: 20
-                              ),
-                            ),
-                          )
+                          Padding(padding: const EdgeInsets.only(left: 8), child: GlassCircleButton(icon: CupertinoIcons.arrow_turn_up_right, size: 30, iconSize: 15, tooltip: "Directions", color: context.theme.colorScheme.primary, onTap: () async { await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!); }))
                         ],
                       ),
                   );
