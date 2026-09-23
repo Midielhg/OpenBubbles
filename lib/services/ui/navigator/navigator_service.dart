@@ -50,7 +50,7 @@ class NavigatorService extends GetxService {
 
   /// Push a new route onto the chat list right side navigator
   void push(BuildContext context, Widget widget) {
-    if (Get.keys.containsKey(2) && isTabletMode(context)) {
+    if (_mounted(2) && isTabletMode(context)) {
       Get.to(() => widget, transition: Transition.rightToLeft, id: 2);
     } else {
       Navigator.of(context).push(ThemeSwitcher.buildPageRoute(
@@ -61,7 +61,7 @@ class NavigatorService extends GetxService {
 
   /// Push a new route onto the chat list left side navigator
   Future<void> pushLeft(BuildContext context, Widget widget) async {
-    if (Get.keys.containsKey(1) && isTabletMode(context)) {
+    if (_mounted(1) && isTabletMode(context)) {
       await Get.to(() => widget, transition: Transition.leftToRight, id: 1);
     } else {
       await Navigator.of(context).push(ThemeSwitcher.buildPageRoute(
@@ -70,9 +70,13 @@ class NavigatorService extends GetxService {
     }
   }
 
+  /// A nested navigator's key can outlive the navigator (e.g. after the settings pane was replaced by a
+  /// full-window page); Get.to on it then throws and the tap does nothing, so only use it while mounted.
+  bool _mounted(int id) => Get.keys[id]?.currentState != null;
+
   /// Push a new route onto the settings navigator
   Future<dynamic> pushSettings(BuildContext context, Widget widget, {Bindings? binding}) async {
-    if (Get.keys.containsKey(3) && isTabletMode(context)) {
+    if (_mounted(3) && isTabletMode(context)) {
       return await Get.to(() => widget, transition: Transition.rightToLeft, id: 3, binding: binding);
     } else {
       binding?.dependencies();
@@ -85,7 +89,7 @@ class NavigatorService extends GetxService {
   /// Push a new route, popping all previous routes, on the chat list right side navigator
   Future<void> pushAndRemoveUntil(BuildContext context, Widget widget, bool Function(Route) predicate,
       {bool closeActiveChat = true, PageRoute? customRoute}) async {
-    if (Get.keys.containsKey(2) && isTabletMode(context)) {
+    if (_mounted(2) && isTabletMode(context)) {
       if (closeActiveChat && cm.activeChat != null) {
         Logger.debug("Closing active chat: ${cm.activeChat!.chat.guid}", tag: "NavigatorService");
         cvc(cm.activeChat!.chat).close();
@@ -109,7 +113,7 @@ class NavigatorService extends GetxService {
   /// Push a new route, popping all previous routes, on the settings navigator
   void pushAndRemoveSettingsUntil(BuildContext context, Widget widget, bool Function(Route) predicate,
       {Bindings? binding}) {
-    if (Get.keys.containsKey(3) && isTabletMode(context)) {
+    if (_mounted(3) && isTabletMode(context)) {
       // we only want to offUntil when in landscape, otherwise when the user presses back, the previous page will be the chat list
       Get.offUntil(GetPageRoute(
         page: () => widget,
@@ -127,7 +131,7 @@ class NavigatorService extends GetxService {
   }
 
   void backConversationView(BuildContext context) {
-    if (Get.keys.containsKey(3) &&
+    if (_mounted(3) &&
         Get.keys[3]?.currentContext != null &&
         isTabletMode(context)) {
       Get.until((route) {
@@ -138,7 +142,7 @@ class NavigatorService extends GetxService {
         }
         return true;
       }, id: 3);
-    } else if (Get.keys.containsKey(2) &&
+    } else if (_mounted(2) &&
         Get.keys[2]?.currentContext != null &&
         isTabletMode(context)) {
       if (Get.currentRoute.isEmpty) {
@@ -172,7 +176,7 @@ class NavigatorService extends GetxService {
   }
 
   void closeSettings(BuildContext context) {
-    if (Get.keys.containsKey(3) && Get.keys[3]?.currentContext != null && isTabletMode(context)) {
+    if (_mounted(3) && Get.keys[3]?.currentContext != null && isTabletMode(context)) {
       Get.until((route) => route.isFirst, id: 3);
       Get.back(closeOverlays: true);
     } else {
@@ -182,7 +186,7 @@ class NavigatorService extends GetxService {
 
   /// Remember to call `await cm.setAllInactive()` after calling this function
   void closeAllConversationView(BuildContext context) {
-    if (Get.keys.containsKey(2) && Get.keys[2]?.currentContext != null && ns.isTabletMode(context)) {
+    if (_mounted(2) && Get.keys[2]?.currentContext != null && ns.isTabletMode(context)) {
       Get.until((route) {
         return route.settings.name == "initial";
       }, id: 2);
@@ -191,7 +195,7 @@ class NavigatorService extends GetxService {
   }
 
   void backSettings(BuildContext context, {dynamic result, bool closeOverlays = false}) {
-    if (Get.keys.containsKey(3) && isTabletMode(context)) {
+    if (_mounted(3) && isTabletMode(context)) {
       Get.back(result: result, closeOverlays: closeOverlays, id: 3);
     } else {
       Get.back(result: result, closeOverlays: closeOverlays);
