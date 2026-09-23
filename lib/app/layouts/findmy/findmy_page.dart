@@ -90,6 +90,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     if (widget.defaultFriend != null) {
       index.value = 1; // select friends tab
       tabController.index = 1;
+      _macTab = 0;
     }
     getLocations();
     Future.delayed(const Duration(seconds: 8), () {
@@ -142,6 +143,9 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
   bool _relayOfflineShown = false;
   // devices currently come from the icloud.com session rather than the relay-backed path
   bool usingWebFindMy = false;
+  // macOS layout: People / Devices / Items segments (0/1/2), and device id -> family owner's first name
+  int _macTab = 1;
+  Map<String, String> deviceOwners = {};
   // the relay-backed path can wait on a sleeping Mac; offer icloud.com once loading takes this long
   static const _findMyTimeout = Duration(seconds: 45);
   bool _slowLoad = false;
@@ -279,6 +283,11 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
       }
 
       var following = await api.getDevices(client: fmipClient!);
+      try {
+        deviceOwners = await api.getDeviceOwners(client: fmipClient!);
+      } catch (e) {
+        Logger.warn("Failed to get Find My device owners: $e");
+      }
     
       var devices = following
           .map((e) => 
@@ -505,6 +514,97 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
     // }
   }
 
+  /// Find My's Devices list: the user's devices first, then one group per family member.
+  List<Widget> _macDeviceGroups() {
+    final list = devices.where((d) => !d.isConsideredAccessory).toList();
+    final groups = <String, List<FindMyDevice>>{};
+    for (final d in list) {
+      final owner = d.id == null ? null : deviceOwners[d.id];
+      groups.putIfAbsent(owner == null ? "My Devices" : "$owner's Devices", () => []).add(d);
+    }
+    final names = groups.keys.toList()
+      ..sort((a, b) => a == "My Devices" ? -1 : b == "My Devices" ? 1 : a.compareTo(b));
+    return [
+      for (final name in names) ...[
+        SettingsHeader(iosSubtitle: iosSubtitle, materialSubtitle: materialSubtitle, text: name),
+        SettingsSection(
+          backgroundColor: tileColor,
+          children: [
+            for (final d in groups[name]!) _macDeviceRow(d),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  Widget _macDeviceRow(FindMyDevice item) {
+    final hasLocation = item.location?.latitude != null && item.location?.longitude != null;
+    final where = ss.settings.redactedMode.value
+        ? "Location"
+        : (item.address?.label ?? item.address?.locality ?? (hasLocation ? null : "No location found"));
+    final ago = hasLocation ? findMyAgo(item.location?.timeStamp) : "";
+    final subtitle = [if (where != null && where.isNotEmpty) where, if (ago.isNotEmpty) ago].join(" \u2022 ");
+    return Material(
+      key: ValueKey(_deviceKey(item)),
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: hasLocation ? () => _focusDevice(item) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              FindMyDeviceBadge(
+                icon: findMyDeviceIcon(
+                  deviceClass: item.deviceClass,
+                  model: item.rawDeviceModel ?? item.deviceModel,
+                  displayName: item.deviceDisplayName,
+                  name: item.name,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(ss.settings.redactedMode.value ? "Device" : (item.name ?? "Unknown Device"),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600)),
+                    if (subtitle.isNotEmpty)
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.theme.textTheme.bodySmall!.copyWith(color: context.theme.colorScheme.outline)),
+                  ],
+                ),
+              ),
+              if (hasLocation)
+                GlassCircleButton(
+                  icon: CupertinoIcons.arrow_turn_up_right,
+                  size: 28,
+                  iconSize: 14,
+                  tooltip: "Directions",
+                  color: context.theme.colorScheme.primary,
+                  onTap: () async {
+                    await MapsLauncher.launchCoordinates(item.location!.latitude!, item.location!.longitude!);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _focusDevice(FindMyDevice item) async {
+    await completer.future;
+    final matches = markers.values.where(
+        (e) => e.point.latitude == item.location?.latitude && e.point.longitude == item.location?.longitude);
+    if (matches.isNotEmpty) popupController.showPopupsOnlyFor([matches.first]);
+    mapController.move(LatLng(item.location!.latitude!, item.location!.longitude!), 15);
+  }
+
   String _deviceKey(FindMyDevice item) => item.id ?? item.address?.uniqueValue ?? item.name ?? item.hashCode.toString();
 
   void _buildDeviceMarkers(List<FindMyDevice> devices) {
@@ -640,8 +740,10 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
         .where(
             (item) => (item.location?.latitude != null || item.role?["sharingActive"] == 0) && item.isConsideredAccessory)
         .toList();
-    final withoutLocation =
-        devices.where((item) => item.location?.latitude == null && item.role?["sharingActive"] != 0).toList();
+    final withoutLocation = devices
+        .where((item) =>
+            item.location?.latitude == null && item.role?["sharingActive"] != 0 && (!macLook || (item.isConsideredAccessory && _macTab == 2)))
+        .toList();
     final devicesBodySlivers = [
       SliverList(
         delegate: SliverChildListDelegate([
@@ -701,9 +803,10 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                 ],
               ),
             ),
-          if (devicesWithLocation.isNotEmpty)
+          if (macLook && _macTab == 1) ..._macDeviceGroups(),
+          if (!macLook && devicesWithLocation.isNotEmpty)
             SettingsHeader(iosSubtitle: iosSubtitle, materialSubtitle: materialSubtitle, text: "Devices"),
-          if (devicesWithLocation.isNotEmpty)
+          if (!macLook && devicesWithLocation.isNotEmpty)
             SettingsSection(
               backgroundColor: tileColor,
               children: [
@@ -788,9 +891,9 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                 ),
               ],
             ),
-          if (itemsWithLocation.isNotEmpty || !isInClique)
+          if ((!macLook || _macTab == 2) && (itemsWithLocation.isNotEmpty || !isInClique))
             SettingsHeader(iosSubtitle: iosSubtitle, materialSubtitle: materialSubtitle, text: "Items"),
-          if (!isInClique)
+          if ((!macLook || _macTab == 2) && !isInClique)
           Obx(() => SettingsSection(
             backgroundColor: tileColor,
             children: [
@@ -809,7 +912,7 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
               ),
             ]
         )),
-          if (itemsWithLocation.isNotEmpty)
+          if ((!macLook || _macTab == 2) && itemsWithLocation.isNotEmpty)
             SettingsSection(
               backgroundColor: tileColor,
               children: [
@@ -1302,12 +1405,25 @@ class _FindMyPageState extends OptimizedState<FindMyPage> with SingleTickerProvi
                         ],
                       ),
                     ),
-                  if (!samsung) buildDesktopTabBar(),
+                  if (!samsung && macLook)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      child: GlassSegmented(
+                        labels: const ["People", "Devices", "Items"],
+                        selected: _macTab,
+                        onChanged: (i) {
+                          setState(() => _macTab = i);
+                          tabController.animateTo(i == 0 ? 1 : 0);
+                        },
+                      ),
+                    ),
+                  if (!samsung && !macLook) buildDesktopTabBar(),
                   Expanded(
                     child: Container(
                       width: 500,
                       child: TabBarView(
                         controller: tabController,
+                        physics: macLook ? const NeverScrollableScrollPhysics() : null,
                         children: [
                           ScrollbarWrapper(
                             controller: controller1,

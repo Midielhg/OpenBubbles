@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'api.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `bin_deserialize_16`, `config`, `encrypt`, `get_login_config`, `get_password`, `handle_2fa`, `handle_circle`, `handle_photostream`, `migrate`, `plist_to_bin`, `plist_to_buf`, `plist_to_string`, `remove_dir_manually`, `reset_user`, `shared_items`, `subscribe_streams`, `wrap_sink`
+// These functions are ignored because they are not marked as `pub`: `bin_deserialize_16`, `config`, `encrypt`, `get_login_config`, `get_password`, `handle_2fa`, `handle_circle`, `handle_photostream`, `migrate`, `persisted`, `persister`, `plist_roundtrip`, `plist_to_bin`, `plist_to_buf`, `plist_to_string`, `remove_dir_manually`, `reset_user`, `save`, `shared_items`, `subscribe_streams`, `wrap_sink`
 // These functions are ignored because they have generic arguments: `bin_deserialize`, `bin_serialize`
 // These types are ignored because they are not used by any `pub` functions: `AnisetteState`, `DaemonData`, `FLUTTER_RUST_BRIDGE_HANDLER`, `GSAConfig`, `NSArrayClass`, `NSArrayIconArray`, `NSArrayImageArray`, `ProvisionedAnisette`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `deref`, `deref`, `eq`, `fmt`, `get_files`, `initialize`, `spawn`
@@ -793,6 +793,11 @@ Future<FindMyPhoneClientDefaultAnisetteProvider> makeFindMyPhone(
 Future<List<FoundDevice>> getDevices(
         {required FindMyPhoneClientDefaultAnisetteProvider client}) =>
     RustLib.instance.api.crateApiApiGetDevices(client: client);
+
+/// Device id -> owner's first name, for family members' devices (the signed-in user's own are absent).
+Future<Map<String, String>> getDeviceOwners(
+        {required FindMyPhoneClientDefaultAnisetteProvider client}) =>
+    RustLib.instance.api.crateApiApiGetDeviceOwners(client: client);
 
 Future<List<FoundDevice>> refreshDevices(
         {required JoinedOsConfig config,

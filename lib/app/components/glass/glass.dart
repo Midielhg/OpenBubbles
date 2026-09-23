@@ -165,3 +165,84 @@ class GlassCircleButton extends StatelessWidget {
     );
   }
 }
+
+/// Damped overshoot shared by everything that moves (peaks at 1.05 and settles), sampled from the
+/// liquid-glass --spring curve.
+class GlassSpring extends Curve {
+  const GlassSpring();
+  static const _points = [0, .04, .16, .36, .6, .82, .97, 1.04, 1.05, 1.04, 1.02, 1.007, 1.0];
+
+  @override
+  double transformInternal(double t) {
+    final x = t * (_points.length - 1);
+    final i = x.floor().clamp(0, _points.length - 2);
+    return _points[i] + (_points[i + 1] - _points[i]) * (x - i);
+  }
+}
+
+/// macOS segmented control (Find My's People / Devices / Items): a grey capsule track with one white
+/// pill that travels to the selected segment. One moving object, not a crossfade per segment.
+class GlassSegmented extends StatelessWidget {
+  const GlassSegmented({super.key, required this.labels, required this.selected, required this.onChanged});
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final text = Theme.of(context).colorScheme.onBackground;
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: dark ? Colors.white.withOpacity(0.10) : const Color(0x1F787880), // quaternary system fill
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final segment = constraints.maxWidth / labels.length;
+        return Stack(
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 420),
+              curve: const GlassSpring(),
+              left: segment * selected,
+              top: 0,
+              bottom: 0,
+              width: segment,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: dark ? const Color(0xFF636366) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Glass.border(context), width: 0.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(dark ? 0.3 : 0.12), blurRadius: 4, offset: const Offset(0, 1))],
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                for (int i = 0; i < labels.length; i++)
+                  Expanded(
+                    child: GlassPressable(
+                      onTap: () => onChanged(i),
+                      child: Center(
+                        child: Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: text.withOpacity(i == selected ? 0.9 : 0.7),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}

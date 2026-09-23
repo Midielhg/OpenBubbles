@@ -170,7 +170,7 @@ class MaterialOverflowMenu extends StatelessWidget {
             PopupMenuItem(
               value: 5,
               child: Text(
-                'Map',
+                'Find My',
                 style: context.textTheme.bodyLarge!.apply(color: context.theme.colorScheme.properOnSurface),
               ),
             ),
@@ -321,7 +321,7 @@ class CupertinoOverflowMenu extends StatelessWidget {
           ),
         if (backend.supportsFindMy())
           PullDownMenuItem(
-            title: 'Map',
+            title: 'Find My',
             icon: CupertinoIcons.location,
             onTap: () => goToFindMy(context),
           ),

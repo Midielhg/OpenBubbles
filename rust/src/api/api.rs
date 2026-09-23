@@ -2018,6 +2018,11 @@ pub async fn get_devices(client: &mut FindMyPhoneClient<DefaultAnisetteProvider>
     client.devices.clone()
 }
 
+/// Device id -> owner's first name, for family members' devices (the signed-in user's own are absent).
+pub async fn get_device_owners(client: &mut FindMyPhoneClient<DefaultAnisetteProvider>) -> HashMap<String, String> {
+    client.device_owners.clone()
+}
+
 pub async fn refresh_devices(config: &JoinedOSConfig, client: &mut FindMyPhoneClient<DefaultAnisetteProvider>) -> anyhow::Result<Vec<FoundDevice>> {
     client.refresh(&*config.config()).await?;
     Ok(client.devices.clone())

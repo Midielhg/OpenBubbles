@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Map chrome matching DealFinder's Apple Maps-style map (apps/web/public/app.css there): a teardrop
@@ -168,4 +169,55 @@ class FindMyPopupCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Glyph for a Find My device, picked from its class/model/name the way Find My picks a product image.
+IconData findMyDeviceIcon({String? deviceClass, String? model, String? displayName, String? name, bool accessory = false}) {
+  final s = [deviceClass, model, displayName, name].whereType<String>().join(' ').toLowerCase();
+  if (s.contains('watch')) return Icons.watch;
+  if (s.contains('ipad')) return Icons.tablet_mac;
+  if (s.contains('airpods') || s.contains('beats')) return Icons.earbuds;
+  if (s.contains('imac') || s.contains('mac mini') || s.contains('macmini') || s.contains('mac studio') || s.contains('mac pro')) return Icons.desktop_mac;
+  if (s.contains('mac')) return Icons.laptop_mac;
+  if (s.contains('iphone') || s.contains('ipod')) return Icons.phone_iphone;
+  if (s.contains('airtag') || accessory) return CupertinoIcons.tag_fill;
+  return Icons.phone_iphone;
+}
+
+/// The circled device image in front of each row (and the owner-grouped list), like Find My's.
+class FindMyDeviceBadge extends StatelessWidget {
+  const FindMyDeviceBadge({super.key, required this.icon, this.size = 34});
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF3A3A3C) : Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: dark ? Colors.white.withOpacity(0.12) : const Color(0x1F3C3C43), width: 0.5),
+        boxShadow: const [BoxShadow(color: Color(0x2414120F), blurRadius: 3, offset: Offset(0, 1))],
+      ),
+      child: Icon(icon, size: size * 0.55, color: dark ? Colors.white.withOpacity(0.9) : const Color(0xFF3A3A3C)),
+    );
+  }
+}
+
+/// "Now", "12 min ago", "3:41 PM" or a date, for when a location was reported.
+String findMyAgo(int? timestampMs) {
+  if (timestampMs == null || timestampMs <= 0) return "";
+  final t = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+  final diff = DateTime.now().difference(t);
+  if (diff.inMinutes < 1) return "Now";
+  if (diff.inMinutes < 60) return "${diff.inMinutes} min ago";
+  final now = DateTime.now();
+  final hour = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  final time = "$hour:${t.minute.toString().padLeft(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}";
+  if (t.year == now.year && t.month == now.month && t.day == now.day) return time;
+  if (diff.inDays < 7) return "${const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][t.weekday - 1]} $time";
+  return "${t.month}/${t.day}/${t.year % 100}";
 }
