@@ -103,8 +103,12 @@ class ContactsService extends GetxService {
       }
     }
     // match handles to contacts and save match
+    // Desktop syncs CardDAV incrementally (ctag/sync-token persist in settings), so _contacts only holds
+    // what changed this run. Match against every stored contact, or handles whose contact was synced
+    // earlier never get linked.
+    final matchContacts = kIsDesktop ? Database.contacts.getAll().where((c) => !c.isShared).toList() : _contacts;
     final handlesToSearch = List<Handle>.from(handles);
-    for (Contact c in _contacts) {
+    for (Contact c in matchContacts) {
       final handles = matchContactToHandles(c, handlesToSearch);
       final addressesAndServices = handles.map((e) => e.uniqueAddressAndService).toList();
       if (handles.isNotEmpty) {
@@ -131,6 +135,7 @@ class ContactsService extends GetxService {
       }
     }
     if (!kIsWeb) {
+      Logger.info("Contact match: ${_contacts.length} fetched, ${matchContacts.length} matched against, ${handles.where((h) => h.contactRelation.target != null).length}/${handles.length} handles have a contact");
       Handle.bulkSave(handles, matchOnOriginalROWID: isMin1_5_2);
     } else {
       // dummy to make the full contacts UI refresh happen on web
@@ -227,7 +232,8 @@ class ContactsService extends GetxService {
     int maxResults = c.phones.length * 3 + c.emails.length;
     for (Handle h in handles) {
       // Match emails
-      if (h.address.contains("@") && c.emails.contains(h.address)) {
+      // emails are case-insensitive (e.g. "Richardbosq@icloud.com" vs a contact's "richardbosq@icloud.com")
+      if (h.address.contains("@") && c.emails.any((e) => e.trim().toLowerCase() == h.address.trim().toLowerCase())) {
         handleMatches.add(h);
         continue;
       }
@@ -356,7 +362,10 @@ class ContactsService extends GetxService {
           state: MemoryStateStore(),
         );
       } else {
-        if (pushService.state?.icloudServices == null) return [];
+        if (pushService.state?.icloudServices == null) {
+          Logger.warn("Contact sync: iCloud services not ready, skipping");
+          return [];
+        }
         client = CardDavClient(
           principalUrl: Uri.parse('https://contacts.icloud.com/'),
           authHeadersProvider: () async {
@@ -366,20 +375,24 @@ class ContactsService extends GetxService {
         );
       }
 
-      final synced = await client.syncAllAddressBooks();
+      final Map<AddressBook, List<ContactChange>> synced;
+      try {
+        synced = await client.syncAllAddressBooks();
+      } catch (e, st) {
+        Logger.error("Contact sync: CardDAV request failed", error: e, trace: st);
+        rethrow;
+      }
 
       for (final entry in synced.entries) {
         final book = entry.key;
         final changes = entry.value;
 
-        print('AddressBook: ${book.displayName ?? book.url}');
-        print('Changes: ${changes.length}');
+        Logger.info('Contact sync: address book "${book.displayName ?? book.url}" has ${changes.length} changes');
         for (final ch in changes) {
           if (ch.type == ChangeType.upsert) {
             if (ch.contact != null) networkContacts.add(ch.contact!);
             // Parse/store vCard as you like
-            print(
-                '  UPSERT ${ch.href} etag=${ch.etag} vcardLen=${ch.vcard?.length} contact=${ch.contact?.toMap()}');
+
           } else {
             print('  DELETE ${ch.href}');
           }

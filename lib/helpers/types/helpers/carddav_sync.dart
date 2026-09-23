@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:bluebubbles/services/services.dart';
 import 'package:dio/dio.dart';
+import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:xml/xml.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -400,7 +401,9 @@ class CardDavClient {
   /// ===== Incremental sync (RFC 6578) =====
 
   Future<_SyncCollectionResult> _syncCollection(Uri addressBookUrl, {String? syncToken}) async {
-    if (syncToken == null && _isGoogleCardDav(addressBookUrl)) {
+    // Initial sync: list every vCard with a plain PROPFIND. iCloud can answer an empty-token
+    // sync-collection REPORT with zero items, which left desktop installs without contacts.
+    if (syncToken == null) {
       return _propfindAllItems(addressBookUrl);
     }
     // Depth: 1 is typical for sync-collection

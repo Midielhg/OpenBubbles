@@ -2687,6 +2687,33 @@ class RustPushService extends GetxService {
     return !elapsed;
   }
 
+  Future<void> _syncNetworkContactsOnLaunch() async {
+    // iCloud services come up asynchronously after restore; give them a few chances
+    for (int attempt = 1; attempt <= 6; attempt++) {
+      await Future.delayed(Duration(seconds: attempt == 1 ? 8 : 20));
+      if (ss.settings.contactSyncProvider.value == "iCloud" && pushService.state?.icloudServices == null) {
+        Logger.info("Contact sync: iCloud services not ready (attempt $attempt)");
+        continue;
+      }
+      // One-time full re-download: earlier incremental syncs (with persisted ctags/tokens) may have
+      // missed contacts, and nothing would ever re-fetch them.
+      if (!(ss.prefs.getBool("contactsFullResync1") ?? false)) {
+        ss.settings.ctags.clear();
+        ss.settings.tokens.clear();
+        ss.saveSettings();
+        await ss.prefs.setBool("contactsFullResync1", true);
+        Logger.info("Contact sync: forcing a full re-download");
+      }
+      try {
+        final changed = await cs.refreshContacts();
+        Logger.info("Contact sync (${ss.settings.contactSyncProvider.value}): ${cs.contacts.length} contacts, changed $changed");
+      } catch (e, s) {
+        Logger.error("Contact sync failed", error: e, trace: s);
+      }
+      return;
+    }
+  }
+
   Future<void> handleRegistered() async {
     notif.clearRegisterFailed();
     if (ss.settings.hostedToken.value != null) {
@@ -4911,6 +4938,11 @@ class RustPushService extends GetxService {
           state = deskState;
           doPoll(data.$2, pollState);
         }
+      }
+      if (state != null && kIsDesktop) {
+        // Desktop has no system address book to watch, and the stock refresh only runs when the local
+        // contact list is empty, so iCloud contacts added later never arrived. Sync once per launch.
+        _syncNetworkContactsOnLaunch();
       }
       if (state == null && ss.settings.finishedSetup.value) {
         ss.settings.finishedSetup.value = false;
