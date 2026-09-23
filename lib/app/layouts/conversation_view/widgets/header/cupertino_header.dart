@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
+import 'package:bluebubbles/app/layouts/chat_creator/chat_creator.dart';
 import 'package:bluebubbles/app/layouts/conversation_details/conversation_details.dart';
 import 'package:bluebubbles/app/layouts/conversation_view/widgets/header/header_widgets.dart';
 import 'package:bluebubbles/app/components/avatars/contact_avatar_group_widget.dart';
@@ -65,7 +67,8 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
     return ClipRect(
       child: BackdropFilter(
           filter: ImageFilter.compose(
-              outer: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              // desktop: just a light scroll-edge blur under the floating controls
+              outer: ImageFilter.blur(sigmaX: kIsDesktop ? 10 : 30, sigmaY: kIsDesktop ? 10 : 30),
               inner: ColorFilter.matrix(
                 CupertinoTheme.maybeBrightnessOf(context) == Brightness.dark ? darkMatrix : lightMatrix,
               )),
@@ -74,7 +77,14 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
               Column(
                 children: [
               Expanded(child: Container(
-                decoration: BoxDecoration(
+                // macOS Tahoe has no header bar: controls float over the messages
+                decoration: kIsDesktop ? BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [context.theme.colorScheme.background.withOpacity(0.55), context.theme.colorScheme.background.withOpacity(0)],
+                  ),
+                ) : BoxDecoration(
                   color: context.theme.colorScheme.properSurface.withOpacity(0.7),
                   border: Border(
                     bottom: BorderSide(color: context.theme.colorScheme.properSurface.darkenAmount(0.25), width: 0.5),
@@ -88,6 +98,25 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
                         right: 20,
                         top: (MediaQuery.of(context).viewPadding.top - 2).clamp(0, double.infinity)),
                     child: Stack(alignment: Alignment.center, children: [
+                      if (kIsDesktop && ss.settings.tabletMode.value && ns.isTabletMode(context))
+                        // two-pane desktop: the left slot holds the compose button instead of "back"
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: GlassCircleButton(
+                              icon: CupertinoIcons.square_pencil,
+                              iconSize: 19,
+                              tooltip: "New Message",
+                              onTap: () => ns.pushAndRemoveUntil(
+                                context,
+                                ChatCreator(initialAttachments: const []),
+                                (route) => route.isFirst,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
                       Padding(
                           padding: const EdgeInsets.only(top: 5),
                           child: Align(
@@ -155,7 +184,7 @@ class CupertinoHeader extends StatelessWidget implements PreferredSizeWidget {
                         ),
                       ),
                       Padding(
-                          padding: const EdgeInsets.only(top: 5),
+                          padding: EdgeInsets.only(top: kIsDesktop ? 8 : 5),
                           child: Align(alignment: Alignment.topRight, child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -560,6 +589,43 @@ class _ChatIconAndTitleState extends CustomState<_ChatIconAndTitle, void, Conver
         ),
       ]),
     ];
+
+    if (kIsDesktop) {
+      // macOS Tahoe: avatar with the name in a glass pill tucked just under it
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IgnorePointer(
+            ignoring: true,
+            child: ContactAvatarGroupWidget(chat: controller.chat, size: 46),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -6),
+            child: GlassSurface(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: ns.width(context) / 2.5),
+                  child: RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      style: context.theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
+                      children: MessageHelper.buildEmojiText(
+                        _title,
+                        context.theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(CupertinoIcons.chevron_right, size: 11, color: context.theme.colorScheme.outline),
+              ]),
+            ),
+          ),
+        ],
+      );
+    }
 
     if (context.orientation == Orientation.landscape && Platform.isAndroid) {
       return Row(

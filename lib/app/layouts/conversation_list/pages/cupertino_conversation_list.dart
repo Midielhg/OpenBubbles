@@ -71,11 +71,14 @@ class CupertinoConversationListState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ss.settings.windowEffect.value != WindowEffect.disabled
+      // on desktop the list lives inside the floating glass card, which paints its own background
+      backgroundColor: kIsDesktop || ss.settings.windowEffect.value != WindowEffect.disabled
           ? Colors.transparent
           : context.theme.colorScheme.background,
       extendBodyBehindAppBar: !showArchived && !showUnknown && !showDeleted,
+      // desktop uses the glass compose button in the conversation toolbar instead of a FAB
       floatingActionButton: Obx(() =>
+          !kIsDesktop &&
           !ss.settings.moveChatCreatorToHeader.value &&
                   !showArchived &&
                   !showUnknown &&
@@ -339,12 +342,14 @@ class CupertinoConversationListState
                                 final separator =
                                     Obx(() => !ss.settings.hideDividers.value
                                         ? Padding(
-                                            padding:
-                                                const EdgeInsets.only(left: 20),
+                                            // macOS insets separators to start under the name
+                                            padding: kIsDesktop
+                                                ? const EdgeInsets.only(left: 78, right: 18)
+                                                : const EdgeInsets.only(left: 20),
                                             child: Divider(
                                               color: context
                                                   .theme.colorScheme.outline
-                                                  .withOpacity(0.5),
+                                                  .withOpacity(kIsDesktop ? 0.22 : 0.5),
                                               thickness: 0.5,
                                               height: 0.5,
                                             ),

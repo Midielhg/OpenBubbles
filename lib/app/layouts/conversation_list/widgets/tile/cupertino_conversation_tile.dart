@@ -60,7 +60,7 @@ class _CupertinoConversationTileState extends CustomState<CupertinoConversationT
             mouseCursor: MouseCursor.defer,
             enableFeedback: true,
             dense: ss.settings.denseChatTiles.value,
-            contentPadding: const EdgeInsets.only(left: 0),
+            contentPadding: kIsDesktop ? const EdgeInsets.symmetric(horizontal: 10) : const EdgeInsets.only(left: 0),
             visualDensity: ss.settings.denseChatTiles.value ? VisualDensity.compact : null,
             minVerticalPadding: ss.settings.denseChatTiles.value ? 7.5 : 10,
             horizontalTitleGap: 10,
@@ -70,7 +70,8 @@ class _CupertinoConversationTileState extends CustomState<CupertinoConversationT
                   child: ChatTitle(
                     parentController: controller,
                     style: context.theme.textTheme.bodyLarge!.copyWith(
-                        fontWeight: controller.shouldHighlight.value ? FontWeight.w600 : FontWeight.w500,
+                        // macOS shows every name in semibold
+                        fontWeight: kIsDesktop || controller.shouldHighlight.value ? FontWeight.w600 : FontWeight.w500,
                         color: controller.shouldHighlight.value ? context.theme.colorScheme.onBubble(context, controller.chat.isIMessage) : null),
                   ),
                 ),
@@ -136,18 +137,21 @@ class _CupertinoConversationTileState extends CustomState<CupertinoConversationT
 
     return Obx(() {
       ns.listener.value;
+      // macOS: selection is an inset rounded blue pill; hover is Apple's quaternary fill
+      final hoverFill = context.theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.06) : const Color(0x14767680);
       return AnimatedContainer(
         duration: const Duration(milliseconds: 100),
+        margin: kIsDesktop ? const EdgeInsets.symmetric(horizontal: 8) : null,
         decoration: BoxDecoration(
           color: controller.shouldPartialHighlight.value
-              ? context.theme.colorScheme.properSurface.lightenOrDarken(10)
+              ? (kIsDesktop ? hoverFill : context.theme.colorScheme.properSurface.lightenOrDarken(10))
               : controller.shouldHighlight.value
-                  ? context.theme.colorScheme.bubble(context, controller.chat.isIMessage)
+                  ? (kIsDesktop ? context.theme.colorScheme.primary : context.theme.colorScheme.bubble(context, controller.chat.isIMessage))
                   : controller.hoverHighlight.value
-                      ? context.theme.colorScheme.properSurface.withOpacity(0.5)
+                      ? (kIsDesktop ? hoverFill : context.theme.colorScheme.properSurface.withOpacity(0.5))
                       : null,
           borderRadius: BorderRadius.circular(
-              controller.shouldHighlight.value || controller.shouldPartialHighlight.value || controller.hoverHighlight.value ? 8 : 0),
+              controller.shouldHighlight.value || controller.shouldPartialHighlight.value || controller.hoverHighlight.value ? (kIsDesktop ? 10 : 8) : 0),
         ),
         child: ns.isAvatarOnly(context)
             ? InkWell(
@@ -284,6 +288,7 @@ class _CupertinoTrailingState extends CustomState<CupertinoTrailing, void, Conve
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!kIsDesktop) // macOS rows have no disclosure chevron
               Icon(
                 CupertinoIcons.forward,
                 color: controller.shouldHighlight.value

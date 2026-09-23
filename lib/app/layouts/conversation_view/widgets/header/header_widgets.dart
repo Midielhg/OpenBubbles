@@ -16,6 +16,7 @@ import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:bluebubbles/database/database.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 
 /// Desktop "Add"/"Update" for a suggested (shared) contact. Copies the shared name and photo into the
 /// participant's contact, or promotes the suggested contact itself when the participant has none yet
@@ -243,6 +244,21 @@ class FaceTimeBtnState extends OptimizedState<FaceTimeBtn> {
               ),
             ),
           )
+        );
+      }
+      if (kIsDesktop && iOS) {
+        // macOS Tahoe: round glass video button
+        return GlassCircleButton(
+          icon: CupertinoIcons.video_camera,
+          iconSize: 22,
+          tooltip: "FaceTime Call",
+          onTap: () async {
+            var data = await chat.getConversationData();
+            var handle = await chat.ensureHandle();
+            var handles = data.participants;
+            handles.remove(handle);
+            await pushService.placeOutgoingCall(handle, handles);
+          },
         );
       }
       return Padding(

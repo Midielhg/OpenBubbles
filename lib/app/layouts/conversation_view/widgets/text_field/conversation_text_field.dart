@@ -14,6 +14,7 @@ import 'package:bluebubbles/app/layouts/conversation_view/widgets/text_field/rep
 import 'package:bluebubbles/app/layouts/conversation_view/widgets/text_field/text_field_suffix.dart';
 import 'package:bluebubbles/app/layouts/conversation_view/widgets/text_field/voice_message_recorder.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/main.dart';
@@ -405,6 +406,120 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
             padding: const EdgeInsets.only(bottom: 10.0, top: 10.0),
             child: 
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (kIsDesktop && iOS) ...[
+                // macOS: one glass + button; its menu holds files, GIF, scheduling and location
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 8, bottom: 2),
+                  child: _MacPlusButton(
+                    onFiles: () async {
+                  if (kIsDesktop) {
+                    final res = await FilePicker.platform.pickFiles(withReadStream: true, allowMultiple: true);
+                    if (res == null || res.files.isEmpty || res.files.first.readStream == null) return;
+
+                    for (pf.PlatformFile e in res.files) {
+                      if (e.size / 1024000 > 1000) {
+                        showSnackbar("Error", "This file is over 1 GB! Please compress it before sending.");
+                        continue;
+                      }
+                      controller.pickedAttachments.add(PlatformFile(
+                        path: e.path,
+                        name: e.name,
+                        size: e.size,
+                        bytes: await readByteStream(e.readStream!),
+                      ));
+                    }
+                  } else if (kIsWeb) {
+                    showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                              title: Text("What would you like to do?", style: context.theme.textTheme.titleLarge),
+                              content: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: <Widget>[
+                                ListTile(
+                                  title: Text("Upload file", style: Theme.of(context).textTheme.bodyLarge),
+                                  onTap: () async {
+                                    final res = await FilePicker.platform.pickFiles(withData: true, allowMultiple: true);
+                                    if (res == null || res.files.isEmpty || res.files.first.bytes == null) return;
+
+                                    for (pf.PlatformFile e in res.files) {
+                                      if (e.size / 1024000 > 1000) {
+                                        showSnackbar("Error", "This file is over 1 GB! Please compress it before sending.");
+                                        continue;
+                                      }
+                                      controller.pickedAttachments.add(PlatformFile(
+                                        path: null,
+                                        name: e.name,
+                                        size: e.size,
+                                        bytes: e.bytes!,
+                                      ));
+                                    }
+                                    Get.back();
+                                  },
+                                ),
+                                ListTile(
+                                  title: Text("Send location", style: Theme.of(context).textTheme.bodyLarge),
+                                  onTap: () async {
+                                    Share.location(chat);
+                                    Get.back();
+                                  },
+                                ),
+                              ]),
+                              backgroundColor: context.theme.colorScheme.properSurface,
+                            ));
+                  } else {
+                    if (!showAttachmentPicker) {
+                      controller.focusNode.unfocus();
+                      controller.subjectFocusNode.unfocus();
+                    }
+                    setState(() {
+                      if (attachmentPicker.currentState?.currentApp != null) {
+                        attachmentPicker.currentState!.setState(() { attachmentPicker.currentState!.currentApp = null; });
+                        return;
+                      }
+                      controller.showAttachmentPicker = !showAttachmentPicker;
+                    });
+                  }
+                },
+                    onGif: (!kIsWeb && (kIsWeb ? GIPHY_API_KEY : dotenv.get('GIPHY_API_KEY')) != "") ? () async {
+                      if (kIsDesktop || kIsWeb) {
+                        controller.showingOverlays = true;
+                      }
+                      GiphyGif? gif = await GiphyGet.getGif(
+                        context: context,
+                        apiKey: kIsWeb ? GIPHY_API_KEY : dotenv.get('GIPHY_API_KEY'),
+                        tabColor: context.theme.primaryColor,
+                        showEmojis: false,
+                      );
+                      if (kIsDesktop || kIsWeb) {
+                        controller.showingOverlays = false;
+                      }
+                      if (gif?.images?.original != null) {
+                        final response = await http.downloadFromUrl(gif!.images!.original!.url);
+                        if (response.statusCode == 200) {
+                          try {
+                            final Uint8List data = response.data;
+                            controller.pickedAttachments.add(PlatformFile(
+                              path: null,
+                              name: "${gif.title ?? randomString(8)}.gif",
+                              size: data.length,
+                              bytes: data,
+                            ));
+                            return;
+                          } catch (_) {}
+                        }
+                      }
+                    } : null,
+                    onSchedule: () async {
+                    final date = await showTimeframePicker("Pick date and time", context, presetsAhead: true);
+                    if (date != null && date.isAfter(DateTime.now())) {
+                      controller.scheduledDate.value = date;
+                    }
+                  },
+                    onLocation: !Platform.isLinux ? () async {
+                    await Share.location(chat);
+                  } : null,
+                  ),
+                ),
+              ] else ...[
               IconButton(
                 icon: Icon(
                   iOS
@@ -542,6 +657,8 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
                     await Share.location(chat);
                   },
                 ),
+              ],
+
               Expanded(
                 child: Stack(
                   alignment: Alignment.centerLeft,
@@ -607,6 +724,19 @@ class ConversationTextFieldState extends CustomState<ConversationTextField, void
                   ],
                 ),
               ),
+              if (kIsDesktop && iOS)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 10, bottom: 2),
+                  child: GlassCircleButton(
+                    icon: CupertinoIcons.smiley,
+                    iconSize: 20,
+                    tooltip: "Emoji",
+                    onTap: () {
+                      showEmojiPicker.value = !showEmojiPicker.value;
+                      (controller.editing.lastOrNull?.item3.focusNode ?? controller.lastFocusedNode).requestFocus();
+                    },
+                  ),
+                ),
               if (samsung)
                 Padding(
                   padding: const EdgeInsets.only(right: 5.0),
@@ -858,7 +988,18 @@ class TextFieldComponentState extends State<TextFieldComponent> {
         valueListenable: isRecordingNotifier,
         builder: (context, isRecording, child) {
         return Container(
-          decoration: iOS
+          decoration: kIsDesktop && iOS
+              ? BoxDecoration(
+                  // macOS: filled glass pill with a hairline edge
+                  color: Glass.fill(context, opacity: 0.7),
+                  border: Border.fromBorderSide(BorderSide(
+                    color: (isRecording & iOS) ? context.theme.colorScheme.primary : Glass.border(context),
+                    width: (isRecording & iOS) ? 1.5 : 0.5,
+                  )),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: Glass.shadow(context),
+                )
+              : iOS
               ? BoxDecoration(
                   border: Border.fromBorderSide(BorderSide(
                     color: (isRecording & iOS) ? context.theme.colorScheme.primary.withOpacity(1.0) : context.theme.colorScheme.properSurface,
@@ -1272,4 +1413,60 @@ class TextFieldComponentState extends State<TextFieldComponent> {
     }
     return KeyEventResult.ignored;
   }
+}
+
+
+/// macOS-style + button: a glass circle that opens a menu of attach actions.
+class _MacPlusButton extends StatelessWidget {
+  const _MacPlusButton({required this.onFiles, this.onGif, required this.onSchedule, this.onLocation});
+
+  final Future<void> Function() onFiles;
+  final Future<void> Function()? onGif;
+  final Future<void> Function() onSchedule;
+  final Future<void> Function()? onLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCircleButton(
+      icon: CupertinoIcons.add,
+      iconSize: 20,
+      tooltip: "Attach",
+      onTap: () async {
+        final box = context.findRenderObject() as RenderBox;
+        final origin = box.localToGlobal(Offset.zero);
+        final choice = await showMenu<int>(
+          context: context,
+          position: RelativeRect.fromLTRB(origin.dx, origin.dy - 190, origin.dx + box.size.width, origin.dy),
+          color: Glass.fill(context, opacity: 0.94),
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: Glass.border(context), width: 0.5),
+          ),
+          items: [
+            _item(context, 0, CupertinoIcons.photo_on_rectangle, "Photos & Files"),
+            if (onGif != null) _item(context, 1, CupertinoIcons.sparkles, "GIF"),
+            _item(context, 2, CupertinoIcons.clock, "Schedule Send"),
+            if (onLocation != null) _item(context, 3, CupertinoIcons.location, "Share Location"),
+          ],
+        );
+        switch (choice) {
+          case 0: await onFiles(); break;
+          case 1: await onGif?.call(); break;
+          case 2: await onSchedule(); break;
+          case 3: await onLocation?.call(); break;
+        }
+      },
+    );
+  }
+
+  PopupMenuItem<int> _item(BuildContext context, int value, IconData icon, String label) => PopupMenuItem<int>(
+        value: value,
+        height: 38,
+        child: Row(children: [
+          Icon(icon, size: 18, color: context.theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Text(label, style: context.theme.textTheme.bodyLarge),
+        ]),
+      );
 }

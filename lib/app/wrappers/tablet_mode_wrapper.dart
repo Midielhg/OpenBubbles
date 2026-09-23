@@ -1,6 +1,8 @@
 import 'dart:math';
 
+import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/helpers/ui/theme_helpers.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/app/wrappers/titlebar_wrapper.dart';
 import 'package:bluebubbles/services/services.dart';
@@ -78,6 +80,7 @@ class _TabletModeWrapperState extends OptimizedState<TabletModeWrapper> {
       return TitleBarWrapper(child: widget.left);
     }
     altLayoutCache = true;
+    final macLook = kIsDesktop && ss.settings.skin.value == Skins.iOS;
     return LayoutBuilder(
       builder: (context, BoxConstraints constraints) {
         _maxWidth = constraints.maxWidth - widget.dividerWidth;
@@ -89,7 +92,16 @@ class _TabletModeWrapperState extends OptimizedState<TabletModeWrapper> {
               children: <Widget>[
                 SizedBox(
                   width: _width1,
-                  child: widget.left,
+                  // macOS Tahoe look: the chat list is a rounded card floating over the window
+                  child: macLook ? Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 0, 8),
+                    child: GlassSurface(
+                      borderRadius: BorderRadius.circular(16),
+                      blur: Glass.panelBlur,
+                      fillOpacity: context.theme.brightness == Brightness.dark ? 0.72 : 0.78,
+                      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: widget.left),
+                    ),
+                  ) : widget.left,
                 ),
                 (widget.allowResize) ? Container(
                   width: widget.dividerWidth,
@@ -108,7 +120,7 @@ class _TabletModeWrapperState extends OptimizedState<TabletModeWrapper> {
                             behavior: HitTestBehavior.translucent,
                             child: Center(
                               child: Container(
-                                color: context.theme.colorScheme.properSurface,
+                                color: macLook ? Colors.transparent : context.theme.colorScheme.properSurface,
                                 width: widget.dividerWidth,
                               ),
                             ),
@@ -124,7 +136,7 @@ class _TabletModeWrapperState extends OptimizedState<TabletModeWrapper> {
                 ) : Container(
                     width: widget.dividerWidth,
                     height: constraints.maxHeight,
-                    color: context.theme.colorScheme.properSurface
+                    color: macLook ? Colors.transparent : context.theme.colorScheme.properSurface
                 ),
                 SizedBox(
                   width: _width2,

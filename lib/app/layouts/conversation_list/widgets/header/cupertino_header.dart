@@ -6,6 +6,7 @@ import 'package:bluebubbles/app/layouts/conversation_list/widgets/header/header_
 import 'package:bluebubbles/app/layouts/conversation_list/pages/search/search_view.dart';
 import 'package:bluebubbles/app/wrappers/fade_on_scroll.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,9 @@ class CupertinoHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsDesktop && !ns.isAvatarOnly(context)) {
+      return SliverPersistentHeader(pinned: true, delegate: _MacListHeaderDelegate(controller));
+    }
     final double topMargin = context.orientation == Orientation.landscape && context.isPhone
         ? 20
         : kIsDesktop || kIsWeb
@@ -147,6 +151,8 @@ class CupertinoMiniHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the macOS header is pinned, so there's no collapsed title bar to fade in
+    if (kIsDesktop && !ns.isAvatarOnly(context)) return const SizedBox.shrink();
     final double topMargin = context.orientation == Orientation.landscape && context.isPhone
         ? 20
         : kIsDesktop || kIsWeb
@@ -180,6 +186,85 @@ class CupertinoMiniHeader extends StatelessWidget {
                 ),
               );
             })
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// macOS Tahoe sidebar header: a slim toolbar row and a search pill, pinned while the list scrolls under it.
+class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _MacListHeaderDelegate(this.controller);
+
+  final ConversationListController controller;
+  static const double _height = 100;
+
+  @override
+  double get minExtent => _height;
+  @override
+  double get maxExtent => _height;
+
+  @override
+  bool shouldRebuild(covariant _MacListHeaderDelegate oldDelegate) => oldDelegate.controller != controller;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final scrolled = shrinkOffset > 0 || overlapsContent;
+    final title = controller.showArchivedChats
+        ? "Archive"
+        : controller.showUnknownSenders
+            ? "Unknown Senders"
+            : null;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: Glass.filter(scrolled ? Glass.chromeBlur : 0.01),
+        child: Container(
+          color: scrolled ? Glass.fill(context, opacity: 0.5) : Colors.transparent,
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 32,
+                child: Row(
+                  children: [
+                    if (title != null)
+                      Text(title, style: context.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    SyncIndicator(size: 16),
+                    const SizedBox(width: 8),
+                    const Material(
+                      color: Colors.transparent,
+                      shape: CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: OverflowMenu(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              GlassPressable(
+                onTap: () => ns.pushLeft(context, SearchView()),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: context.theme.brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.08)
+                        : const Color(0x14767680), // Apple tertiary system fill
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.search, size: 16, color: context.theme.colorScheme.outline),
+                      const SizedBox(width: 8),
+                      Text("Search", style: context.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.outline)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
