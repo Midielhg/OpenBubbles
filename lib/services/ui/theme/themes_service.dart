@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide GetStringUtils;
 import 'package:material_color_utilities/material_color_utilities.dart' as mui_utils;
+import 'package:pull_down_button/pull_down_button.dart';
 import 'package:simple_animations/simple_animations.dart';
 import 'package:tuple/tuple.dart';
 import 'package:universal_io/io.dart';
@@ -125,7 +126,9 @@ class ThemesService extends GetxService {
     onReceivedBubbleColor: dark ? Colors.white : Colors.black,
   );
 
-  ThemeData _macTheme(bool dark) {
+  ThemeData _macTheme(bool dark) => macComponents(_macBase(dark));
+
+  ThemeData _macBase(bool dark) {
     final typography = (dark
         ? Typography.englishLike2021.merge(Typography.whiteMountainView)
         : Typography.englishLike2021.merge(Typography.blackMountainView)).apply(fontFamily: macFont);
@@ -158,6 +161,51 @@ class ThemesService extends GetxService {
         ),
       ),
     ]);
+  }
+
+  /// macOS dialogs, menus and tooltips: rounded, hairline-edged, near-opaque surfaces.
+  static ThemeData macComponents(ThemeData base) {
+    final dark = base.brightness == Brightness.dark;
+    final hairline = dark ? Colors.white.withOpacity(0.14) : const Color(0x1F3C3C43);
+    final surface = dark ? const Color(0xFF2C2C2E) : const Color(0xFFF7F7F8);
+    return base.copyWith(
+      dialogTheme: DialogTheme(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 16,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: hairline, width: 0.5)),
+        titleTextStyle: base.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600, fontSize: 16),
+        contentTextStyle: base.textTheme.bodyMedium!.copyWith(fontSize: 13.5),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface.withOpacity(0.97),
+        surfaceTintColor: Colors.transparent,
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: hairline, width: 0.5)),
+        textStyle: base.textTheme.bodyMedium!.copyWith(fontSize: 13.5),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(6), border: Border.all(color: hairline, width: 0.5)),
+        textStyle: base.textTheme.bodySmall!.copyWith(color: dark ? Colors.white : Colors.black),
+      ),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: base.colorScheme.primary)),
+      extensions: [
+        ...base.extensions.values,
+        // "•••" and other pull-down menus: macOS menu sizing, accent highlight on hover
+        PullDownButtonTheme(
+          routeTheme: PullDownMenuRouteTheme(
+            backgroundColor: surface.withOpacity(0.94),
+            borderRadius: BorderRadius.circular(12),
+            width: 240,
+          ),
+          itemTheme: PullDownMenuItemTheme(
+            textStyle: base.textTheme.bodyMedium!.copyWith(fontSize: 13.5),
+            onHoverBackgroundColor: base.colorScheme.primary,
+            onHoverTextColor: Colors.white,
+          ),
+        ),
+      ],
+    );
   }
 
   late final macLightTheme = _macTheme(false);

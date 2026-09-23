@@ -244,7 +244,7 @@ class ThemeStruct {
     final typography = brightness == Brightness.light 
         ? Typography.englishLike2021.merge(Typography.blackMountainView) 
         : Typography.englishLike2021.merge(Typography.whiteMountainView);
-    return ThemeStruct(
+    final struct = ThemeStruct(
         id: json["ROWID"],
         name: json["name"],
         gradientBg: json["gradientBg"] == 1,
@@ -349,6 +349,9 @@ class ThemeStruct {
           ),
         ])
     );
+    // dialogs/menus/tooltips aren't persisted in the theme map, so re-apply the macOS component styles
+    if (isMacTheme) struct.data = ThemesService.macComponents(struct.data);
+    return struct;
   }
 
   /// Returns the colors for a theme. Returns colors overwritten by Material You

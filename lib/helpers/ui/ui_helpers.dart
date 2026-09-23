@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -71,6 +72,25 @@ class BackButton extends StatelessWidget {
 
 // todo remove
 Widget buildBackButton(BuildContext context, {EdgeInsets padding = EdgeInsets.zero, double? iconSize, Skins? skin, bool Function()? callback}) {
+  if (macLook && (skin == null || skin == Skins.iOS)) {
+    // macOS: round glass back button
+    return Padding(
+      padding: padding,
+      child: Center(
+        child: GlassCircleButton(
+          icon: CupertinoIcons.chevron_left,
+          iconSize: 17,
+          tooltip: "Back",
+          onTap: () {
+            final result = callback?.call() ?? true;
+            if (!result) return;
+            if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
   return Material(
     color: Colors.transparent,
     child: Container(
@@ -349,6 +369,31 @@ IconData getAttachmentIcon(String mimeType) {
 }
 
 void showSnackbar(String title, String message, {int animationMs = 250, int durationMs = 1500, Function(GetSnackBar)? onTap, TextButton? button}) {
+  if (macLook && Get.context != null) {
+    // Liquid Glass toast: floating, compact, 22px radius, blur + hairline edge
+    final context = Get.context!;
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      colorText: context.theme.colorScheme.onBackground,
+      backgroundColor: Glass.fill(context, opacity: 0.82),
+      barBlur: 20,
+      borderRadius: 22,
+      borderColor: Glass.border(context),
+      borderWidth: 0.5,
+      boxShadows: Glass.shadow(context),
+      margin: const EdgeInsets.only(bottom: 18),
+      maxWidth: 520,
+      isDismissible: true,
+      dismissDirection: DismissDirection.down,
+      duration: Duration(milliseconds: durationMs),
+      animationDuration: Duration(milliseconds: animationMs),
+      mainButton: button,
+      onTap: onTap ?? (GetSnackBar bar) { if (Get.isSnackbarOpen) Get.back(); },
+    );
+    return;
+  }
   Get.snackbar(
     title,
     message,

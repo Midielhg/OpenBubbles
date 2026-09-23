@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/app/wrappers/theme_switcher.dart';
@@ -50,6 +51,22 @@ class SettingsScaffold extends StatelessWidget {
         backgroundColor: ss.settings.skin.value == Skins.Material ? tileColor : headerColor,
         appBar: ss.settings.skin.value == Skins.Samsung
             ? null
+            : macLook
+            ? PreferredSize(
+          // macOS toolbar: glass back button, centred title; same line as the other toolbars
+          preferredSize: Size(ns.width(context), 76),
+          child: Container(
+            color: headerColor,
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
+            child: Stack(alignment: Alignment.center, children: [
+              Text(title, style: context.theme.textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w600)),
+              if (Navigator.of(context).canPop())
+                Align(alignment: Alignment.centerLeft, child: buildBackButton(context)),
+              if (actions.isNotEmpty)
+                Align(alignment: Alignment.centerRight, child: Row(mainAxisSize: MainAxisSize.min, children: actions)),
+            ]),
+          ),
+        )
             : PreferredSize(
           preferredSize: Size(ns.width(context), extend ? 80 : 50),
           child: AppBar(

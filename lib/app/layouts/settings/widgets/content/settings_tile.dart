@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/foundation.dart';
@@ -55,7 +56,7 @@ class SettingsTile extends StatelessWidget {
             ),
             title: title != null ? Text(
               title!,
-              style: context.theme.textTheme.bodyLarge,
+              style: macLook ? context.theme.textTheme.bodyLarge!.copyWith(fontSize: 14) : context.theme.textTheme.bodyLarge,
             ) : null,
             trailing: trailing == null ? null : Padding(
               padding: EdgeInsets.only(bottom: isThreeLine ? 10 : 0.0),

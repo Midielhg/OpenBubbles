@@ -1,6 +1,16 @@
 import 'dart:ui';
 
+import 'package:bluebubbles/helpers/types/constants.dart';
+import 'package:bluebubbles/helpers/types/helpers/misc_helpers.dart';
+import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/material.dart';
+
+/// The macOS Tahoe design language applies on desktop with the iOS skin.
+bool get macLook => kIsDesktop && ss.settings.skin.value == Skins.iOS;
+
+/// macOS System Settings palette: window background and grouped-card fill.
+Color macPageColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F7);
+Color macCardColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2E) : Colors.white;
 
 /// Liquid Glass surfaces for the macOS Messages look.
 ///

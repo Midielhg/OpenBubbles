@@ -8,6 +8,7 @@ import 'package:bluebubbles/app/layouts/settings/pages/misc/shared_streams_panel
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/profile/profile_panel.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/layouts/conversation_list/pages/conversation_list.dart';
 import 'package:bluebubbles/app/layouts/settings/settings_page.dart';
 import 'package:bluebubbles/app/layouts/setup/setup_view.dart';
@@ -274,7 +275,8 @@ class CupertinoOverflowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PullDownButton(
-      routeTheme: PullDownMenuRouteTheme(
+      // macOS look: use the theme's menu styling (radius, width, hover) instead of this override
+      routeTheme: macLook ? null : PullDownMenuRouteTheme(
         backgroundColor: context.theme.colorScheme.properSurface.withOpacity(0.9)
       ),
       animationAlignmentOverride: Alignment.topRight,

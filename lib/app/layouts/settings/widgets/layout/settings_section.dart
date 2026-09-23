@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/helpers/types/constants.dart';
 import 'package:bluebubbles/helpers/ui/theme_helpers.dart';
 import 'package:bluebubbles/services/services.dart';
@@ -11,6 +12,21 @@ class SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (macLook) {
+      // macOS grouped card: 12px radius, one hairline edge, no drop shadow
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Glass.border(context), width: 0.5),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children),
+        ),
+      );
+    }
     return Padding(
       padding: ss.settings.skin.value == Skins.iOS
           ? const EdgeInsets.symmetric(horizontal: 20)

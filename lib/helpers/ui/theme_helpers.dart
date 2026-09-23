@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'dart:math';
 
 import 'package:bluebubbles/helpers/helpers.dart';
@@ -129,11 +130,12 @@ mixin ThemeHelpers<T extends StatefulWidget> on State<T> {
   TextStyle get materialSubtitle =>
       context.theme.textTheme.labelLarge!.copyWith(color: context.theme.colorScheme.primary, fontWeight: FontWeight.bold);
 
-  Color get _headerColor => (ts.inDarkMode(context)
+  // macOS System Settings: window-gray page behind white grouped cards
+  Color get _headerColor => macLook ? macPageColor(context) : (ts.inDarkMode(context)
       ? context.theme.colorScheme.background
       : context.theme.colorScheme.properSurface).withAlpha(ss.settings.windowEffect.value != WindowEffect.disabled ? 20 : 255);
 
-  Color get _tileColor => (ts.inDarkMode(context) ? context.theme.colorScheme.properSurface : context.theme.colorScheme.background)
+  Color get _tileColor => macLook ? macCardColor(context) : (ts.inDarkMode(context) ? context.theme.colorScheme.properSurface : context.theme.colorScheme.background)
       .withAlpha(ss.settings.windowEffect.value != WindowEffect.disabled ? 100 : 255);
 
   /// Header / background color on settings pages
