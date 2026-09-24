@@ -322,7 +322,12 @@ class Chat {
     if (ss.settings.redactedMode.value && ss.settings.hideContactInfo.value) {
       return getTitle();
     }
-    title ??= getTitle();
+    // a cached title that is still a participant's bare address goes stale once that handle gets linked
+    // to a contact (new chats, contacts synced later), so recompute it then
+    if (title == null ||
+        (isNullOrEmpty(displayName) && participants.any((h) => h.contact != null && (title == h.address || title == h.formattedAddress)))) {
+      title = getTitle();
+    }
     return title!;
   }
   String? displayName;

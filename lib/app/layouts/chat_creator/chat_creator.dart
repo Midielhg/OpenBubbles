@@ -1130,6 +1130,18 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                                 return showSnackbar("Error", "Failed to save chat!");
                               }
 
+                              // New handles are created unlinked (contacts are matched on sync), so the chat's title
+                              // was a bare number until the next launch; link them to their contacts now.
+                              for (final h in saved.participants) {
+                                if (h.contact != null) continue;
+                                final contact = cs.matchHandleToContact(h);
+                                if (contact != null) {
+                                  h.contactRelation.target = contact;
+                                  h.save();
+                                }
+                              }
+                              saved.title = saved.getTitle();
+
                               // Update the chat in the chat list.
                               // If it wasn't existing, add it.
                               newChat = saved;

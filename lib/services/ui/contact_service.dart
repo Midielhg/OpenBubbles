@@ -123,6 +123,24 @@ class ContactsService extends GetxService {
     // Desktop syncs CardDAV incrementally (ctag/sync-token persist in settings), so _contacts only holds
     // what changed this run. Match against every stored contact, or handles whose contact was synced
     // earlier never get linked.
+    if (kIsDesktop) {
+      // Cards synced before the name fallback existed were stored with an empty displayName even though
+      // they have a first/last name, and incremental syncs never re-download unchanged cards, so they
+      // were skipped below and their chats showed a bare number. Repair them from the structured name.
+      final repaired = <Contact>[];
+      for (final c in Database.contacts.getAll()) {
+        final n = c.structuredName;
+        if (c.displayName.trim().isNotEmpty || n == null) continue;
+        final name = [n.namePrefix, n.givenName, n.middleName, n.familyName, n.nameSuffix].where((e) => e.trim().isNotEmpty).join(" ").trim();
+        if (name.isEmpty) continue;
+        c.displayName = name;
+        repaired.add(c);
+      }
+      if (repaired.isNotEmpty) {
+        Database.contacts.putMany(repaired);
+        Logger.info("Contact sync: repaired ${repaired.length} unnamed contacts from their structured names");
+      }
+    }
     final matchContacts = kIsDesktop ? Database.contacts.getAll().where((c) => !c.isShared && c.displayName.trim().isNotEmpty).toList() : _contacts;
     final handlesToSearch = List<Handle>.from(handles);
     for (Contact c in matchContacts) {
