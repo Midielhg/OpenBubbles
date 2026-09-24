@@ -9,6 +9,7 @@ import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/services/network/backend_service.dart';
+import 'package:bluebubbles/services/ui/chat/chat_merger.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
@@ -93,6 +94,14 @@ class ChatsService extends GetxService {
 
   Future<void> init({bool force = false}) async {
     if (!force && !ss.settings.finishedSetup.value) return;
+    if (kIsDesktop) {
+      // one conversation per person (phone + email, re-created chats) before the list loads
+      try {
+        DirectChatMerger.mergeDuplicates();
+      } catch (e, st) {
+        Logger.error("Chat merge failed", error: e, trace: st);
+      }
+    }
     Logger.info("Fetching chats... ${StackTrace.current}", tag: "ChatBloc");
     currentCount = Chat.count() ?? (await backend.getRemoteService()?.chatCount().catchError((err) {
       Logger.info("Error when fetching chat count!", tag: "ChatBloc");

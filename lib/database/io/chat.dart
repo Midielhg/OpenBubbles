@@ -10,6 +10,7 @@ import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/database/models.dart';
+import 'package:bluebubbles/services/ui/chat/chat_merger.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
@@ -1591,6 +1592,16 @@ class Chat {
       Logger.warn("Bailing on candidate left ${participantsCopy.map((i) => "${i.address} ${i.id}").join(", ")} .. ${element.handles.map((i) => "${i.address} ${i.id}").join(", ")}");
       return participantsCopy.isEmpty;
     });
+    if (result == null && kIsDesktop && !routingStub && service == "iMessage" && dartParticipants.length == 1 && name == null) {
+      // same person, another address (phone vs email): keep one conversation, like Apple Messages
+      final person = dartParticipants.first;
+      if (person.contact == null) person.contactRelation.target = cs.matchHandleToContact(person);
+      result = DirectChatMerger.existingChatForPerson(person);
+      if (result != null && data.senderGuid != null && !result.guidRefs.contains(data.senderGuid!)) {
+        result.guidRefs.add(data.senderGuid!);
+        result.save();
+      }
+    }
     if (result == null && !soft) {
       result = await backend.createChat(dartParticipants.map((e) => e.address).toList(), null, service, existingGuid: data.senderGuid);
       result.displayName = data.cvName;
