@@ -172,6 +172,21 @@ class ContactsService extends GetxService {
         }
       }
     }
+    if (kIsDesktop) {
+      // Name & Photo sharing: people's own shared name/photo arrive as "shared" contacts. Real contacts
+      // win above; handles that are still unlinked get the shared profile, so its photo shows (these are
+      // most of the photos an iPhone shows that iCloud contacts don't have).
+      final shared = Database.contacts.getAll().where((c) => c.isShared).toList();
+      var sharedLinked = 0;
+      for (final c in shared) {
+        for (final h in matchContactToHandles(c, handles.where((h) => h.contactRelation.target == null).toList())) {
+          h.contactRelation.target = c;
+          changedIds.last.add(h.id!);
+          sharedLinked++;
+        }
+      }
+      Logger.info("Contact match: ${shared.length} shared profiles (${shared.where((c) => c.avatar != null).length} with photos), linked $sharedLinked handles");
+    }
     if (!kIsWeb) {
       Logger.info("Contact match: ${_contacts.length} fetched, ${matchContacts.length} matched against, ${handles.where((h) => h.contactRelation.target != null).length}/${handles.length} handles have a contact");
       Handle.bulkSave(handles, matchOnOriginalROWID: isMin1_5_2);
@@ -436,6 +451,10 @@ class ContactsService extends GetxService {
             print('  DELETE ${ch.href}');
           }
         }
+      }
+      if (CardDavClient.photoStats.isNotEmpty) {
+        Logger.info("Contact photos (CardDAV): ${CardDavClient.photoStats}");
+        CardDavClient.photoStats.clear();
       }
       // Outlook / Exchange contacts are merged alongside the CardDAV provider
       if (OutlookContacts.connected) {

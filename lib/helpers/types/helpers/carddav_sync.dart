@@ -537,19 +537,37 @@ class CardDavClient {
     return null;
   }
 
+  /// Per-sync photo tally (inline, data:, downloaded, failed download, none), logged by the caller.
+  static final photoStats = <String, int>{};
+  static void _count(String k) => photoStats[k] = (photoStats[k] ?? 0) + 1;
+
   Future<contacts.Contact> _myContactFromVCard(String vcard, Uri href) async {
     final contact = Contact.fromVCard(vcard);
     final inlinePhoto = _extractInlinePhotoBytes(vcard);
     if (inlinePhoto != null && inlinePhoto.isNotEmpty) {
       contact.photo = inlinePhoto;
+      _count("inline");
       return _toMyContact(contact, vcard, href);
     }
     final photoUri = _extractPhotoUri(vcard, href);
     if (photoUri != null && (contact.photo == null || contact.photo!.isEmpty)) {
-      final photoBytes = await _downloadPhoto(photoUri);
-      if (photoBytes != null && photoBytes.isNotEmpty) {
-        contact.photo = photoBytes;
+      // a failed photo download must not cost the contact itself (it used to throw out of here)
+      try {
+        final photoBytes = await _downloadPhoto(photoUri);
+        if (photoBytes != null && photoBytes.isNotEmpty) {
+          contact.photo = photoBytes;
+          _count("downloaded");
+        } else {
+          _count("download failed");
+        }
+      } catch (e) {
+        _count("download failed");
+        Logger.warn("CardDAV photo download failed: $e");
       }
+    } else if (contact.photo == null || contact.photo!.isEmpty) {
+      _count("none");
+    } else {
+      _count("parsed");
     }
     return _toMyContact(contact, vcard, href);
   }
@@ -564,6 +582,17 @@ class CardDavClient {
       final params = parts.first.toUpperCase();
       final value = parts.sublist(1).join(':').trim();
       if (value.isEmpty) continue;
+      // vCard 4: PHOTO:data:image/jpeg;base64,/9j/...
+      if (value.toLowerCase().startsWith('data:')) {
+        final comma = value.indexOf(',');
+        if (comma < 0 || !value.substring(0, comma).toLowerCase().contains('base64')) return null;
+        try {
+          _count("data uri");
+          return base64Decode(value.substring(comma + 1).replaceAll(RegExp(r'\s'), ''));
+        } catch (_) {
+          return null;
+        }
+      }
       if (!params.contains('ENCODING=B') &&
           !params.contains('VALUE=BINARY') &&
           !params.contains('BASE64')) {
@@ -590,6 +619,7 @@ class CardDavClient {
       final value = parts.sublist(1).join(':').trim();
       if (value.isEmpty) continue;
       if (params.contains('ENCODING=B') || params.contains('VALUE=BINARY')) continue;
+      if (value.toLowerCase().startsWith('data:')) continue; // handled as inline
 
       final uri = Uri.tryParse(value);
       if (uri == null) continue;
@@ -616,6 +646,7 @@ class CardDavClient {
       if (data is Uint8List) return data;
       if (data is List<int>) return Uint8List.fromList(data);
     }
+    Logger.warn("CardDAV photo download: HTTP ${res.statusCode} from ${href.host}");
     return null;
   }
 

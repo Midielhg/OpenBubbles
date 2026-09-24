@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:bluebubbles/database/database.dart';
 
 import 'package:bluebubbles/database/global/structured_name.dart';
 import 'package:bluebubbles/database/models.dart';
@@ -126,6 +129,45 @@ class OutlookContacts {
     return res.data["access_token"];
   }
 
+  // ids checked this run that have no photo, so the 30-minute sync doesn't ask again for each of them
+  static final Set<String> _noPhoto = {};
+
+  /// Photos come from a separate Graph call per contact. A photo already stored for the contact is
+  /// reused (sync replaces stored contacts wholesale, so skipping this would wipe it).
+  static Future<void> _attachPhotos(List<Contact> contacts, Map<String, String> photoUrls, String token) async {
+    final stored = {
+      for (final c in Database.contacts.getAll().where((c) => c.id.startsWith("outlook:") && c.avatar != null)) c.id: c.avatar!,
+    };
+    final pending = <Contact>[];
+    for (final c in contacts) {
+      if (stored[c.id] != null) {
+        c.avatar = stored[c.id];
+      } else if (!_noPhoto.contains(c.id)) {
+        pending.add(c);
+      }
+    }
+    var fetched = 0;
+    for (var i = 0; i < pending.length; i += 6) {
+      await Future.wait(pending.skip(i).take(6).map((c) async {
+        final url = photoUrls[c.id.substring("outlook:".length)];
+        if (url == null) return;
+        try {
+          final res = await _dio.get<List<int>>(url,
+              options: Options(headers: {"Authorization": "Bearer $token"}, responseType: ResponseType.bytes));
+          if (res.statusCode == 200 && (res.data?.isNotEmpty ?? false)) {
+            c.avatar = Uint8List.fromList(res.data!);
+            fetched++;
+          } else {
+            _noPhoto.add(c.id); // 404: no photo on this contact
+          }
+        } catch (e) {
+          Logger.warn("Outlook contacts: photo fetch failed: $e");
+        }
+      }));
+    }
+    if (pending.isNotEmpty) Logger.info("Outlook contacts: downloaded $fetched new photos (${pending.length} checked)");
+  }
+
   static const _select = "id,displayName,givenName,middleName,surname,title,generation,emailAddresses,mobilePhone,homePhones,businessPhones,companyName";
 
   static Future<List<Map>> _getAll(String url, String token) async {
@@ -145,13 +187,17 @@ class OutlookContacts {
     final token = await _accessToken();
     if (token == null) return [];
     final raw = <String, Map>{};
+    // contact id -> its photo endpoint (contacts outside the default folder have folder-scoped URLs)
+    final photoUrls = <String, String>{};
     for (final c in await _getAll("https://graph.microsoft.com/v1.0/me/contacts?\$select=$_select&\$top=500", token)) {
       raw[c["id"]] = c;
+      photoUrls[c["id"]] = "https://graph.microsoft.com/v1.0/me/contacts/${c["id"]}/photo/\$value";
     }
     try {
       for (final f in await _getAll("https://graph.microsoft.com/v1.0/me/contactFolders?\$top=100", token)) {
         for (final c in await _getAll("https://graph.microsoft.com/v1.0/me/contactFolders/${f["id"]}/contacts?\$select=$_select&\$top=500", token)) {
           raw[c["id"]] = c;
+          photoUrls[c["id"]] ??= "https://graph.microsoft.com/v1.0/me/contactFolders/${f["id"]}/contacts/${c["id"]}/photo/\$value";
         }
       }
     } catch (e) {
@@ -189,7 +235,8 @@ class OutlookContacts {
         ),
       ));
     }
-    Logger.info("Outlook contacts: ${result.length} contacts (of ${raw.length} in Outlook)");
+    await _attachPhotos(result, photoUrls, token);
+    Logger.info("Outlook contacts: ${result.length} contacts (of ${raw.length} in Outlook), ${result.where((c) => c.avatar != null).length} with photos");
     final now = DateTime.now().millisecondsSinceEpoch;
     await ss.prefs.setInt(_kLastSync, now);
     lastSyncRx.value = now;
