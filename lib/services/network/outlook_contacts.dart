@@ -36,6 +36,10 @@ class OutlookContacts {
   static String? get account => ss.prefs.getString(_kAccount);
   /// observable account name for the settings UI (null = not connected)
   static final RxnString accountRx = RxnString(connected ? account : null);
+
+  static const _kLastSync = "outlookLastSync";
+  /// When contacts last came down from Microsoft Graph (ms since epoch), for the settings tile.
+  static final RxnInt lastSyncRx = RxnInt(ss.prefs.getInt(_kLastSync));
   static bool get connected => (ss.prefs.getString(_kRefreshToken) ?? "").isNotEmpty;
 
   static String _authority(String tenant) => "https://login.microsoftonline.com/${tenant.isEmpty ? "organizations" : tenant}/oauth2/v2.0";
@@ -186,6 +190,9 @@ class OutlookContacts {
       ));
     }
     Logger.info("Outlook contacts: ${result.length} contacts (of ${raw.length} in Outlook)");
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await ss.prefs.setInt(_kLastSync, now);
+    lastSyncRx.value = now;
     return result;
   }
 }

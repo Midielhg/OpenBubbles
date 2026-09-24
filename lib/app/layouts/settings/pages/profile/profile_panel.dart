@@ -588,7 +588,8 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                         title: "Outlook / Exchange",
                         subtitle: OutlookContacts.accountRx.value == null
                             ? "Not connected. Add your Microsoft 365 contacts"
-                            : "Connected as ${OutlookContacts.accountRx.value}",
+                            : "Connected as ${OutlookContacts.accountRx.value}\nSyncs automatically${OutlookContacts.lastSyncRx.value == null ? "" : " \u00b7 last synced ${buildDate(DateTime.fromMillisecondsSinceEpoch(OutlookContacts.lastSyncRx.value!))}"}",
+                        isThreeLine: OutlookContacts.accountRx.value != null,
                         onTap: () => showOutlookContactsFlow(context),
                         trailing: const NextButton(),
                       )),

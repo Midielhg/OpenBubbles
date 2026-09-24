@@ -2687,6 +2687,21 @@ class RustPushService extends GetxService {
     return !elapsed;
   }
 
+  Timer? _contactSyncTimer;
+
+  /// Keeps contacts current while the app stays open: an incremental iCloud/CardDAV sync plus a fresh
+  /// Outlook / Exchange pull every 30 minutes (desktop has no system address book to watch).
+  void _startPeriodicContactSync() {
+    _contactSyncTimer ??= Timer.periodic(const Duration(minutes: 30), (_) async {
+      try {
+        final changed = await cs.refreshContacts();
+        Logger.info("Periodic contact sync: ${cs.contacts.length} contacts, changed $changed");
+      } catch (e, s) {
+        Logger.error("Periodic contact sync failed", error: e, trace: s);
+      }
+    });
+  }
+
   Future<void> _syncNetworkContactsOnLaunch() async {
     // iCloud services come up asynchronously after restore; give them a few chances
     for (int attempt = 1; attempt <= 6; attempt++) {
@@ -2712,6 +2727,7 @@ class RustPushService extends GetxService {
       } catch (e, s) {
         Logger.error("Contact sync failed", error: e, trace: s);
       }
+      _startPeriodicContactSync();
       return;
     }
   }
