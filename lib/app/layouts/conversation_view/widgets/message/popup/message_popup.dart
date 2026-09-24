@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import 'package:bluebubbles/app/components/custom_text_editing_controllers.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/layouts/chat_creator/chat_creator.dart';
 import 'package:bluebubbles/app/layouts/conversation_details/dialogs/timeframe_picker.dart';
 import 'package:bluebubbles/app/layouts/conversation_view/widgets/message/attachment/attachment_holder.dart';
@@ -82,7 +83,7 @@ class _MessagePopupState extends OptimizedState<MessagePopup> with SingleTickerP
     duration: const Duration(milliseconds: 150),
     animationBehavior: AnimationBehavior.preserve,
   );
-  final double itemHeight = kIsDesktop || kIsWeb ? 56 : 48;
+  final double itemHeight = macLook ? 36 : kIsDesktop || kIsWeb ? 56 : 48;
 
   List<Message> reactions = [];
   late double messageOffset = Get.height - widget.childPosition.dy - widget.size.height;
@@ -348,7 +349,9 @@ class _MessagePopupState extends OptimizedState<MessagePopup> with SingleTickerP
                           child: currentlySelectedReaction == "init"
                               ? const SizedBox(height: 80)
                               : ClipShadowPath(
-                                  shadow: iOS
+                                  shadow: macLook
+                                      ? Glass.shadow(context).first
+                                      : iOS
                                       ? BoxShadow(
                                           color: context.theme.colorScheme.properSurface.withAlpha(iOS ? 150 : 255).lightenOrDarken(iOS ? 0 : 10))
                                       : BoxShadow(
@@ -360,10 +363,10 @@ class _MessagePopupState extends OptimizedState<MessagePopup> with SingleTickerP
                                     isFromMe: message.isFromMe!,
                                   ),
                                   child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                    filter: macLook ? Glass.filter(24) : ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                                     child: Container(
                                       padding: const EdgeInsets.all(5).add(const EdgeInsets.only(bottom: 15)),
-                                      color: context.theme.colorScheme.properSurface.lightenOrDarken(iOS ? 0 : 10),
+                                      color: macLook ? Glass.fill(context, opacity: 0.82) : context.theme.colorScheme.properSurface.lightenOrDarken(iOS ? 0 : 10),
                                       width: emojiPickerSize.toDouble(),
                                       child: ShaderMask(
                                         shaderCallback: (Rect rect) {
@@ -1335,6 +1338,47 @@ class _MessagePopupState extends OptimizedState<MessagePopup> with SingleTickerP
   Widget buildDetailsMenu(BuildContext context) {
 
     List<DetailsMenuActionWidget> allActions = _allActions;
+
+    if (macLook) {
+      final shown = allActions.cast<CustomDetailsMenuActionWidget>().sublist(0, numberToShow - 1);
+      final rest = allActions.sublist(numberToShow - 1);
+      return SizedBox(
+        width: 250,
+        child: GlassSurface(
+          borderRadius: BorderRadius.circular(14),
+          blur: 24,
+          fillOpacity: 0.82,
+          padding: const EdgeInsets.all(5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...shown,
+              CustomDetailsMenuActionWidget(
+                onTap: () => Get.dialog(
+                  Center(
+                    child: SizedBox(
+                      width: 280,
+                      child: GlassSurface(
+                        borderRadius: BorderRadius.circular(14),
+                        blur: 24,
+                        fillOpacity: 0.9,
+                        padding: const EdgeInsets.all(5),
+                        child: Material(type: MaterialType.transparency, child: Column(mainAxisSize: MainAxisSize.min, children: rest)),
+                      ),
+                    ),
+                  ),
+                  barrierColor: Colors.black.withOpacity(0.08),
+                  name: 'Popup Menu',
+                ),
+                title: 'More...',
+                iosIcon: cupertino.CupertinoIcons.ellipsis_circle,
+                nonIosIcon: Icons.more_vert,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10.0),

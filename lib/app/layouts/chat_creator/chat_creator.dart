@@ -436,7 +436,7 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
 
   Widget _buildToRow(BuildContext context) {
     return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
+                padding: macLook ? const EdgeInsets.symmetric(horizontal: 8.0) : const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
                 child: Row(
                   children: [
                     Text(
@@ -576,6 +576,10 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
                                   decoration: InputDecoration(
                                     border: InputBorder.none,
                                     fillColor: Colors.transparent,
+                                    // compact in the macOS toolbar, where the default padding pushed the text
+                                    // below the bar's bottom edge
+                                    isDense: macLook,
+                                    contentPadding: macLook ? const EdgeInsets.symmetric(vertical: 8) : null,
                                     hintText: "Enter a name, number, or email...",
                                     hintStyle: context.theme.textTheme.bodyMedium!
                                         .copyWith(color: context.theme.colorScheme.outline),
@@ -612,9 +616,9 @@ class ChatCreatorState extends OptimizedState<ChatCreator> {
             : context.theme.colorScheme.background,
         appBar: macLook
             ? PreferredSize(
-                preferredSize: Size(ns.width(context), 76),
+                preferredSize: Size(ns.width(context), 84),
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: Glass.border(context), width: 0.5)),
                   ),

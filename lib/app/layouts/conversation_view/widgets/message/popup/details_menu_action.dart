@@ -4,6 +4,7 @@ import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/backend/settings/settings_service.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -169,6 +170,7 @@ class CustomDetailsMenuActionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isDisabled = shouldDisable ?? false;
+    if (macLook) return _MacMenuRow(title: title, icon: iosIcon, onTap: isDisabled ? null : onTap);
     Color color = isDisabled ? Colors.grey : context.theme.colorScheme.properOnSurface;
     return Material(
       color: Colors.transparent,
@@ -207,4 +209,59 @@ class DetailsMenuActionWidget extends CustomDetailsMenuActionWidget {
             iosIcon: _actionToIcon[action]!.$1,
             nonIosIcon: _actionToIcon[action]!.$2,
             shouldDisable: shouldDisableBtn);
+}
+
+/// macOS context-menu row: small icon then label, compact, and the hovered row turns into an accent
+/// pill with white text like the other redesigned menus.
+class _MacMenuRow extends StatefulWidget {
+  const _MacMenuRow({required this.title, required this.icon, this.onTap});
+  final String title;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  State<_MacMenuRow> createState() => _MacMenuRowState();
+}
+
+class _MacMenuRowState extends State<_MacMenuRow> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    final highlighted = _hover && enabled;
+    final ink = !enabled
+        ? context.theme.colorScheme.properOnSurface.withOpacity(0.35)
+        : highlighted
+            ? Colors.white
+            : context.theme.colorScheme.properOnSurface;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: highlighted ? context.theme.colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Row(children: [
+            Icon(widget.icon, size: 16, color: highlighted ? Colors.white : (enabled ? macChromeInk(context) : ink)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.theme.textTheme.bodyMedium!.copyWith(fontSize: 13.5, color: ink)),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
