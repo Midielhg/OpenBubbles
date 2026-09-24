@@ -2,6 +2,10 @@
 
 A personal fork of [OpenBubbles](https://github.com/OpenBubbles/openbubbles-app), focused on the Windows desktop app.
 
+![OpenBubbles on Windows with the macOS Tahoe style UI](docs/screenshot.png)
+
+<sub>Screenshot taken in Redacted Mode, so names and messages are placeholders.</sub>
+
 **What's different from upstream**
 
 - macOS Tahoe style desktop UI: a floating sidebar card, Liquid Glass toolbar buttons, an inline search field, and the macOS Light/Dark themes.
