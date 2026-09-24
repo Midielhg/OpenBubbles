@@ -6,6 +6,12 @@ A personal fork of [OpenBubbles](https://github.com/OpenBubbles/openbubbles-app)
 
 <sub>Screenshot taken in Redacted Mode, so names and messages are placeholders.</sub>
 
+**Download**
+
+Get the latest Windows installer (`OpenBubbles-Desktop-Setup-x.y.z.exe`) from [Releases](https://github.com/Midielhg/OpenBubbles/releases). It installs for your user account, with no admin rights needed. The installer isn't code-signed, so Windows SmartScreen may warn you: choose **More info → Run anyway**.
+
+To register with iMessage you need your own Mac running [mac-registration-provider](https://github.com/beeper/mac-registration-provider) in relay mode (see below). Nothing in this app uses anyone else's account or Mac.
+
 **What's different from upstream**
 
 - macOS Tahoe style desktop UI: a floating sidebar card, Liquid Glass toolbar buttons, an inline search field, and the macOS Light/Dark themes.
