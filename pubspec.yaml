@@ -107,9 +107,8 @@ dependencies:
   launch_at_startup: ^0.3.1
   local_auth: ^2.2.0
   local_notifier:
-    git:
-      url: https://github.com/BlueBubblesApp/local_notifier.git
-      ref: 7526556fe2beb5c61ddede34e1992726907cd7ae
+    # BlueBubbles' fork (7526556), vendored to add an inline reply box to Windows notifications
+    path: packages/local_notifier
   maps_launcher: # gradle namespace issue
     git:
       url: https://github.com/pikaju/flutter-maps-launcher.git

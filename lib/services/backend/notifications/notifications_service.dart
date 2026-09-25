@@ -440,19 +440,32 @@ class NotificationsService extends GetxService {
         }
       }
       if (toasted) return;
+      final replyable = Platform.isWindows;
       toast = LocalNotification(
         imagePath: path,
         title: isGroup && count == 1 && !isReaction && !message.isGroupEvent ? "$title: $contactName" : title,
         subtitle: "$count",
         body: sender != null && count == 1 ? body.split("$sender: ")[1] : body,
         duration: LocalNotificationDuration.long,
+        replyPlaceholder: replyable ? "Reply to $title" : null,
         actions: notifications[guid]!.isNotEmpty
-            ? showMarkRead
+            ? showMarkRead && !replyable
                 ? [LocalNotificationAction(text: "Mark ${notificationCounts[guid]!} Messages Read")]
                 : []
-            : nActions,
+            // Windows allows 5 buttons and Send takes one; the reply replaces Mark Read
+            : replyable
+                ? nActions.where((a) => a.text != "Mark Read").take(4).toList()
+                : nActions,
       );
       notifications[guid]!.add(toast);
+      if (replyable) {
+        final replyActions = actions.where((a) => a != "Mark Read").take(4).toList();
+        toast.onReply = (text) => _replyFromNotification(guid, text, toast, path);
+        // indexes now count from the list without Mark Read
+        actions
+          ..clear()
+          ..addAll(replyActions);
+      }
 
       toast.onClick = () async {
         notifications[guid]!.remove(toast);
@@ -538,9 +551,11 @@ class NotificationsService extends GetxService {
         title: title,
         body: "${notificationCounts[guid]!} messages",
         duration: LocalNotificationDuration.short,
-        actions: showMarkRead ? [LocalNotificationAction(text: "Mark Read")] : [],
+        replyPlaceholder: Platform.isWindows ? "Reply to $title" : null,
+        actions: showMarkRead && !Platform.isWindows ? [LocalNotificationAction(text: "Mark Read")] : [],
       );
       notifications[guid]!.add(toast);
+      if (Platform.isWindows) toast.onReply = (text) => _replyFromNotification(guid, text, toast, path);
 
       toast.onClick = () async {
         notifications[guid]!.remove(toast);
@@ -601,6 +616,30 @@ class NotificationsService extends GetxService {
     }
 
     await toast.show();
+  }
+
+  /// Sends the text typed into a Windows notification's reply box, then marks the chat read.
+  Future<void> _replyFromNotification(String guid, String text, LocalNotification? toast, String avatarPath) async {
+    notifications[guid]?.remove(toast);
+    notificationCounts[guid] = 0;
+    if (await File(avatarPath).exists()) await File(avatarPath).delete();
+    if (text.trim().isEmpty) return;
+    final chat = Chat.findOne(guid: guid);
+    if (chat == null) return;
+    outq.queue(OutgoingItem(
+      type: QueueType.sendMessage,
+      chat: chat,
+      message: Message(
+        text: text.trim(),
+        dateCreated: DateTime.now(),
+        hasAttachments: false,
+        isFromMe: true,
+        handleId: 0,
+      ),
+      customArgs: {'notifReply': true},
+    ));
+    chat.toggleHasUnread(false);
+    EventDispatcher().emit('refresh', null);
   }
 
   Future<void> showSummaryNotifDesktop(int count, Iterable<String> _chats, bool showMarkRead) async {

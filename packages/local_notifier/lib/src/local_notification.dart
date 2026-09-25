@@ -1,0 +1,161 @@
+import 'package:flutter/material.dart';
+import 'package:local_notifier/src/local_notification_action.dart';
+import 'package:local_notifier/src/local_notification_close_reason.dart';
+import 'package:local_notifier/src/local_notification_duration.dart';
+import 'package:local_notifier/src/local_notification_listener.dart';
+import 'package:local_notifier/src/local_notifier.dart';
+import 'package:uuid/uuid.dart';
+
+class LocalNotification with LocalNotificationListener {
+  LocalNotification({
+    String? identifier,
+    required this.title,
+    this.subtitle,
+    this.body,
+    this.imagePath,
+    this.silent = false,
+    this.duration = LocalNotificationDuration.system,
+    this.actions,
+    this.replyPlaceholder,
+  }) {
+    if (identifier != null) {
+      this.identifier = identifier;
+    }
+    localNotifier.addListener(this);
+  }
+
+  factory LocalNotification.fromJson(Map<String, dynamic> json) {
+    List<LocalNotificationAction>? actions;
+
+    if (json['actions'] != null) {
+      Iterable<dynamic> l = json['actions'] as List;
+      actions = l
+          .map(
+            (item) =>
+                LocalNotificationAction.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    }
+
+    return LocalNotification(
+      identifier: json['identifier'] as String?,
+      title: json['title'] as String,
+      subtitle: json['subtitle'] as String?,
+      body: json['body'] as String?,
+      imagePath: json['imagePath'] as String?,
+      silent: json['silent'] as bool,
+      duration: LocalNotificationDuration.values.firstWhere(
+        (e) => e.toString() == json['duration'],
+        orElse: () => LocalNotificationDuration.system,
+      ),
+      actions: actions,
+    );
+  }
+
+  String identifier = const Uuid().v4();
+
+  /// Representing the title of the notification.
+  String title;
+
+  /// Representing the subtitle of the notification.
+  String? subtitle;
+
+  /// Representing the body of the notification.
+  String? body;
+
+  /// Representing the image path of the notification (Windows only).
+  String? imagePath;
+
+  /// Representing whether the notification is silent (Windows only).
+  bool silent;
+
+  /// Representing the duration of the notification (Windows only).
+  LocalNotificationDuration duration;
+
+  /// Representing the actions of the notification.
+  List<LocalNotificationAction>? actions;
+
+  /// When set, shows an inline reply box with this placeholder and a Send button (Windows only).
+  String? replyPlaceholder;
+
+  VoidCallback? onShow;
+  ValueChanged<LocalNotificationCloseReason>? onClose;
+  VoidCallback? onClick;
+  ValueChanged<int>? onClickAction;
+  ValueChanged<String>? onReply;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'identifier': identifier,
+      'title': title,
+      'subtitle': subtitle ?? '',
+      'body': body ?? '',
+      'imagePath': imagePath ?? '',
+      'silent': silent,
+      'duration': duration.toString(),
+      'actions': (actions ?? []).map((e) => e.toJson()).toList(),
+      'replyPlaceholder': replyPlaceholder ?? '',
+    }..removeWhere((key, value) => value == null);
+  }
+
+  /// Immediately shows the notification to the user
+  Future<void> show() {
+    return localNotifier.notify(this);
+  }
+
+  /// Closes the notification immediately.
+  Future<void> close() {
+    return localNotifier.close(this);
+  }
+
+  /// Destroys the notification immediately.
+  Future<void> destroy() {
+    return localNotifier.destroy(this);
+  }
+
+  @override
+  void onLocalNotificationShow(LocalNotification notification) {
+    if (identifier != notification.identifier || onShow == null) {
+      return;
+    }
+    onShow!();
+  }
+
+  @override
+  void onLocalNotificationClose(
+    LocalNotification notification,
+    LocalNotificationCloseReason closeReason,
+  ) {
+    if (identifier != notification.identifier || onClose == null) {
+      return;
+    }
+    onClose!(closeReason);
+  }
+
+  @override
+  void onLocalNotificationClick(LocalNotification notification) {
+    if (identifier != notification.identifier || onClick == null) {
+      return;
+    }
+    onClick!();
+  }
+
+  @override
+  void onLocalNotificationClickAction(
+    LocalNotification notification,
+    int actionIndex,
+  ) {
+    if (identifier != notification.identifier || onClickAction == null) {
+      return;
+    }
+    onClickAction!(actionIndex);
+  }
+
+  @override
+  void onLocalNotificationReply(LocalNotification notification, String text) {
+    if (identifier != notification.identifier || onReply == null) {
+      return;
+    }
+    onReply!(text);
+  }
+}

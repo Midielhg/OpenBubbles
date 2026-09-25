@@ -2018,11 +2018,9 @@ packages:
   local_notifier:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "7526556fe2beb5c61ddede34e1992726907cd7ae"
-      resolved-ref: "7526556fe2beb5c61ddede34e1992726907cd7ae"
-      url: "https://github.com/BlueBubblesApp/local_notifier.git"
-    source: git
+      path: "packages/local_notifier"
+      relative: true
+    source: path
     version: "0.1.6"
   logger:
     dependency: "direct main"
