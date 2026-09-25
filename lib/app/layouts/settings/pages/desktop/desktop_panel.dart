@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:animated_size_and_fade/animated_size_and_fade.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
+import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/app/components/avatars/contact_avatar_widget.dart';
 import 'package:bluebubbles/database/models.dart';
@@ -12,6 +13,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'package:reorderables/reorderables.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -24,6 +26,28 @@ class DesktopPanel extends StatefulWidget {
 class _DesktopPanelState extends OptimizedState<DesktopPanel> {
   final RxList<bool> showButtons = RxList<bool>.filled(ReactionTypes.toList().length + 1, false);
   final int maxActions = Platform.isWindows ? 5 : ss.settings.actionList.length; // Don't limit actions on Linux
+
+  /// A sample message notification with the same layout real ones use: reply box plus the selected
+  /// reaction buttons. Nothing typed into it is sent.
+  Future<void> _sendTestNotification() async {
+    final papi = ss.settings.enablePrivateAPI.value;
+    final reactions = ss.settings.actionList
+        .whereIndexed((i, e) => ss.settings.selectedActionIndices.contains(i) && e != "Mark Read" && papi)
+        .map((e) => ReactionTypes.reactionToEmoji[e])
+        .whereNotNull()
+        .take(4)
+        .toList();
+    final toast = LocalNotification(
+      title: "OpenBubbles",
+      body: "This is a test notification. Type a reply below to try it.",
+      duration: LocalNotificationDuration.long,
+      replyPlaceholder: "Reply to OpenBubbles",
+      actions: reactions.map((r) => LocalNotificationAction(text: r)).toList(),
+    );
+    toast.onReply = (text) => showSnackbar("Test notification", text.trim().isEmpty ? "Reply box works (nothing typed)" : "You replied: \"${text.trim()}\" (not sent)");
+    toast.onClickAction = (i) => showSnackbar("Test notification", "You tapped ${reactions[i]}");
+    await toast.show();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +181,19 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
               SettingsSection(
                   backgroundColor: tileColor,
                   children: [
+                    if (Platform.isWindows)
+                      SettingsTile(
+                        title: "Send Test Notification",
+                        subtitle: "Preview how message notifications look, including the reply box",
+                        leading: const SettingsLeadingIcon(
+                          iosIcon: CupertinoIcons.bell_fill,
+                          materialIcon: Icons.notifications,
+                          containerColor: Colors.redAccent,
+                        ),
+                        trailing: const NextButton(),
+                        onTap: () => _sendTestNotification(),
+                      ),
+                    if (Platform.isWindows) const SettingsDivider(),
                     SettingsTile(
                       title: "Actions",
                       subtitle:
