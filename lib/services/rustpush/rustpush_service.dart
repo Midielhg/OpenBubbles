@@ -3488,6 +3488,7 @@ class RustPushService extends GetxService {
           url: value.url, 
           key: base64.decode(value.key).sublist(1), 
           size: 0,
+          alternates: const [],
         ), path: path);
         try {
           await for (final event in stream) {

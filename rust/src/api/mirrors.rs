@@ -412,7 +412,8 @@ pub struct DartMMCSFile {
     pub object: String,
     pub url: String,
     pub key: Vec<u8>,
-    pub size: usize
+    pub size: usize,
+    pub alternates: Vec<MMCSFile>,
 }
 
 #[frb(mirror(SharedAlbum))]

@@ -3943,6 +3943,7 @@ class MMCSFile {
   final String url;
   final Uint8List key;
   final int size;
+  final List<MMCSFile> alternates;
 
   const MMCSFile({
     required this.signature,
@@ -3950,6 +3951,7 @@ class MMCSFile {
     required this.url,
     required this.key,
     required this.size,
+    required this.alternates,
   });
 
   @override
@@ -3958,7 +3960,8 @@ class MMCSFile {
       object.hashCode ^
       url.hashCode ^
       key.hashCode ^
-      size.hashCode;
+      size.hashCode ^
+      alternates.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -3969,7 +3972,8 @@ class MMCSFile {
           object == other.object &&
           url == other.url &&
           key == other.key &&
-          size == other.size;
+          size == other.size &&
+          alternates == other.alternates;
 }
 
 class MMCSTransferProgress {

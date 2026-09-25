@@ -1755,6 +1755,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MessageTarget> dco_decode_list_message_target(dynamic raw);
 
   @protected
+  List<MMCSFile> dco_decode_list_mmcs_file(dynamic raw);
+
+  @protected
   List<PasswordManagerAltDomain> dco_decode_list_password_manager_alt_domain(
       dynamic raw);
 
@@ -4435,6 +4438,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   List<MessageTarget> sse_decode_list_message_target(
       SseDeserializer deserializer);
+
+  @protected
+  List<MMCSFile> sse_decode_list_mmcs_file(SseDeserializer deserializer);
 
   @protected
   List<PasswordManagerAltDomain> sse_decode_list_password_manager_alt_domain(
@@ -7282,6 +7288,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_message_target(
       List<MessageTarget> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_mmcs_file(List<MMCSFile> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_password_manager_alt_domain(

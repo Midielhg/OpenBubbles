@@ -15407,6 +15407,7 @@ const _: fn() = || {
         let _: String = MMCSFile.url;
         let _: Vec<u8> = MMCSFile.key;
         let _: usize = MMCSFile.size;
+        let _: Vec<crate::api::api::MMCSFile> = MMCSFile.alternates;
     }
     {
         let MonogramData = None::<crate::api::api::MonogramData>.unwrap();
@@ -18971,6 +18972,18 @@ impl SseDecode for Vec<crate::api::api::MessageTarget> {
     }
 }
 
+impl SseDecode for Vec<crate::api::api::MMCSFile> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::api::MMCSFile>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::api::PasswordManagerAltDomain> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -20091,12 +20104,14 @@ impl SseDecode for crate::api::api::MMCSFile {
         let mut var_url = <String>::sse_decode(deserializer);
         let mut var_key = <Vec<u8>>::sse_decode(deserializer);
         let mut var_size = <usize>::sse_decode(deserializer);
+        let mut var_alternates = <Vec<crate::api::api::MMCSFile>>::sse_decode(deserializer);
         return crate::api::api::MMCSFile {
             signature: var_signature,
             object: var_object,
             url: var_url,
             key: var_key,
             size: var_size,
+            alternates: var_alternates,
         };
     }
 }
@@ -26604,6 +26619,7 @@ impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::api::MMCSFile> {
             self.0.url.into_into_dart().into_dart(),
             self.0.key.into_into_dart().into_dart(),
             self.0.size.into_into_dart().into_dart(),
+            self.0.alternates.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -31153,6 +31169,16 @@ impl SseEncode for Vec<crate::api::api::MessageTarget> {
     }
 }
 
+impl SseEncode for Vec<crate::api::api::MMCSFile> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::api::MMCSFile>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::api::PasswordManagerAltDomain> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -32004,6 +32030,7 @@ impl SseEncode for crate::api::api::MMCSFile {
         <String>::sse_encode(self.url, serializer);
         <Vec<u8>>::sse_encode(self.key, serializer);
         <usize>::sse_encode(self.size, serializer);
+        <Vec<crate::api::api::MMCSFile>>::sse_encode(self.alternates, serializer);
     }
 }
 

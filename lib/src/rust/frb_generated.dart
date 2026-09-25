@@ -12754,6 +12754,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MMCSFile> dco_decode_list_mmcs_file(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mmcs_file).toList();
+  }
+
+  @protected
   List<PasswordManagerAltDomain> dco_decode_list_password_manager_alt_domain(
       dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -13547,14 +13553,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MMCSFile dco_decode_mmcs_file(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return MMCSFile(
       signature: dco_decode_list_prim_u_8_strict(arr[0]),
       object: dco_decode_String(arr[1]),
       url: dco_decode_String(arr[2]),
       key: dco_decode_list_prim_u_8_strict(arr[3]),
       size: dco_decode_CastedPrimitive_usize(arr[4]),
+      alternates: dco_decode_list_mmcs_file(arr[5]),
     );
   }
 
@@ -20105,6 +20112,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MMCSFile> sse_decode_list_mmcs_file(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MMCSFile>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mmcs_file(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<PasswordManagerAltDomain> sse_decode_list_password_manager_alt_domain(
       SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -21139,12 +21158,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_url = sse_decode_String(deserializer);
     var var_key = sse_decode_list_prim_u_8_strict(deserializer);
     var var_size = sse_decode_CastedPrimitive_usize(deserializer);
+    var var_alternates = sse_decode_list_mmcs_file(deserializer);
     return MMCSFile(
         signature: var_signature,
         object: var_object,
         url: var_url,
         key: var_key,
-        size: var_size);
+        size: var_size,
+        alternates: var_alternates);
   }
 
   @protected
@@ -27793,6 +27814,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_mmcs_file(
+      List<MMCSFile> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mmcs_file(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_password_manager_alt_domain(
       List<PasswordManagerAltDomain> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -28584,6 +28615,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.url, serializer);
     sse_encode_list_prim_u_8_strict(self.key, serializer);
     sse_encode_CastedPrimitive_usize(self.size, serializer);
+    sse_encode_list_mmcs_file(self.alternates, serializer);
   }
 
   @protected
