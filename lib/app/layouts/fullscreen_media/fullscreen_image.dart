@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:bluebubbles/app/layouts/fullscreen_media/dialogs/metadata_dialog.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/utils/share.dart';
@@ -101,7 +102,7 @@ class _FullscreenImageState extends OptimizedState<FullscreenImage> with Automat
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: macLook ? Colors.transparent : Colors.black,
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: widget.showInteractions && showOverlay && material
           ? Row(
@@ -139,7 +140,7 @@ class _FullscreenImageState extends OptimizedState<FullscreenImage> with Automat
             )
           : null,
       extendBody: true,
-      bottomNavigationBar: !widget.showInteractions || !showOverlay || material
+      bottomNavigationBar: macLook || !widget.showInteractions || !showOverlay || material
           ? null
           : Theme(
               data: context.theme.copyWith(
@@ -219,13 +220,14 @@ class _FullscreenImageState extends OptimizedState<FullscreenImage> with Automat
           children: [
             bytes != null
                 ? Padding(
-                    padding: EdgeInsets.only(bottom: widget.showInteractions ? 60.0 : 0),
+                    padding: EdgeInsets.only(bottom: widget.showInteractions && !macLook ? 60.0 : 0),
                     child: PhotoView(
                       gaplessPlayback: true,
                       minScale: PhotoViewComputedScale.contained,
                       maxScale: PhotoViewComputedScale.contained * 10,
                       controller: controller,
                       imageProvider: MemoryImage(bytes!),
+                      backgroundDecoration: macLook ? const BoxDecoration(color: Colors.transparent) : null,
                       loadingBuilder: (BuildContext context, ImageChunkEvent? ev) {
                         return Center(child: buildProgressIndicator(context));
                       },

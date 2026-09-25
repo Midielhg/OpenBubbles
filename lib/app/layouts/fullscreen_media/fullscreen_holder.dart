@@ -1,6 +1,9 @@
 import 'package:bluebubbles/app/components/circle_progress_bar.dart';
+import 'package:bluebubbles/app/components/glass/glass.dart';
+import 'package:flutter/gestures.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
-import 'package:bluebubbles/utils/logger/logger.dart';
+import 'package:bluebubbles/app/layouts/fullscreen_media/dialogs/metadata_dialog.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/app/layouts/fullscreen_media/fullscreen_image.dart';
 import 'package:bluebubbles/app/layouts/fullscreen_media/fullscreen_video.dart';
@@ -71,6 +74,91 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
     super.dispose();
   }
 
+  bool get _hasPrev => currentIndex > 0;
+  bool get _hasNext => currentIndex < attachments.length - 1;
+
+  void _go(int delta) {
+    final target = currentIndex + delta;
+    if (target < 0 || target >= attachments.length) return;
+    controller.animateToPage(target, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+  }
+
+  /// macOS (Quick Look style): floating glass toolbar and edge arrows over the media.
+  Widget _macChrome(BuildContext context) {
+    final current = attachments[currentIndex.clamp(0, attachments.length - 1)];
+    final message = current.message.target;
+    final sender = message == null
+        ? null
+        : (message.isFromMe ?? false)
+            ? "You"
+            : (message.handle ?? message.getHandle())?.displayName;
+    final date = message?.dateCreated == null ? null : intl.DateFormat.yMMMd().add_jm().format(message!.dateCreated!);
+    final title = [
+      if (widget.showInteractions && widget.currentChat != null && attachments.length > 1) "${currentIndex + 1} of ${attachments.length}",
+      if (sender != null) sender,
+      if (date != null) date,
+    ].join("  \u00b7  ");
+    final content = as.getContent(current, path: current.guid == null ? current.sourcePath : null);
+
+    return IgnorePointer(
+      ignoring: !showAppBar,
+      child: AnimatedOpacity(
+        opacity: showAppBar ? 1 : 0,
+        duration: const Duration(milliseconds: 160),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 34,
+              left: 20,
+              right: 20,
+              child: Row(
+                children: [
+                  GlassCircleButton(icon: CupertinoIcons.xmark, iconSize: 16, tooltip: "Close", onTap: () => Navigator.of(context).pop()),
+                  const Spacer(),
+                  if (title.isNotEmpty)
+                    GlassSurface(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      child: Text(title, style: context.theme.textTheme.bodyMedium!.copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+                    ),
+                  const Spacer(),
+                  if (widget.showInteractions) ...[
+                    GlassCircleButton(
+                      icon: CupertinoIcons.info,
+                      iconSize: 17,
+                      tooltip: "Info",
+                      onTap: () => showMetadataDialog(current, context),
+                    ),
+                    const SizedBox(width: 8),
+                    GlassCircleButton(
+                      icon: CupertinoIcons.arrow_down_to_line,
+                      iconSize: 17,
+                      tooltip: "Save",
+                      onTap: content is PlatformFile ? () => as.saveToDisk(content) : null,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_hasPrev)
+              Positioned(
+                left: 20,
+                top: 0,
+                bottom: 0,
+                child: Center(child: GlassCircleButton(icon: CupertinoIcons.chevron_left, size: 44, iconSize: 18, tooltip: "Previous", onTap: () => _go(-1))),
+              ),
+            if (_hasNext)
+              Positioned(
+                right: 20,
+                top: 0,
+                bottom: 0,
+                child: Center(child: GlassCircleButton(icon: CupertinoIcons.chevron_right, size: 44, iconSize: 18, tooltip: "Next", onTap: () => _go(1))),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return TitleBarWrapper(
@@ -89,7 +177,9 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
             GoBackIntent: GoBackAction(context),
           },
           child: Scaffold(
-            appBar: !iOS || !showAppBar
+            appBar: macLook
+                ? null
+                : !iOS || !showAppBar
                 // AppBar placeholder to prevent shifting of content when toggling the app bar
                 ? PreferredSize(preferredSize: const Size.fromHeight(56), child: Container())
                 : AppBar(
@@ -124,15 +214,26 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
                         ? SystemUiOverlayStyle.light
                         : SystemUiOverlayStyle.dark,
                   ),
-            backgroundColor: Colors.black,
+            backgroundColor: macLook ? const Color(0xFF111113) : Colors.black,
             body: FocusScope(
               child: Focus(
                 focusNode: focusNode,
                 autofocus: true,
                 onKeyEvent: (node, event) {
-                  Logger.info(
-                      "Got device label ${event.deviceType.label}, physical key ${event.physicalKey.toString()}, logical key ${event.logicalKey.toString()}",
-                      tag: "RawKeyboardListener");
+                  if (macLook) {
+                    if (event is KeyUpEvent) return KeyEventResult.ignored;
+                    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                      _go(1);
+                      return KeyEventResult.handled;
+                    } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                      _go(-1);
+                      return KeyEventResult.handled;
+                    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                      Navigator.of(context).pop();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  }
                   if (event.physicalKey.debugName == "Arrow Right") {
                     if (ss.settings.fullscreenViewerSwipeDir.value == SwipeDirection.RIGHT) {
                       controller.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
@@ -151,17 +252,28 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
                   }
                   return KeyEventResult.ignored;
                 },
-                child: PageView.builder(
+                child: Stack(children: [
+                  // mouse and trackpad can drag between items too (Flutter only drags with touch by default)
+                  ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                  }),
+                  child: PageView.builder(
                   physics: physics ??
                       (attachments.length == 1
                           ? const NeverScrollableScrollPhysics()
                           : ThemeSwitcher.getScrollPhysics()),
-                  reverse: ss.settings.fullscreenViewerSwipeDir.value == SwipeDirection.RIGHT,
+                  reverse: !macLook && ss.settings.fullscreenViewerSwipeDir.value == SwipeDirection.RIGHT,
                   itemCount: attachments.length,
                   onPageChanged: (int val) {
                     widget.videoController?.player.pause();
                     setState(() {
                       currentIndex = val;
+                      // a zoomed page locks paging; the new page starts unzoomed
+                      physics = null;
                     });
                   },
                   controller: controller,
@@ -303,6 +415,9 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
                     }
                   },
                 ),
+                  ),
+                  if (macLook) _macChrome(context),
+                ]),
               ),
             ),
           ),
