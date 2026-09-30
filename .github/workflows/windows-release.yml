@@ -26,6 +26,8 @@ jobs:
     env:
       # short cargo target dir: vendored OpenSSL's perl Configure fails past MAX_PATH
       CARGOKIT_TEMP_DIR_OVERRIDE: C:\obk
+      # vendored OpenSSL needs native Windows Perl; Git Bash's msys perl can't configure it
+      OPENSSL_SRC_PERL: C:\Strawberry\perl\bin\perl.exe
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: core.longpaths
       GIT_CONFIG_VALUE_0: "true"
@@ -91,12 +93,13 @@ jobs:
           done
 
       - name: Build app
-        shell: bash
+        # PowerShell, not Git Bash: keeps Strawberry Perl and NASM ahead of Git's msys tools on PATH
+        shell: pwsh
         run: |
+          $env:PATH = "C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Program Files\NASM;$env:PATH"
+          perl -v | Select-Object -First 2
           flutter pub get
-          flutter build windows --release \
-            --build-name=${{ steps.version.outputs.version }} \
-            --build-number=${{ steps.version.outputs.build }}
+          flutter build windows --release --build-name=${{ steps.version.outputs.version }} --build-number=${{ steps.version.outputs.build }}
 
       - name: Build installer
         shell: pwsh
