@@ -975,6 +975,13 @@ HRESULT WinToast::setImageFieldHelper(_In_ IXmlDocument *xml, _In_ const std::ws
                         Util::setNodeStringValue(imagePath, editedNode.Get(), xml);
                     }
                 }
+                // OpenBubbles: show the sender's photo as the round avatar beside the text (modern
+                // ToastGeneric layout, which the reply box and actions switch the toast to)
+                ComPtr<IXmlElement> imageElement;
+                if (SUCCEEDED(hr) && SUCCEEDED(node.As(&imageElement))) {
+                    imageElement->SetAttribute(WinToastStringWrapper(L"placement").Get(), WinToastStringWrapper(L"appLogoOverride").Get());
+                    imageElement->SetAttribute(WinToastStringWrapper(L"hint-crop").Get(), WinToastStringWrapper(L"circle").Get());
+                }
             }
         }
     }

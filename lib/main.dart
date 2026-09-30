@@ -534,7 +534,7 @@ class _HomeState extends OptimizedState<Home> with WidgetsBindingObserver, TrayL
         }
 
         /* ----- NOTIFICATIONS INITIALIZATION ----- */
-        await localNotifier.setup(appName: "BlueBubbles");
+        await localNotifier.setup(appName: "OpenBubbles");
       }
 
       if (!ss.settings.finishedSetup.value) {
