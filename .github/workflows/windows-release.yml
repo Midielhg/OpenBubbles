@@ -72,13 +72,23 @@ jobs:
           cache-directories: C:\obk
           shared-key: windows-release
 
+      # protoc from protobuf's own GitHub releases (the Chocolatey feed for it is flaky)
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install build tools
         shell: pwsh
         run: |
-          choco install -y --no-progress protoc nasm innosetup
+          choco install -y --no-progress nasm innosetup
+          if ($LASTEXITCODE -ne 0) { throw "choco install failed ($LASTEXITCODE)" }
+          if (-not (Test-Path "C:\Program Files\NASM\nasm.exe")) { throw "NASM missing" }
           "C:\Program Files\NASM" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
           "C:\Strawberry\perl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          "PROTOC=C:\ProgramData\chocolatey\bin\protoc.exe" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $protoc = (Get-Command protoc -ErrorAction Stop).Source
+          "PROTOC=$protoc" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          protoc --version
 
       - name: Set up placeholder Fairplay certs
         shell: bash
