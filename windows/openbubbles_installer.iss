@@ -73,3 +73,5 @@ Root: HKA; Subkey: "Software\Classes\imessage\shell\open\command"; ValueType: "s
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; in-app updates run the installer silently: reopen the app afterwards
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait runasoriginaluser; Check: WizardSilent

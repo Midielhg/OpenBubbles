@@ -1,4 +1,5 @@
-on: [ push, pull_request ]
+# Upstream's Android build; this fork ships Windows (see windows-release.yml), so run it only on demand.
+on: [ workflow_dispatch ]
 name: Build
 jobs:
   build:

@@ -14,6 +14,7 @@ import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/misc/about_panel.dart';
+import 'package:bluebubbles/services/network/app_updater.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/message_view/attachment_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/conversation_list/chat_list_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/message_view/conversation_panel.dart';
@@ -878,6 +879,30 @@ class _SettingsPageState extends OptimizedState<SettingsPage> {
                               SettingsSection(
                                 backgroundColor: tileColor,
                                 children: [
+                                  if (Platform.isWindows)
+                                    Obx(() {
+                                      final update = AppUpdater.available.value;
+                                      final downloading = AppUpdater.progress.value;
+                                      return SettingsTile(
+                                        backgroundColor: tileColor,
+                                        title: update == null ? "Check for Updates" : "Update Available: ${update.version}",
+                                        subtitle: downloading != null
+                                            ? "Downloading... ${(downloading * 100).round()}%"
+                                            : update == null
+                                                ? "New versions are built on GitHub and checked automatically"
+                                                : "Install now. The app restarts and your messages and settings stay",
+                                        onTap: () => update == null ? AppUpdater.check(userInitiated: true) : AppUpdater.install(update),
+                                        trailing: update == null
+                                            ? const NextButton()
+                                            : Text("Install", style: TextStyle(color: context.theme.colorScheme.primary, fontWeight: FontWeight.w600)),
+                                        leading: SettingsLeadingIcon(
+                                          iosIcon: CupertinoIcons.arrow_down_circle_fill,
+                                          materialIcon: Icons.system_update,
+                                          containerColor: update == null ? Colors.grey : Colors.green,
+                                        ),
+                                      );
+                                    }),
+                                  if (Platform.isWindows) const SettingsDivider(),
                                   SettingsTile(
                                     backgroundColor: tileColor,
                                     title: "About",
