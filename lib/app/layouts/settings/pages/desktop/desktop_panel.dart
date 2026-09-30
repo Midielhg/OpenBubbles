@@ -27,6 +27,45 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
   final RxList<bool> showButtons = RxList<bool>.filled(ReactionTypes.toList().length + 1, false);
   final int maxActions = Platform.isWindows ? 5 : ss.settings.actionList.length; // Don't limit actions on Linux
 
+  /// The inline reply box as Windows draws it: a text field with the Send button beside it.
+  Widget _replyBarPreview(BuildContext context, double size) {
+    return SizedBox(
+      width: size * 0.92,
+      height: size * 0.09,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: size * 0.025),
+              alignment: Alignment.centerLeft,
+              decoration: BoxDecoration(
+                color: context.theme.colorScheme.background.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: context.theme.colorScheme.outline.withOpacity(0.35)),
+              ),
+              child: Text(
+                "Reply to John Doe",
+                style: context.textTheme.bodyMedium!.copyWith(
+                    fontSize: size * 0.034, color: context.theme.colorScheme.outline),
+              ),
+            ),
+          ),
+          SizedBox(width: size * 0.02),
+          Container(
+            width: size * 0.18,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: context.theme.colorScheme.outline.withOpacity(0.2)),
+              color: context.theme.colorScheme.primary.withOpacity(0.6),
+            ),
+            child: Text("Send", style: context.textTheme.bodyMedium!.copyWith(fontSize: size * 0.037)),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// A sample message notification with the same layout real ones use: reply box plus the selected
   /// reaction buttons. Nothing typed into it is sent.
   Future<void> _sendTestNotification() async {
@@ -348,26 +387,20 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                 children: [
                                   Obx(() {
                                     int markReadIndex = ss.settings.actionList.indexOf("Mark Read");
+                                    // matches the real notification: the reply bar replaces Mark Read, and Send
+                                    // takes one of Windows' five button slots, leaving four for reactions
                                     Iterable<int> actualIndices = ss
                                         .settings
                                         .selectedActionIndices
-                                        .where((s) =>
-                                            ss.settings.enablePrivateAPI.value || s == markReadIndex);
+                                        .where((s) => ss.settings.enablePrivateAPI.value && s != markReadIndex)
+                                        .take(4);
                                     int numActions = actualIndices.length;
-                                    bool showMarkRead =
-                                        ss.settings.selectedActionIndices.contains(markReadIndex);
                                     ns.listener.value;
                                     context.width;
                                     double margin = 20;
                                     double size = width - 2 * margin;
                                     return Container(
-                                      height: size /
-                                          3 *
-                                          (numActions == 0
-                                              ? 0.9
-                                              : showMarkRead && numActions > 3
-                                                  ? 1.41
-                                                  : 1.28),
+                                      height: size * (0.28 + 0.11 + (numActions > 0 ? 0.11 : 0) + 0.02),
                                       width: size,
                                       margin: EdgeInsets.symmetric(vertical: margin / 2, horizontal: margin),
                                       decoration: BoxDecoration(
@@ -415,7 +448,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                             top: size * 0.182,
                                             left: size * 0.216,
                                             child: Text(
-                                              "${(numActions > (showMarkRead ? 1 : 0)) ? "Message" : "All"} notifications will look like this.",
+                                              "${numActions > 0 ? "Message" : "All"} notifications will look like this.",
                                               style: context.textTheme.bodyMedium!.copyWith(fontSize: size * 0.036),
                                             ),
                                           ),
@@ -434,6 +467,11 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                               child: Icon(CupertinoIcons.xmark,
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
+                                          ),
+                                          Positioned(
+                                            bottom: size * 0.04 + (numActions > 0 ? size * 0.11 : 0),
+                                            left: size * 0.04,
+                                            child: _replyBarPreview(context, size),
                                           ),
                                           ...List.generate(
                                             ss.settings.actionList.length,
@@ -458,8 +496,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                                             (size * _index * 0.02) -
                                                             ((_index == 0 || _index == numActions - 1) ? 0.5 : 0.25),
                                                         child: Container(
-                                                          height:
-                                                              size * (!showMarkRead || numActions < 4 ? 0.09 : 0.13),
+                                                          height: size * 0.09,
                                                           width: (size * 0.92 - ((numActions - 1) * size * 0.02)) /
                                                                   numActions -
                                                               0.5,
@@ -501,6 +538,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                     int numActions = actualIndices.length;
                                     bool showMarkRead =
                                         ss.settings.selectedActionIndices.contains(markReadIndex);
+                                    // reaction notifications have no reaction buttons, only the reply bar
                                     if (numActions <= (showMarkRead ? 1 : 0)) {
                                       return const SizedBox.shrink();
                                     }
@@ -510,7 +548,7 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                     double size = width - 2 * margin;
                                     return Container(
                                       width: size,
-                                      height: size / 3 * (!showMarkRead ? 0.9 : 1.28),
+                                      height: size * (0.28 + 0.11 + 0.02),
                                       margin: EdgeInsets.symmetric(vertical: margin / 2, horizontal: margin),
                                       decoration: BoxDecoration(
                                         color: context.theme.colorScheme.primaryContainer.withOpacity(0.4),
@@ -577,31 +615,11 @@ class _DesktopPanelState extends OptimizedState<DesktopPanel> {
                                                   size: size * 0.04, color: context.textTheme.labelLarge!.color),
                                             ),
                                           ),
-                                          if (showMarkRead)
-                                            Positioned(
-                                              bottom: size * 0.04,
-                                              left: size * 0.04 + 0.5,
-                                              child: Container(
-                                                height: size * 0.09,
-                                                width: size * 0.92 - 0.5,
-                                                padding: EdgeInsets.symmetric(
-                                                    vertical: size * 0.01, horizontal: size * 0.02),
-                                                decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(5),
-                                                  border: Border.all(
-                                                      color: context.theme.colorScheme.outline.withOpacity(0.2)),
-                                                  color: context.theme.colorScheme.primary.withOpacity(0.6),
-                                                ),
-                                                child: Center(
-                                                  child: Text(
-                                                    "Mark Read",
-                                                    style:
-                                                        context.textTheme.bodyMedium!.copyWith(fontSize: size * 0.037),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                ),
-                                              ),
-                                            )
+                                          Positioned(
+                                            bottom: size * 0.04,
+                                            left: size * 0.04,
+                                            child: _replyBarPreview(context, size),
+                                          )
                                         ],
                                       ),
                                     );
