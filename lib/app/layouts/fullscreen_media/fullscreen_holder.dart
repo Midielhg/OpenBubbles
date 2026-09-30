@@ -1,3 +1,8 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:pasteboard/pasteboard.dart';
+import 'package:universal_io/io.dart';
 import 'package:bluebubbles/app/components/circle_progress_bar.dart';
 import 'package:bluebubbles/app/components/glass/glass.dart';
 import 'package:flutter/gestures.dart';
@@ -74,6 +79,35 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
     super.dispose();
   }
 
+  /// Puts the current photo on the clipboard as an image (converted to PNG, so HEIC works too); if it
+  /// can't be decoded, copies it as a file, which still pastes into most apps.
+  Future<void> _copyCurrent() async {
+    final current = attachments[currentIndex.clamp(0, attachments.length - 1)];
+    if (current.mimeStart != "image") return;
+    final content = as.getContent(current, path: current.guid == null ? current.sourcePath : null);
+    if (content is! PlatformFile) return showSnackbar("Copy", "The image hasn't finished downloading yet");
+    Uint8List? bytes = content.bytes;
+    if (bytes == null && content.path != null) bytes = await File(content.path!).readAsBytes();
+    if (bytes == null) return;
+    try {
+      if (current.canCompress) {
+        // HEIC/TIFF: the app's own converter gives decodable bytes
+        bytes = await as.loadAndGetProperties(current, actualPath: content.path!) ?? bytes;
+      }
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final png = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      await Pasteboard.writeImage(png!.buffer.asUint8List());
+      showSnackbar("Copied", "Image copied to the clipboard");
+    } catch (e) {
+      if (content.path != null && await Pasteboard.writeFiles([content.path!])) {
+        showSnackbar("Copied", "Image copied as a file");
+      } else {
+        showSnackbar("Copy failed", "Couldn't copy this image");
+      }
+    }
+  }
+
   bool get _hasPrev => currentIndex > 0;
   bool get _hasNext => currentIndex < attachments.length - 1;
 
@@ -122,6 +156,15 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
                     ),
                   const Spacer(),
                   if (widget.showInteractions) ...[
+                    if (current.mimeStart == "image") ...[
+                      GlassCircleButton(
+                        icon: CupertinoIcons.doc_on_doc,
+                        iconSize: 16,
+                        tooltip: "Copy (Ctrl+C)",
+                        onTap: _copyCurrent,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     GlassCircleButton(
                       icon: CupertinoIcons.info,
                       iconSize: 17,
@@ -230,6 +273,9 @@ class FullscreenMediaHolderState extends OptimizedState<FullscreenMediaHolder> {
                       return KeyEventResult.handled;
                     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
                       Navigator.of(context).pop();
+                      return KeyEventResult.handled;
+                    } else if (event.logicalKey == LogicalKeyboardKey.keyC && HardwareKeyboard.instance.isControlPressed) {
+                      _copyCurrent();
                       return KeyEventResult.handled;
                     }
                     return KeyEventResult.ignored;
