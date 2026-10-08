@@ -103,27 +103,51 @@ class _CredentialDetailPanelState
         SliverList(
           delegate: SliverChildListDelegate(
             [
-              SettingsSection(
-                backgroundColor: tileColor,
-                children: [
-                  SettingsTile(
-                    backgroundColor: tileColor,
-                    title: widget.credential.item.title,
-                    subtitle: widget.credential.item.subtitle,
-                    leading:
-                        CredentialAvatar(credential: widget.credential.item),
-                  ),
-                ],
+              CredentialHeader(
+                credential: widget.credential.item,
+                caption: _field("Modified") == null
+                    ? null
+                    : "Last edited ${_field("Modified")}",
               ),
-              SettingsHeader(
-                iosSubtitle: iosSubtitle,
-                materialSubtitle: materialSubtitle,
-                text: "Details",
-              ),
-              SettingsSection(
-                backgroundColor: tileColor,
-                children: _buildFieldTiles(),
-              ),
+              if (_primaryRows().isNotEmpty)
+                SettingsSection(
+                  backgroundColor: tileColor,
+                  children: _withDividers(_primaryRows()),
+                ),
+              if (_field("Notes") != null) ...[
+                SettingsHeader(
+                  iosSubtitle: iosSubtitle,
+                  materialSubtitle: materialSubtitle,
+                  text: "Notes",
+                ),
+                SettingsSection(
+                  backgroundColor: tileColor,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SelectableText(
+                        _field("Notes")!,
+                        style: context.theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (_detailRows().isNotEmpty) ...[
+                const SizedBox(height: 20),
+                SettingsSection(
+                  backgroundColor: tileColor,
+                  children: _withDividers(_detailRows()),
+                ),
+              ],
+              if (_actionTiles().isNotEmpty) ...[
+                const SizedBox(height: 20),
+                SettingsSection(
+                  backgroundColor: tileColor,
+                  children: _withDividers(_actionTiles()),
+                ),
+              ],
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -131,36 +155,68 @@ class _CredentialDetailPanelState
     );
   }
 
-  List<Widget> _buildFieldTiles() {
-    final fields = widget.credential.item.fields;
-    final tiles = <Widget>[
-      for (var i = 0; i < fields.length; i++) ...[
-        SettingsTile(
-          backgroundColor: tileColor,
-          title: fields[i].label,
-          subtitle: fields[i].label == "Password" && !_showPassword
-              ? "••••••••"
-              : fields[i].value,
-          isThreeLine: fields[i].value.length > 36,
-          onTap: fields[i].label == "Password"
-              ? () => setState(() => _showPassword = !_showPassword)
-              : null,
-        ),
-        if (i != fields.length - 1) const SettingsDivider(),
-      ],
-    ];
-
-    final totp = widget.credential.passwordMeta?.getPasswordData().totp;
-    if (totp != null) {
-      if (tiles.isNotEmpty) {
-        tiles.add(const SettingsDivider());
+  String? _field(String label) {
+    for (final field in widget.credential.item.fields) {
+      if (field.label == label && field.value.trim().isNotEmpty) {
+        return field.value;
       }
-      tiles.add(TotpCodeTile(totp: totp, tileColor: tileColor));
     }
+    return null;
+  }
+
+  List<Widget> _withDividers(List<Widget> rows) => [
+        for (var i = 0; i < rows.length; i++) ...[
+          rows[i],
+          if (i != rows.length - 1) const SettingsDivider(),
+        ],
+      ];
+
+  Future<void> _copy(String label, String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    showSnackbar("Copied", "$label copied to clipboard.");
+  }
+
+  // shown with a copy button, in this order, under these names
+  static const _primaryLabels = {
+    "Account": "User Name",
+    "SSID": "Network",
+    "Password": "Password",
+    "Server": "Website",
+    "Site": "Website",
+    "Alternate Domains": "Also Used On",
+  };
+
+  List<Widget> _primaryRows() {
+    final rows = <Widget>[];
+    for (final entry in _primaryLabels.entries) {
+      final value = _field(entry.key);
+      if (value == null) continue;
+      final isPassword = entry.key == "Password";
+      rows.add(CredentialFieldRow(
+        label: entry.value,
+        value: value,
+        obscured: isPassword && !_showPassword,
+        monospace: isPassword,
+        onCopy: () => _copy(entry.value, value),
+        onToggleObscured: isPassword
+            ? () => setState(() => _showPassword = !_showPassword)
+            : null,
+      ));
+    }
+    final totp = widget.credential.passwordMeta?.getPasswordData().totp;
+    if (totp != null) rows.add(TotpCodeTile(totp: totp, tileColor: tileColor));
+    return rows;
+  }
+
+  List<Widget> _detailRows() => [
+        for (final label in const ["Group", "Created", "Modified"])
+          if (_field(label) != null)
+            CredentialFieldRow(label: label, value: _field(label)!, inline: true),
+      ];
+
+  List<Widget> _actionTiles() {
+    final tiles = <Widget>[];
     if (widget.credential.wifiPassword != null) {
-      if (tiles.isNotEmpty) {
-        tiles.add(const SettingsDivider());
-      }
       tiles.add(
         SettingsTile(
           backgroundColor: tileColor,
@@ -175,9 +231,6 @@ class _CredentialDetailPanelState
     }
     if (widget.credential.groupType == PasswordGroupType.passkeys &&
         !_isApplePasskey) {
-      if (tiles.isNotEmpty) {
-        tiles.add(const SettingsDivider());
-      }
       tiles.add(
         SettingsTile(
           backgroundColor: tileColor,
@@ -355,7 +408,7 @@ class _TotpCodeTileState extends State<TotpCodeTile>
   Future<void> _copyCode() async {
     if (_code.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: _code));
-    showSnackbar("Copied", "TOTP code copied to clipboard.");
+    showSnackbar("Copied", "Verification code copied to clipboard.");
   }
 
   @override
@@ -373,8 +426,10 @@ class _TotpCodeTileState extends State<TotpCodeTile>
         children: [
           SettingsTile(
             backgroundColor: widget.tileColor,
-            title: "TOTP Code",
-            subtitle: _code,
+            title: "Verification Code",
+            subtitle: _code.length == 6
+                ? "${_code.substring(0, 3)} ${_code.substring(3)}"
+                : _code,
             trailing: SizedBox(
               width: 24,
               height: 24,

@@ -344,7 +344,9 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
               );
             }
 
-            final credentials = snapshot.data ?? const <CredentialEntry>[];
+            // A to Z, like Apple's Passwords app
+            final credentials = [...?snapshot.data]..sort((a, b) =>
+                a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase()));
             if (credentials.isEmpty) {
               return _buildStatusSliver(
                 child: Text(
@@ -542,10 +544,14 @@ class _TotpCodeListTileState extends State<TotpCodeListTile>
     }
   }
 
+  // "123456" -> "123 456", easier to read and type
+  String _formatCode(String code) =>
+      code.length == 6 ? "${code.substring(0, 3)} ${code.substring(3)}" : code;
+
   Future<void> _copyCode() async {
     if (_code.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: _code));
-    showSnackbar("Copied", "TOTP code copied to clipboard.");
+    showSnackbar("Copied", "Verification code copied to clipboard.");
   }
 
   @override
@@ -559,8 +565,9 @@ class _TotpCodeListTileState extends State<TotpCodeListTile>
         : (1.0 - (remainingMicros / periodMicros)).clamp(0.0, 1.0);
     return SettingsTile(
       backgroundColor: widget.tileColor,
+      leading: SiteIcon(name: widget.title),
       title: widget.title,
-      subtitle: _code.isEmpty ? widget.subtitle : _code,
+      subtitle: _code.isEmpty ? widget.subtitle : _formatCode(_code),
       onTap: _copyCode,
       onLongPress: widget.onLongPress,
       trailing: SizedBox(

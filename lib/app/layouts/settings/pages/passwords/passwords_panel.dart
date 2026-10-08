@@ -3,6 +3,7 @@ import 'package:bluebubbles/app/layouts/settings/pages/passwords/group_credentia
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_group_panel.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_widgets.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
@@ -35,6 +36,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
   String? _groupsUserId;
   Map<String, api.ShareInviteContentData> _invitesById = const {};
   final Set<String> _pendingInviteActions = <String>{};
+  Map<PasswordGroupType, int> _counts = const {};
 
   @override
   void initState() {
@@ -103,18 +105,30 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
 
   Future<void> _loadCredentialCaches() async {
     if (manager == null) return;
+    final counts = <PasswordGroupType, int>{};
     try {
-      await api.getPasswords(passwords: manager!);
+      counts[PasswordGroupType.web] =
+          (await api.getPasswords(passwords: manager!)).length;
     } catch (_) {}
     try {
-      await api.getPasskeys(passwords: manager!);
+      counts[PasswordGroupType.passkeys] =
+          (await api.getPasskeys(passwords: manager!)).length;
     } catch (_) {}
     try {
-      await api.getWifiPasswords(passwords: manager!);
+      counts[PasswordGroupType.wifi] =
+          (await api.getWifiPasswords(passwords: manager!)).length;
     } catch (_) {}
     try {
-      await api.getPasswordsMeta(passwords: manager!);
+      final metas = await api.getPasswordsMeta(passwords: manager!);
+      counts[PasswordGroupType.codes] = metas.values.where((meta) {
+        try {
+          return meta.$2.getPasswordData().totp != null;
+        } catch (_) {
+          return false;
+        }
+      }).length;
     } catch (_) {}
+    if (mounted) setState(() => _counts = counts);
   }
 
   Future<void> _handleInviteAction(
@@ -317,6 +331,50 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
         SliverList(
           delegate: SliverChildListDelegate(
             [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                child: PasswordSearchField(
+                  backgroundColor: tileColor,
+                  onTap: _openSearch,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: PasswordCategoryGrid(
+                  children: [
+                    _buildCategoryCard(
+                      title: "Passwords",
+                      icon: CupertinoIcons.person_fill,
+                      color: const Color(0xFF0A84FF),
+                      groupType: PasswordGroupType.web,
+                    ),
+                    _buildCategoryCard(
+                      title: "Passkeys",
+                      icon: CupertinoIcons.person_crop_circle_badge_checkmark,
+                      color: const Color(0xFF5E5CE6),
+                      groupType: PasswordGroupType.passkeys,
+                    ),
+                    _buildCategoryCard(
+                      title: "Codes",
+                      icon: CupertinoIcons.lock_shield_fill,
+                      color: const Color(0xFFFF9F0A),
+                      groupType: PasswordGroupType.codes,
+                    ),
+                    _buildCategoryCard(
+                      title: "Wi-Fi",
+                      icon: CupertinoIcons.wifi,
+                      color: const Color(0xFF30B0C7),
+                      groupType: PasswordGroupType.wifi,
+                    ),
+                  ],
+                ),
+              ),
+              if (isAndroid || (!kIsWeb && Platform.isWindows))
+                SettingsHeader(
+                  iosSubtitle: iosSubtitle,
+                  materialSubtitle: materialSubtitle,
+                  text: "AutoFill",
+                ),
               if (isAndroid)
                 SettingsSection(
                   backgroundColor: tileColor,
@@ -357,50 +415,6 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                     ),
                   ],
                 ),
-              SettingsHeader(
-                  iosSubtitle: iosSubtitle,
-                  materialSubtitle: materialSubtitle,
-                  text: "Groups"),
-              SettingsSection(
-                backgroundColor: tileColor,
-                children: [
-                  _buildGroupTile(
-                    title: "Web Passwords",
-                    subtitle: "Saved logins and recovery codes",
-                    iosIcon: CupertinoIcons.globe,
-                    materialIcon: Icons.public,
-                    color: Colors.blueAccent,
-                    groupType: PasswordGroupType.web,
-                  ),
-                  const SettingsDivider(),
-                  _buildGroupTile(
-                    title: "Passkeys",
-                    subtitle: "Cloud synchronized sign-ins",
-                    iosIcon: Icons.key,
-                    materialIcon: Icons.key,
-                    color: Colors.deepPurple,
-                    groupType: PasswordGroupType.passkeys,
-                  ),
-                  const SettingsDivider(),
-                  _buildGroupTile(
-                    title: "Codes",
-                    subtitle: "Credentials with one-time codes",
-                    iosIcon: CupertinoIcons.number,
-                    materialIcon: Icons.security,
-                    color: Colors.teal,
-                    groupType: PasswordGroupType.codes,
-                  ),
-                  const SettingsDivider(),
-                  _buildGroupTile(
-                    title: "Wi-Fi Codes",
-                    subtitle: "Saved networks and passphrases",
-                    iosIcon: CupertinoIcons.wifi,
-                    materialIcon: Icons.wifi,
-                    color: Colors.orangeAccent,
-                    groupType: PasswordGroupType.wifi,
-                  ),
-                ],
-              ),
               if (_invitesById.isNotEmpty)
                 SettingsHeader(
                   iosSubtitle: iosSubtitle,
@@ -415,30 +429,37 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
               SettingsHeader(
                 iosSubtitle: iosSubtitle,
                 materialSubtitle: materialSubtitle,
-                text: "Available Groups",
+                text: "Shared Groups",
               ),
               SettingsSection(
                 backgroundColor: tileColor,
                 children: [
+                  ..._buildGroupsListTiles(),
                   SettingsTile(
                     backgroundColor: tileColor,
-                    title: "Create Group",
+                    title: "New Group",
                     onTap: _isCreatingGroup ? null : _promptCreateGroup,
-                    trailing: _isCreatingGroup
+                    leading: _isCreatingGroup
                         ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: context.theme.colorScheme.primary,
+                            width: 36,
+                            height: 36,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: context.theme.colorScheme.primary,
+                              ),
                             ),
                           )
-                        : Icon(
-                            iOS ? CupertinoIcons.add : Icons.add,
-                            color: context.theme.colorScheme.primary,
+                        : SizedBox(
+                            width: 36,
+                            child: Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 30,
+                              color: context.theme.colorScheme.primary,
+                            ),
                           ),
                   ),
-                  ..._buildGroupsListTiles()
                 ],
               ),
             ],
@@ -448,21 +469,21 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     );
   }
 
-  Widget _buildGroupTile({
+  Widget _buildCategoryCard({
     required String title,
-    required String subtitle,
-    required IconData iosIcon,
-    required IconData materialIcon,
+    required IconData icon,
     required Color color,
     required PasswordGroupType groupType,
   }) {
-    return SettingsTile(
-      backgroundColor: tileColor,
+    return PasswordCategoryCard(
       title: title,
-      subtitle: subtitle,
-      onTap: () {
+      icon: icon,
+      color: color,
+      backgroundColor: tileColor,
+      count: _counts[groupType],
+      onTap: () async {
         if (manager == null) return;
-        ns.pushSettings(
+        await ns.pushSettings(
           context,
           PasswordsGroupPanel(
             title: title,
@@ -472,13 +493,9 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
             groupUserId: _groupsUserId,
           ),
         );
+        // items may have been added, edited or deleted
+        await _loadCredentialCaches();
       },
-      leading: SettingsLeadingIcon(
-        iosIcon: iosIcon,
-        materialIcon: materialIcon,
-        containerColor: color,
-      ),
-      trailing: const NextButton(),
     );
   }
 
@@ -503,6 +520,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
         SettingsTile(
           backgroundColor: tileColor,
           title: groupName,
+          leading: SiteIcon(name: groupName, icon: CupertinoIcons.person_2_fill),
           onTap: () async {
             if (manager == null) return;
             final result = await ns.pushSettings(
@@ -523,9 +541,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
           trailing: const NextButton(),
         ),
       );
-      if (i != entries.length - 1) {
-        tiles.add(const SettingsDivider());
-      }
+      tiles.add(const SettingsDivider());
     }
     return tiles;
   }
