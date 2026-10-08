@@ -1,3 +1,4 @@
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/browser_extension_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/group_credentials_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
@@ -334,6 +335,24 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                         await mcs
                             .invokeMethod("open-autofill-provider-settings");
                       },
+                      trailing: const NextButton(),
+                    ),
+                  ],
+                ),
+              if (!kIsWeb && Platform.isWindows)
+                SettingsSection(
+                  backgroundColor: tileColor,
+                  children: [
+                    SettingsTile(
+                      backgroundColor: tileColor,
+                      title: "Browser Extension",
+                      subtitle: "Fill these passwords on websites in Chrome and Edge",
+                      leading: const SettingsLeadingIcon(
+                        iosIcon: CupertinoIcons.globe,
+                        materialIcon: Icons.extension,
+                        containerColor: Colors.green,
+                      ),
+                      onTap: () => ns.pushSettings(context, const BrowserExtensionPanel()),
                       trailing: const NextButton(),
                     ),
                   ],

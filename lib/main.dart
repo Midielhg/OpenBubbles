@@ -36,6 +36,7 @@ import 'package:get/get.dart';
 import 'package:google_ml_kit/google_ml_kit.dart' hide Message;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:bluebubbles/services/backend/browser_passwords.dart';
 import 'package:bluebubbles/services/network/app_updater.dart';
 import 'package:local_notifier/local_notifier.dart';
 import 'package:path/path.dart' show join;
@@ -538,6 +539,8 @@ class _HomeState extends OptimizedState<Home> with WidgetsBindingObserver, TrayL
         await localNotifier.setup(appName: "OpenBubbles");
         // new versions are published by .github/workflows/windows-release.yml
         AppUpdater.start();
+        // fills iCloud passwords through the OpenBubbles Passwords browser extension
+        if (Platform.isWindows) BrowserPasswords.start();
       }
 
       if (!ss.settings.finishedSetup.value) {

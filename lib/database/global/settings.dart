@@ -51,6 +51,9 @@ class Settings {
   final RxBool cameraFAB = false.obs;
   final RxBool swipeToCloseKeyboard = false.obs;
   final RxBool swipeToOpenKeyboard = false.obs;
+  // Windows: fill iCloud passwords through the OpenBubbles Passwords browser extension
+  final RxBool browserPasswordFill = true.obs;
+  final RxBool browserPasswordFillRequireAuth = false.obs;
   final RxBool openKeyboardOnSTB = false.obs;
   final RxBool swipableConversationTiles = false.obs;
   final RxBool showDeliveryTimestamps = false.obs;
@@ -332,6 +335,8 @@ class Settings {
       'cameraFAB': cameraFAB.value,
       'swipeToCloseKeyboard': swipeToCloseKeyboard.value,
       'swipeToOpenKeyboard': swipeToOpenKeyboard.value,
+      'browserPasswordFill': browserPasswordFill.value,
+      'browserPasswordFillRequireAuth': browserPasswordFillRequireAuth.value,
       'openKeyboardOnSTB': openKeyboardOnSTB.value,
       'swipableConversationTiles': swipableConversationTiles.value,
       'showDeliveryTimestamps': showDeliveryTimestamps.value,
@@ -499,6 +504,8 @@ class Settings {
     ss.settings.cameraFAB.value = map['cameraFAB'] ?? false;
     ss.settings.swipeToCloseKeyboard.value = map['swipeToCloseKeyboard'] ?? false;
     ss.settings.swipeToOpenKeyboard.value = map['swipeToOpenKeyboard'] ?? false;
+    ss.settings.browserPasswordFill.value = map['browserPasswordFill'] ?? true;
+    ss.settings.browserPasswordFillRequireAuth.value = map['browserPasswordFillRequireAuth'] ?? false;
     ss.settings.openKeyboardOnSTB.value = map['openKeyboardOnSTB'] ?? false;
     ss.settings.swipableConversationTiles.value = map['swipableConversationTiles'] ?? false;
     ss.settings.showDeliveryTimestamps.value = map['showDeliveryTimestamps'] ?? false;
@@ -670,6 +677,8 @@ class Settings {
     s.cameraFAB.value = map['cameraFAB'] ?? false;
     s.swipeToCloseKeyboard.value = map['swipeToCloseKeyboard'] ?? false;
     s.swipeToOpenKeyboard.value = map['swipeToOpenKeyboard'] ?? false;
+    s.browserPasswordFill.value = map['browserPasswordFill'] ?? true;
+    s.browserPasswordFillRequireAuth.value = map['browserPasswordFillRequireAuth'] ?? false;
     s.openKeyboardOnSTB.value = map['openKeyboardOnSTB'] ?? false;
     s.swipableConversationTiles.value = map['swipableConversationTiles'] ?? false;
     s.showDeliveryTimestamps.value = map['showDeliveryTimestamps'] ?? false;
