@@ -466,6 +466,7 @@ class MessagesViewState extends OptimizedState<MessagesView> {
       },
       child: GestureDetector(
           behavior: HitTestBehavior.deferToChild,
+          supportedDevices: messageSwipeDevices,
           onHorizontalDragUpdate: (details) {
             if (ss.settings.skin.value != Skins.Samsung && !kIsWeb && !kIsDesktop) {
               controller.timestampOffset.value += details.delta.dx * 0.3;

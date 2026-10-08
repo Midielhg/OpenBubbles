@@ -29,6 +29,15 @@ class MessagePopupHolder extends StatefulWidget {
 
   @override
   OptimizedState createState() => _MessagePopupHolderState();
+
+  /// Opens the message popup of the nearest enclosing holder. Returns false when there is none
+  /// (e.g. for the copy of the bubble shown inside the popup itself).
+  static bool openFor(BuildContext context) {
+    final state = context.findAncestorStateOfType<_MessagePopupHolderState>();
+    if (state == null || state.widget.isEditing) return false;
+    state.openPopup();
+    return true;
+  }
 }
 
 class _MessagePopupHolderState extends OptimizedState<MessagePopupHolder> {

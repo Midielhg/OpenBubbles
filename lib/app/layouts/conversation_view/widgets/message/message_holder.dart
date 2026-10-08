@@ -439,6 +439,7 @@ class _MessageHolderState extends CustomState<MessageHolder, void, MessageWidget
                                                           isEditing: isEditing(e.part),
                                                           child: GestureDetector(
                                                             behavior: HitTestBehavior.deferToChild,
+                                                            supportedDevices: messageSwipeDevices,
                                                             onHorizontalDragUpdate: !canSwipeToReply || isEditing(e.part) ? null : (details) {
                                                               if (ReplyScope.maybeOf(context) != null) return;
                                                               final offset = replyOffsets[index];

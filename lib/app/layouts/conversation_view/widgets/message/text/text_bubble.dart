@@ -1,11 +1,14 @@
 import 'dart:ui';
 
+import 'package:bluebubbles/app/layouts/conversation_view/widgets/message/popup/message_popup_holder.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:simple_animations/simple_animations.dart';
@@ -36,6 +39,8 @@ class _TextBubbleState extends CustomState<TextBubble, void, MessageWidgetContro
   late MovieTween tween;
   Control anim = Control.stop;
   late bool selected = controller.cvController?.isSelected(message.guid!) ?? false;
+  bool hasTextSelection = false;
+  Offset? mouseDownPosition;
 
   @override
   void initState() {
@@ -107,11 +112,58 @@ class _TextBubbleState extends CustomState<TextBubble, void, MessageWidgetContro
     0.0, 0.0, 0.0, 1.0, 0.0
   ];
 
+  Widget buildText(BuildContext context, List<InlineSpan> spans) {
+    // registers with the enclosing SelectionArea (desktop/web) so the text can be selected
+    final registrar = SelectionContainer.maybeOf(context);
+    return RichText(
+      text: TextSpan(
+        children: spans,
+      ),
+      selectionRegistrar: registrar,
+      selectionColor: registrar == null ? null : message.isFromMe! && !message.isBigEmoji
+          ? Colors.white.withOpacity(0.35)
+          : context.theme.colorScheme.primary.withOpacity(0.3),
+    );
+  }
+
+  /// Desktop/web: lets the mouse select message text. Ctrl+C or right-click copies the selection;
+  /// right-click without a selection still opens the message popup.
+  Widget selectable(Widget child) {
+    return Listener(
+      onPointerDown: (event) => mouseDownPosition = event.kind == PointerDeviceKind.mouse ? event.position : null,
+      onPointerUp: (event) {
+        final down = mouseDownPosition;
+        mouseDownPosition = null;
+        if (down == null || (event.position - down).distance > kTouchSlop) return;
+        // a plain click selects nothing, so give the keyboard back to the compose field
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final cvController = controller.cvController;
+          if (!mounted || hasTextSelection || cvController == null || cvController.showingOverlays || cvController.editing.isNotEmpty) return;
+          cvController.lastFocusedNode.requestFocus();
+        });
+      },
+      child: SelectionArea(
+        onSelectionChanged: (content) => hasTextSelection = content != null && content.plainText.isNotEmpty,
+        contextMenuBuilder: (menuContext, regionState) {
+          if (!regionState.contextMenuButtonItems.any((item) => item.type == ContextMenuButtonType.copy)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              regionState.hideToolbar();
+              if (mounted) MessagePopupHolder.openFor(context);
+            });
+            return const SizedBox.shrink();
+          }
+          return AdaptiveTextSelectionToolbar.selectableRegion(selectableRegionState: regionState);
+        },
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       var translucentMode = controller.cvController?.backgroundPoster.value != null;
-      var child = Container(
+      Widget child = Container(
         constraints: BoxConstraints(
           maxWidth: message.isBigEmoji ? ns.width(context) : ns.width(context) * MessageWidgetController.maxBubbleSizeFactor - 40 - (message.dateScheduled != null ? 4 : 0),
           minHeight: 40 - (message.dateScheduled != null ? 4 : 0),
@@ -178,22 +230,14 @@ class _TextBubbleState extends CustomState<TextBubble, void, MessageWidgetContro
                       child: child
                     );
                   },
-                  child: RichText(
-                    text: TextSpan(
-                      children: snapshot.data!,
-                    ),
-                  ),
+                  child: buildText(context, snapshot.data!),
                 );
               }
               return Center(
                 widthFactor: 1,
                 child: Padding(
                   padding: message.fullText.length == 1 ? const EdgeInsets.only(left: 3, right: 3) : EdgeInsets.zero,
-                  child: RichText(
-                    text: TextSpan(
-                      children: snapshot.data!,
-                    ),
-                  )
+                  child: buildText(context, snapshot.data!),
                 ),
               );
             }
@@ -201,6 +245,9 @@ class _TextBubbleState extends CustomState<TextBubble, void, MessageWidgetContro
           }
         ),
       );
+      if (kIsDesktop || kIsWeb) {
+        child = selectable(child);
+      }
       if (translucentMode) {
         return BackdropFilter(
           filter: ImageFilter.compose(

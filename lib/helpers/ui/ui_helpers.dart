@@ -727,3 +727,9 @@ int? findChildIndexByKey<T>(List<T> input, Key key, Function(T) getField) {
 
   return index == -1 ? null : index;
 }
+
+/// Pointer kinds allowed to start horizontal swipes (swipe to reply, timestamp reveal) on messages.
+/// On desktop and web a mouse drag selects message text instead, so mice are left out there.
+Set<ui.PointerDeviceKind>? get messageSwipeDevices => kIsDesktop || kIsWeb
+    ? ui.PointerDeviceKind.values.where((kind) => kind != ui.PointerDeviceKind.mouse).toSet()
+    : null;
