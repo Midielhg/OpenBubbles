@@ -32,12 +32,28 @@
     return el instanceof HTMLInputElement && !el.disabled && !el.readOnly && visible(el);
   }
 
+  // Password boxes with a "show password" eye turn into text boxes when revealed, so remember every
+  // box that has been a password box, and recognize the usual password names and autocomplete hints.
+  const seenPasswords = new WeakSet();
+
+  function notePasswords(root = document) {
+    for (const input of root.querySelectorAll('input[type="password"]')) seenPasswords.add(input);
+  }
+
   function isPassword(el) {
-    return el instanceof HTMLInputElement && el.type === "password";
+    if (!(el instanceof HTMLInputElement)) return false;
+    if (el.type === "password" || seenPasswords.has(el)) return true;
+    if (el.type !== "text") return false;
+    return /current-password|new-password/i.test(el.autocomplete || "") ||
+      /^(pass(word)?|passwd|pwd|pw)$|password/i.test(`${el.name} ${el.id}`.trim());
+  }
+
+  function passwordInputs(root) {
+    return [...root.querySelectorAll("input")].filter(isPassword);
   }
 
   function isTextLike(el) {
-    return el instanceof HTMLInputElement && ["text", "email", "tel"].includes(el.type);
+    return el instanceof HTMLInputElement && ["text", "email", "tel"].includes(el.type) && !isPassword(el);
   }
 
   function isNewPassword(el) {
@@ -75,7 +91,7 @@
       return { password: el, username: usernameFor(el) };
     }
     if (!isTextLike(el)) return null;
-    const passwords = [...scopeOf(el).querySelectorAll('input[type="password"]')].filter(
+    const passwords = passwordInputs(scopeOf(el)).filter(
       (p) => usable(p) && !isNewPassword(p)
     );
     const next = passwords.find((p) => follows(el, p));
@@ -83,6 +99,47 @@
     // username-only step (e.g. "enter your email" first, password on the next page)
     if (passwords.length === 0 && looksLikeUsername(el)) return { username: el, password: null };
     return null;
+  }
+
+  // ---------- which account is this sign-in for? ----------
+  //
+  // On a password-only step (e.g. Ring: the email is shown as text, with a "Change" link) the
+  // account was picked a step earlier. Work out which one from a hidden user name field, the user
+  // name typed on the previous step, or the address shown near the password box.
+
+  const sameUser = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+
+  function hiddenUsername(fields) {
+    const scope = scopeOf(fields.password || fields.username);
+    const input = [...scope.querySelectorAll("input")].find((e) =>
+      e !== fields.password && e.value && e.type !== "password" &&
+      (e.type === "hidden" || e.readOnly || !visible(e)) &&
+      (/username|email/i.test(e.autocomplete || "") || /user|e-?mail|login|account|identifier/i.test(`${e.name} ${e.id}`)));
+    return input ? input.value.trim() : "";
+  }
+
+  function nearbyText(el) {
+    let text = "";
+    for (let node = el.parentElement, i = 0; node && i < 6; node = node.parentElement, i++) {
+      const t = node.innerText || "";
+      if (t.length > 5000) break;
+      text = t;
+    }
+    return text.toLowerCase();
+  }
+
+  async function chosenAccounts(fields, accounts) {
+    const named = accounts.filter((a) => a.username);
+    const pick = (name) => named.filter((a) => sameUser(a.username, name));
+    const hidden = hiddenUsername(fields);
+    if (hidden && pick(hidden).length) return pick(hidden);
+    const remembered = await send({ type: "knownUsername" });
+    if (remembered.ok && remembered.result && pick(remembered.result).length) return pick(remembered.result);
+    // the address shown on the page; prefer the longest so "bob" doesn't also match "bob2@..."
+    const text = nearbyText(fields.password || fields.username);
+    const shown = named.filter((a) => text.includes(a.username.trim().toLowerCase()));
+    return shown.filter((a) => !shown.some((b) => b !== a && b.username.length > a.username.length &&
+      b.username.toLowerCase().includes(a.username.trim().toLowerCase())));
   }
 
   // ---------- talking to the extension ----------
@@ -304,6 +361,16 @@
       else return;
     } else {
       accounts = res.result?.accounts || [];
+      if (fields.username && fields.username.value && anchor === fields.password) {
+        // the user name is already typed: offer just that login
+        const only = accounts.filter((a) => sameUser(a.username, fields.username.value));
+        if (only.length) accounts = only;
+      } else if (!fields.username) {
+        // password step after the account was chosen on an earlier step: offer just that login
+        const only = await chosenAccounts(fields, accounts);
+        if (gen !== showGen || document.activeElement !== anchor) return;
+        if (only.length) accounts = only;
+      }
       if (IS_TOP && conditional && conditional.passkeys.length && fields.username && anchor === fields.username) {
         accounts = [...conditional.passkeys, ...accounts];
       }
@@ -394,6 +461,7 @@
   // ---------- events ----------
 
   function onFocus(e) {
+    notePasswords();
     const el = e.composedPath ? e.composedPath()[0] : e.target;
     if (Date.now() < suppressUntil) return;
     const fields = loginFieldsFor(el);
@@ -402,6 +470,7 @@
   }
 
   document.addEventListener("focusin", onFocus, true);
+  document.addEventListener("pointerdown", () => notePasswords(), true);
   document.addEventListener("click", (e) => {
     const el = e.composedPath ? e.composedPath()[0] : e.target;
     if (host && el === host) return;
@@ -461,7 +530,7 @@
   let lastCapture = { key: "", at: 0 };
 
   function filledPasswords(root) {
-    return [...root.querySelectorAll('input[type="password"]')].filter((p) => p.value && p.isConnected);
+    return passwordInputs(root).filter((p) => p.value && p.isConnected);
   }
 
   // the password being set: the new one on sign-up / change-password forms, else the only one

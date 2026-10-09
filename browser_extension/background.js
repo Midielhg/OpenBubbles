@@ -143,6 +143,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "capture" && typeof msg.password === "string" && typeof msg.username === "string") {
     return reply(capture(tabId, sender.frameId, url, msg.username, msg.password), sendResponse);
   }
+  if (msg.type === "knownUsername") {
+    return reply(knownUsername(tabId, url), sendResponse);
+  }
   if (msg.type === "pendingSave") {
     return reply(pendingFor(tabId), sendResponse);
   }
@@ -246,6 +249,13 @@ async function rememberUsername(tabId, url, username) {
   if (!username) return null;
   await chrome.storage.session.set({ [`user:${tabId}`]: { site: siteOf(url), username, at: Date.now() } });
   return null;
+}
+
+// the user name typed on the previous step of this site's sign-in, if recent
+async function knownUsername(tabId, url) {
+  const remembered = await sessionGet(`user:${tabId}`);
+  if (!remembered || remembered.site !== siteOf(url) || Date.now() - remembered.at > 10 * 60 * 1000) return null;
+  return remembered.username;
 }
 
 async function capture(tabId, frameId, url, username, password) {
