@@ -129,7 +129,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   // passkeys: top frames only, for the page's own site
   if (msg.type === "passkeyList" && sender.frameId === 0 && typeof msg.rpId === "string") {
-    return reply(request("passkeys", { url, rpId: msg.rpId, allow: msg.allow || [] }, 15000), sendResponse);
+    return reply(passkeyList(url, msg), sendResponse);
+  }
+  if (msg.type === "passkeySkipped" && typeof msg.reason === "string") {
+    notePasskey(msg.rpId, msg.reason);
+    return false;
   }
   if (msg.type === "passkeyGet" && sender.frameId === 0) {
     return reply(passkeyGet(url, msg), sendResponse);
@@ -171,6 +175,31 @@ async function clientData(type, url, challenge) {
   const json = JSON.stringify({ type, challenge, origin: new URL(url).origin, crossOrigin: false });
   const bytes = new TextEncoder().encode(json);
   return { clientDataJSON: b64url(bytes), clientDataHash: b64url(await crypto.subtle.digest("SHA-256", bytes)) };
+}
+
+// what happened with the last passkey request, shown in the toolbar popup
+function notePasskey(site, outcome) {
+  chrome.storage.session.set({ lastPasskey: { site, outcome, at: Date.now() } });
+}
+
+async function passkeyList(url, msg) {
+  try {
+    const result = await request("passkeys", { url, rpId: msg.rpId, allow: msg.allow || [] }, 15000);
+    const n = (result.passkeys || []).length;
+    if (n) notePasskey(msg.rpId, `offered ${n} passkey${n === 1 ? "" : "s"}`);
+    else if (result.forSite) notePasskey(msg.rpId, "the site asked for a different passkey than the one saved");
+    else notePasskey(msg.rpId, `no passkey saved for this site in OpenBubbles (${result.total ?? "?"} passkeys in total)`);
+    return result;
+  } catch (e) {
+    const reasons = {
+      not_running: "OpenBubbles wasn't running",
+      not_ready: "OpenBubbles passwords weren't ready",
+      unknown: "OpenBubbles needs updating to 1.15.10 or newer",
+      denied: "the site's passkey name doesn't match its address",
+    };
+    notePasskey(msg.rpId, reasons[e.message] || `error: ${e.message}`);
+    throw e;
+  }
 }
 
 async function passkeyGet(url, msg) {

@@ -13,6 +13,7 @@
   .ok .dot { background: #34c759; }
   .bad .dot { background: #ff9f0a; }
   .hint { margin-top: 8px; color: #6e6e73; }
+  .small { margin-top: 10px; font-size: 11px; color: #8e8e93; }
   @media (prefers-color-scheme: dark) { .hint { color: #a1a1a6; } }
 </style>
 </head>
@@ -21,6 +22,8 @@
   <div class="title"><img src="icons/icon32.png" alt="">Passwords</div>
   <div id="status" class="status"><div class="dot"></div><div id="text">Checking…</div></div>
   <div id="hint" class="hint"></div>
+  <div id="passkey" class="hint" hidden></div>
+  <div id="versions" class="small"></div>
 </div>
 <script src="popup.js"></script>
 </body>

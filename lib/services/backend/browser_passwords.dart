@@ -13,6 +13,7 @@ import 'package:collection/collection.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:universal_io/io.dart';
 import 'package:uuid/uuid.dart';
@@ -205,7 +206,7 @@ class BrowserPasswords {
     switch (message["type"]) {
       case "status":
         final passwords = await _passwords();
-        return {"count": passwords.length};
+        return {"count": passwords.length, "version": (await PackageInfo.fromPlatform()).version};
       case "lookup":
         final host = _pageHost(message["url"]);
         if (host == null) return {"accounts": []};
@@ -248,9 +249,13 @@ class BrowserPasswords {
       case "passkeys":
         final rpId = _passkeySite(message);
         final allow = ((message["allow"] as List?) ?? const []).map((e) => e.toString()).toSet();
-        final list = (await _passkeysFor(rpId))
-            .where((p) => allow.isEmpty || allow.contains(WebAuthn.b64url(p.entry.klbl)));
+        final forSite = await _passkeysFor(rpId);
+        final list = forSite.where((p) => allow.isEmpty || allow.contains(WebAuthn.b64url(p.entry.klbl)));
+        final manager = pushService.state!.icloudServices!.passwords!;
         return {
+          // for the extension's popup when nothing matches
+          "forSite": forSite.length,
+          "total": (await api.getPasskeys(passwords: manager)).length,
           "passkeys": list.map((p) {
             final user = WebAuthn.readUserTag(p.entry.atag);
             return {

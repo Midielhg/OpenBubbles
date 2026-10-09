@@ -707,7 +707,10 @@
   async function passkeysFor(payload) {
     if (!IS_TOP) return null;
     // Apple's own sign-in needs extra Apple data that only Apple devices provide
-    if (payload.extensions && payload.extensions.includes("largeBlob")) return null;
+    if (payload.extensions && payload.extensions.includes("largeBlob")) {
+      send({ type: "passkeySkipped", rpId: payload.rpId, reason: "Apple sign-in, which needs an Apple device" });
+      return null;
+    }
     const res = await send({ type: "passkeyList", rpId: payload.rpId, allow: payload.allow || [] });
     if (!res.ok) return null;
     return (res.result?.passkeys || []).map((p) => ({ ...p, passkey: true }));
