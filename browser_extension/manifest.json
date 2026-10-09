@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "OpenBubbles Passwords",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fill your iCloud passwords from OpenBubbles on websites.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv2EGPB2a+IKo6sGzj+6ljq6d3kcqnLEWa+2X8E0EBYfAW8BmxVFLgQrDsrWUVCvf3mkelee4NgyGcB/7Kxz9xikFdVKUQWHUlPSQiXYs4TxSa1ReGCc3Af7kCZ3l6RwPyYgTElCEWlKM60zFX/0rDwzrAixlINmtEkVwpH/EYPyUz6ZlIWL19cVfB4F2GgSCExoZeBgonMw65QTrRwm57Jf/v3f0be3kPCwHBeXswsJkWjfWSguMwNB1WQUNFSStsCca5Td23FzLfQ4r/JaTzWj/AzcXLkssbY6THlFa73dF78ZLOxlcS7exnNOHYhhrpbIkSvgyn08gdppPvV8UewIDAQAB",
   "minimum_chrome_version": "110",
   "permissions": [
-    "nativeMessaging"
+    "nativeMessaging",
+    "storage"
   ],
   "background": {
     "service_worker": "background.js"

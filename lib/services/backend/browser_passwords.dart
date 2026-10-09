@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:path/path.dart' as p;
 import 'package:universal_io/io.dart';
+import 'package:uuid/uuid.dart';
 import 'package:win32/win32.dart';
 
 /// Windows: lets the OpenBubbles Passwords browser extension (browser_extension/) fill iCloud
@@ -113,7 +114,7 @@ class BrowserPasswords {
     try {
       final created = RegCreateKeyEx(HKEY_CURRENT_USER, subKeyPtr, 0, nullptr,
           REG_OPEN_CREATE_OPTIONS.REG_OPTION_NON_VOLATILE, REG_SAM_FLAGS.KEY_SET_VALUE, nullptr, key, nullptr);
-      if (created != ERROR_SUCCESS) {
+      if (created != WIN32_ERROR.ERROR_SUCCESS) {
         Logger.warn("Couldn't register browser host at $subKey ($created)");
         return;
       }
@@ -207,7 +208,11 @@ class BrowserPasswords {
       case "lookup":
         final host = _pageHost(message["url"]);
         if (host == null) return {"accounts": []};
-        final matches = await _matches(host);
+        // the same login is often saved for several of a site's addresses (e.g. account.apple.com
+        // and idmsa.apple.com): list each user name + password once, under its best-matching site
+        final seen = <String>{};
+        final matches = (await _matches(host)).where((m) =>
+            seen.add("${m.entry.acct.trim().toLowerCase()}\u0000${utf8.decode(m.entry.data, allowMalformed: true)}"));
         return {
           "accounts": matches
               .take(8)
@@ -226,6 +231,19 @@ class BrowserPasswords {
           "username": match.entry.acct,
           "password": utf8.decode(match.entry.data, allowMalformed: true),
         };
+      case "checkSave":
+        final host = _pageHost(message["url"]);
+        if (host == null) return {"state": "none"};
+        final found = await _existingLogin(host, message["username"]?.toString() ?? "");
+        final password = message["password"]?.toString() ?? "";
+        return {"state": _saveState(found, password), "site": host};
+      case "save":
+        final host = _pageHost(message["url"]);
+        final username = message["username"]?.toString().trim() ?? "";
+        final password = message["password"]?.toString() ?? "";
+        if (host == null || password.isEmpty) throw _BridgeError("not_found");
+        await _save(host, username, password);
+        return {"saved": true};
       default:
         throw _BridgeError("unknown");
     }
@@ -276,6 +294,144 @@ class BrowserPasswords {
     matches.sort((a, b) => a.score != b.score ? b.score - a.score : b.entry.mdat - a.entry.mdat);
     return matches;
   }
+
+  // ---------- saving ----------
+
+  static bool _sameUser(String a, String b) => a.trim().toLowerCase() == b.trim().toLowerCase();
+
+  /// Saved logins for this site and user name, best match (same host) first.
+  static Future<List<_Match>> _existingLogin(String host, String username) async =>
+      (await _matches(host)).where((m) => m.score >= 2 && _sameUser(m.entry.acct, username)).toList();
+
+  static String _saveState(List<_Match> found, String password) {
+    if (found.isEmpty) return "new";
+    final same = found.any((m) => utf8.decode(m.entry.data, allowMalformed: true) == password);
+    return same ? "same" : "update";
+  }
+
+  static int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
+
+  static String _newId([String? avoid]) {
+    var id = const Uuid().v4().toUpperCase();
+    while (id == avoid) {
+      id = const Uuid().v4().toUpperCase();
+    }
+    return id;
+  }
+
+  /// Stores a login the way the Passwords editor does: the password record plus a password-manager
+  /// record that carries its history, so it shows up properly on Apple devices too.
+  static Future<void> _save(String host, String username, String password) async {
+    final manager = pushService.state?.icloudServices?.passwords;
+    if (manager == null || !pushService.cachedInClique) throw _BridgeError("not_ready");
+    final found = await _existingLogin(host, username);
+    if (_saveState(found, password) == "same") return;
+    final now = _now();
+
+    if (found.isEmpty) {
+      final id = _newId();
+      await Future.wait([
+        api.savePassword(
+          passwords: manager,
+          id: id,
+          entry: api.PasswordRawEntry(
+            cdat: now,
+            mdat: now,
+            srvr: host,
+            acct: username,
+            agrp: "com.apple.cfnetwork",
+            data: Uint8List.fromList(utf8.encode(password)),
+          ),
+        ),
+        api.savePasswordMeta(passwords: manager, id: _newId(id), entry: _newMeta(id, host, username, password, now)),
+      ]);
+      Logger.info("Saved a new password for $host from the browser");
+      return;
+    }
+
+    // update the existing login (in whatever group it lives in)
+    final existing = found.first;
+    final passwords = await api.getPasswords(passwords: manager);
+    final group = passwords[existing.id]?.$1;
+    final oldPassword = utf8.decode(existing.entry.data, allowMalformed: true);
+    final site = _registrable(_siteHost(existing.entry.srvr));
+    final metas = await api.getPasswordsMeta(passwords: manager);
+    final meta = metas.entries.firstWhereOrNull((e) =>
+        e.value.$1 == group &&
+        _registrable(_siteHost(e.value.$2.srvr)) == site &&
+        _sameUser(e.value.$2.acct, existing.entry.acct));
+
+    api.PasswordManagerMeta metaEntry;
+    if (meta == null) {
+      metaEntry = _newMeta(existing.id, existing.entry.srvr, existing.entry.acct, password, now);
+    } else {
+      final data = meta.value.$2.getPasswordData();
+      metaEntry = api.PasswordManagerMeta(
+        cdat: meta.value.$2.cdat,
+        mdat: now,
+        srvr: meta.value.$2.srvr,
+        acct: meta.value.$2.acct,
+        agrp: meta.value.$2.agrp,
+        data: api.PasswordManagerMeta.getData(
+          data: api.PasswordManagerMetaData(
+            history: [
+              ...data.history,
+              api.PasswordManagerMetaChange(
+                date: now,
+                password: password,
+                oldPassword: oldPassword,
+                id: existing.id,
+                typ: "pwch",
+              ),
+            ],
+            altDomains: data.altDomains,
+            totp: data.totp,
+            ctxt: data.ctxt,
+            title: data.title,
+            notes: data.notes,
+            formerlyShared: data.formerlyShared,
+            ocpid: data.ocpid,
+          ),
+        ),
+      );
+    }
+
+    await Future.wait([
+      api.savePassword(
+        passwords: manager,
+        id: existing.id,
+        group: group,
+        entry: api.PasswordRawEntry(
+          cdat: existing.entry.cdat,
+          mdat: now,
+          srvr: existing.entry.srvr,
+          acct: existing.entry.acct,
+          agrp: existing.entry.agrp,
+          data: Uint8List.fromList(utf8.encode(password)),
+        ),
+      ),
+      api.savePasswordMeta(passwords: manager, id: meta?.key ?? _newId(existing.id), entry: metaEntry, group: group),
+    ]);
+    Logger.info("Updated the saved password for $host from the browser");
+  }
+
+  static api.PasswordManagerMeta _newMeta(String id, String server, String username, String password, int now) =>
+      api.PasswordManagerMeta(
+        cdat: now,
+        mdat: now,
+        srvr: server,
+        acct: username,
+        agrp: "com.apple.password-manager",
+        data: api.PasswordManagerMeta.getData(
+          data: api.PasswordManagerMetaData(
+            history: [
+              api.PasswordManagerMetaChange(date: now, password: password, oldPassword: null, id: id, typ: "pwcr"),
+            ],
+            altDomains: const [],
+            ctxt: const {},
+          ),
+        ),
+      );
 
   /// Optional Windows Hello check, remembered for a few minutes.
   static Future<bool> _authorize(String host) async {

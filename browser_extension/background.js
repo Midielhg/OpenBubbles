@@ -106,5 +106,152 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // long timeout: OpenBubbles may be waiting on Windows Hello
     return reply(request("fill", { url, credentialId: msg.credentialId }, 120000), sendResponse);
   }
+
+  const tabId = sender.tab.id;
+
+  // a login field inside a frame: its menu is drawn by the top frame of the same tab
+  if (msg.type === "remoteMenu" && typeof msg.nonce === "string" && sender.frameId !== 0) {
+    remoteMenus.set(msg.nonce, { tabId, frameId: sender.frameId, url, at: Date.now() });
+    pruneRemoteMenus();
+    toTop(tabId, { type: "menu", nonce: msg.nonce, accounts: msg.accounts || [], note: msg.note || null });
+    return false;
+  }
+  if (msg.type === "remoteHide" && typeof msg.nonce === "string") {
+    toTop(tabId, { type: "menuHide", nonce: msg.nonce });
+    return false;
+  }
+  if (msg.type === "remoteActive" && typeof msg.nonce === "string") {
+    toTop(tabId, { type: "menuActive", nonce: msg.nonce, active: msg.active });
+    return false;
+  }
+  if (msg.type === "remoteChoose" && sender.frameId === 0 && typeof msg.nonce === "string" && typeof msg.credentialId === "string") {
+    return reply(remoteChoose(tabId, msg.nonce, msg.credentialId), sendResponse);
+  }
+  if (msg.type === "rememberUsername" && typeof msg.username === "string") {
+    return reply(rememberUsername(tabId, url, msg.username), sendResponse);
+  }
+  if (msg.type === "capture" && typeof msg.password === "string" && typeof msg.username === "string") {
+    return reply(capture(tabId, sender.frameId, url, msg.username, msg.password), sendResponse);
+  }
+  if (msg.type === "pendingSave") {
+    return reply(pendingFor(tabId), sendResponse);
+  }
+  if (msg.type === "saveDecision" && sender.frameId === 0 && typeof msg.id === "string") {
+    return reply(decide(tabId, msg.id, msg.decision), sendResponse);
+  }
   return false;
+});
+
+// ---------- menus for fields inside frames ----------
+
+const remoteMenus = new Map(); // nonce -> { tabId, frameId, url, at }
+
+function toTop(tabId, message) {
+  chrome.tabs.sendMessage(tabId, message, { frameId: 0 }).catch(() => {});
+}
+
+function pruneRemoteMenus() {
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  for (const [nonce, m] of remoteMenus) if (m.at < cutoff) remoteMenus.delete(nonce);
+}
+
+// The account was clicked in the top frame's menu. Fill it in the frame that has the field, for
+// the address that frame reported, so the top page never sees the password.
+async function remoteChoose(tabId, nonce, credentialId) {
+  const m = remoteMenus.get(nonce);
+  if (!m || m.tabId !== tabId) throw new Error("expired");
+  const result = await request("fill", { url: m.url, credentialId }, 120000);
+  await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, ...result }, { frameId: m.frameId });
+  return null;
+}
+
+// ---------- offering to save ----------
+//
+// Captured logins are kept in chrome.storage.session, which lives in memory only and which
+// websites and content scripts can't read. They expire after a couple of minutes.
+
+const PENDING_TTL_MS = 2 * 60 * 1000;
+
+function siteOf(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.startsWith("www.") ? host.slice(4) : host;
+  } catch (e) {
+    return "";
+  }
+}
+
+async function sessionGet(key) {
+  return (await chrome.storage.session.get(key))[key];
+}
+
+async function neverSites() {
+  return (await chrome.storage.local.get("neverSave")).neverSave || [];
+}
+
+async function rememberUsername(tabId, url, username) {
+  if (!username) return null;
+  await chrome.storage.session.set({ [`user:${tabId}`]: { site: siteOf(url), username, at: Date.now() } });
+  return null;
+}
+
+async function capture(tabId, frameId, url, username, password) {
+  const site = siteOf(url);
+  if (!site || !password || (await neverSites()).includes(site)) return null;
+  if (!username) {
+    // password step of a two-step sign-in
+    const remembered = await sessionGet(`user:${tabId}`);
+    if (remembered && remembered.site === site && Date.now() - remembered.at < PENDING_TTL_MS) {
+      username = remembered.username;
+    }
+  }
+  const check = await request("checkSave", { url, username, password }, 15000);
+  if (!check || (check.state !== "new" && check.state !== "update")) return null;
+  const pending = {
+    id: crypto.randomUUID(),
+    url,
+    site: check.site || site,
+    username,
+    password,
+    state: check.state,
+    at: Date.now(),
+  };
+  await chrome.storage.session.set({ [`save:${tabId}`]: pending });
+  // give the page a moment: most sign-ins navigate away, and the new page asks for the offer itself
+  setTimeout(async () => {
+    const latest = await sessionGet(`save:${tabId}`);
+    if (!latest || latest.id !== pending.id) return;
+    chrome.tabs.sendMessage(tabId, { type: "showSave", pending: publicView(latest) }, { frameId: 0 }).catch(() => {});
+  }, 1200);
+  return null;
+}
+
+// what the page script needs to draw the banner (no password)
+function publicView(pending) {
+  return { id: pending.id, site: pending.site, username: pending.username, state: pending.state };
+}
+
+async function pendingFor(tabId) {
+  const pending = await sessionGet(`save:${tabId}`);
+  if (!pending || Date.now() - pending.at > PENDING_TTL_MS) return null;
+  return publicView(pending);
+}
+
+async function decide(tabId, id, decision) {
+  const key = `save:${tabId}`;
+  const pending = await sessionGet(key);
+  if (!pending || pending.id !== id) throw new Error("expired");
+  if (decision === "save") {
+    // the address the login was typed on, as reported by the browser when it was captured
+    await request("save", { url: pending.url, username: pending.username, password: pending.password }, 30000);
+  } else if (decision === "never") {
+    const sites = await neverSites();
+    if (!sites.includes(pending.site)) await chrome.storage.local.set({ neverSave: [...sites, pending.site] });
+  }
+  await chrome.storage.session.remove(key);
+  return null;
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  chrome.storage.session.remove([`save:${tabId}`, `user:${tabId}`]);
 });

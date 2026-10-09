@@ -15,7 +15,6 @@
   let host = null;
   let shadow = null;
   let list = null;
-  let current = null; // { username, password, anchor, accounts, active }
   let suppressUntil = 0;
   const dismissed = new WeakSet();
 
@@ -109,11 +108,27 @@
   }
 
   // ---------- dropdown ----------
+  //
+  // The menu is always drawn in the top frame, so a small embedded sign-in frame (like Apple's)
+  // can't clip it. A field inside a frame reports where it is up the chain of frames (position
+  // only); the account list travels through the extension's background worker, and the chosen
+  // password goes straight back to the frame that has the field.
+
+  const IS_TOP = window.top === window;
+  const FILL_FAILED = "Couldn't fill this password. Check that OpenBubbles is open.";
+
+  let field = null; // this frame's focused login field: { username, password, anchor, accounts, active, nonce }
+  let menu = null; // top frame: the menu on screen { nonce, accounts, note, active, local, rect }
+  let showGen = 0;
+  const offsets = new Map(); // top frame: nonce -> field position in top-frame coordinates
+  const pendingMenus = new Map(); // top frame: nonce -> { accounts, note }, waiting for its position
+  const fieldsByNonce = new Map(); // frames: nonce -> fields to fill when the top frame's menu is used
 
   const STYLE = `
     :host { all: initial; }
     .menu {
       position: fixed; z-index: 2147483647; min-width: 240px; max-width: 360px;
+      max-height: min(360px, calc(100vh - 16px)); overflow-y: auto;
       background: #fff; color: #1d1d1f; border: 1px solid rgba(0,0,0,.12); border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 6px; box-sizing: border-box;
       font: 13px/1.3 -apple-system, "Segoe UI", system-ui, sans-serif;
@@ -139,6 +154,13 @@
     }
   `;
 
+  function rectOf(el) {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, bottom: r.bottom, width: r.width };
+  }
+
+  // ----- drawing (top frame) -----
+
   function ensureHost() {
     if (host && host.isConnected) return;
     host = document.createElement("openbubbles-passwords");
@@ -147,28 +169,31 @@
     style.textContent = STYLE;
     list = document.createElement("div");
     list.className = "menu";
-    // keep focus in the page's field while the menu is clicked
+    // keep focus in the page's field (even in another frame) while the menu is clicked
     list.addEventListener("mousedown", (e) => e.preventDefault());
     shadow.append(style, list);
     document.documentElement.appendChild(host);
   }
 
-  function hide() {
-    current = null;
+  function removeMenu() {
+    menu = null;
     if (host) host.remove();
     host = null;
   }
 
   function position() {
-    if (!current || !list) return;
-    const anchor = current.anchor;
-    if (!anchor.isConnected || !visible(anchor)) return hide();
-    const r = anchor.getBoundingClientRect();
+    if (!menu || !list) return;
+    let r = menu.rect;
+    if (menu.local) {
+      const anchor = field && field.anchor;
+      if (!anchor || !anchor.isConnected || !visible(anchor)) return closeMenu();
+      r = rectOf(anchor);
+    }
     const menuHeight = list.offsetHeight || 0;
     let top = r.bottom + 4;
     if (top + menuHeight > window.innerHeight && r.top - menuHeight - 4 > 0) top = r.top - menuHeight - 4;
     const left = Math.max(4, Math.min(r.left, window.innerWidth - list.offsetWidth - 4));
-    list.style.top = `${top}px`;
+    list.style.top = `${Math.max(4, top)}px`;
     list.style.left = `${left}px`;
     list.style.minWidth = `${Math.max(240, Math.min(r.width, 360))}px`;
   }
@@ -182,23 +207,18 @@
     return head;
   }
 
-  function showNote(fields, text) {
+  function renderMenu() {
     ensureHost();
-    const anchor = document.activeElement === fields.username ? fields.username : fields.password || fields.username;
-    current = { ...fields, anchor, accounts: [], active: -1 };
     list.replaceChildren(header());
-    const note = document.createElement("div");
-    note.className = "note";
-    note.textContent = text;
-    list.append(note);
-    position();
-  }
-
-  function render() {
-    list.replaceChildren(header());
-    current.accounts.forEach((account, i) => {
+    if (menu.note) {
+      const note = document.createElement("div");
+      note.className = "note";
+      note.textContent = menu.note;
+      list.append(note);
+    }
+    menu.accounts.forEach((account, i) => {
       const item = document.createElement("div");
-      item.className = "item" + (i === current.active ? " active" : "");
+      item.className = "item" + (i === menu.active ? " active" : "");
       const key = document.createElement("div");
       key.className = "key";
       key.textContent = (account.username || "?").trim().charAt(0).toUpperCase() || "?";
@@ -212,28 +232,85 @@
       site.textContent = account.site;
       text.append(user, site);
       item.append(key, text);
-      item.addEventListener("click", () => choose(account));
+      item.addEventListener("click", (e) => e.isTrusted && pick(account));
       list.append(item);
     });
     position();
   }
 
+  function openMenu(m) {
+    menu = { active: -1, accounts: [], note: null, ...m };
+    renderMenu();
+  }
+
+  function tryOpenRemote(nonce) {
+    const rect = offsets.get(nonce);
+    const data = pendingMenus.get(nonce);
+    if (!rect || !data) return;
+    offsets.delete(nonce);
+    pendingMenus.delete(nonce);
+    openMenu({ nonce, rect, accounts: data.accounts || [], note: data.note || null, local: false });
+  }
+
+  // a click on an account in the menu
+  async function pick(account) {
+    const m = menu;
+    if (!m) return;
+    removeMenu();
+    if (m.local) return fillFromApp(field, account.id);
+    // the field is in another frame: OpenBubbles sends the password straight to that frame
+    const res = await send({ type: "remoteChoose", nonce: m.nonce, credentialId: account.id });
+    if (!res.ok && res.error !== "denied") openMenu({ ...m, accounts: [], note: FILL_FAILED });
+  }
+
+  // ----- the focused field (any frame) -----
+
+  function closeMenu() {
+    showGen++;
+    if (IS_TOP) removeMenu();
+    else if (field) send({ type: "remoteHide", nonce: field.nonce });
+    field = null;
+  }
+
+  function setActive(active) {
+    field.active = active;
+    if (IS_TOP) {
+      if (menu) {
+        menu.active = active;
+        renderMenu();
+      }
+    } else {
+      send({ type: "remoteActive", nonce: field.nonce, active });
+    }
+  }
+
   async function show(fields) {
+    const gen = ++showGen;
     const res = await getAccounts();
-    // focus may have moved while we waited
+    // the user may have typed, or moved on, while we waited
+    if (gen !== showGen) return;
     const anchor = document.activeElement;
     if (anchor !== fields.username && anchor !== fields.password) return;
     if (dismissed.has(anchor)) return;
+    let accounts = [];
+    let note = null;
     if (!res.ok) {
-      if (fields.password && res.error === "not_running") showNote(fields, "Open OpenBubbles on this PC to fill passwords.");
-      else if (fields.password && res.error === "not_ready") showNote(fields, "Passwords aren't ready yet. Open Passwords in OpenBubbles.");
+      if (!fields.password) return;
+      if (res.error === "not_running") note = "Open OpenBubbles on this PC to fill passwords.";
+      else if (res.error === "not_ready") note = "Passwords aren't ready yet. Open Passwords in OpenBubbles.";
+      else return;
+    } else {
+      accounts = res.result?.accounts || [];
+      if (!accounts.length) return closeMenu();
+    }
+    field = { ...fields, anchor, accounts, active: -1, nonce: crypto.randomUUID() };
+    if (IS_TOP) {
+      openMenu({ nonce: field.nonce, accounts, note, local: true });
       return;
     }
-    const accounts = res.result?.accounts || [];
-    if (!accounts.length) return hide();
-    ensureHost();
-    current = { ...fields, anchor, accounts, active: -1 };
-    render();
+    fieldsByNonce.set(field.nonce, field);
+    window.parent.postMessage({ __openbubbles: "offset", nonce: field.nonce, rect: rectOf(anchor) }, "*");
+    send({ type: "remoteMenu", nonce: field.nonce, accounts, note });
   }
 
   // ---------- filling ----------
@@ -246,20 +323,67 @@
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  async function choose(account) {
-    const fields = current;
-    if (!fields) return;
-    hide();
-    const res = await send({ type: "fill", credentialId: account.id });
-    if (!res.ok) {
-      if (res.error !== "denied") showNote(fields, "Couldn't fill this password. Check that OpenBubbles is open.");
-      return;
-    }
-    const { username, password } = res.result || {};
+  function applyFill(fields, result) {
+    const { username, password } = result || {};
     suppressUntil = Date.now() + 1500;
     if (fields.username && fields.username.isConnected && username) setValue(fields.username, username);
     if (fields.password && fields.password.isConnected && password) setValue(fields.password, password);
   }
+
+  async function fillFromApp(fields, credentialId) {
+    if (!fields) return;
+    closeMenu();
+    const res = await send({ type: "fill", credentialId });
+    if (res.ok) return applyFill(fields, res.result);
+    if (res.error !== "denied" && IS_TOP) {
+      field = fields;
+      openMenu({ nonce: fields.nonce, note: FILL_FAILED, local: true });
+    }
+  }
+
+  // ---------- messages ----------
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg) return;
+    if (msg.type === "doFill") {
+      const fields = fieldsByNonce.get(msg.nonce);
+      if (fields) applyFill(fields, msg);
+      return;
+    }
+    if (!IS_TOP) return;
+    if (msg.type === "menu" && typeof msg.nonce === "string") {
+      pendingMenus.set(msg.nonce, msg);
+      tryOpenRemote(msg.nonce);
+    } else if (msg.type === "menuHide") {
+      if (menu && menu.nonce === msg.nonce) removeMenu();
+      pendingMenus.delete(msg.nonce);
+      offsets.delete(msg.nonce);
+    } else if (msg.type === "menuActive") {
+      if (menu && menu.nonce === msg.nonce) {
+        menu.active = msg.active;
+        renderMenu();
+      }
+    }
+  });
+
+  // positions of fields in frames, passed up one frame at a time
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (!d || d.__openbubbles !== "offset" || typeof d.nonce !== "string" || !d.rect) return;
+    const frame = [...document.querySelectorAll("iframe, frame")].find((f) => f.contentWindow === e.source);
+    if (!frame) return;
+    const fr = frame.getBoundingClientRect();
+    const cs = getComputedStyle(frame);
+    const dx = fr.left + frame.clientLeft + (parseFloat(cs.paddingLeft) || 0);
+    const dy = fr.top + frame.clientTop + (parseFloat(cs.paddingTop) || 0);
+    const rect = { left: d.rect.left + dx, top: d.rect.top + dy, bottom: d.rect.bottom + dy, width: d.rect.width };
+    if (IS_TOP) {
+      offsets.set(d.nonce, rect);
+      tryOpenRemote(d.nonce);
+    } else {
+      window.parent.postMessage({ __openbubbles: "offset", nonce: d.nonce, rect }, "*");
+    }
+  });
 
   // ---------- events ----------
 
@@ -267,46 +391,214 @@
     const el = e.composedPath ? e.composedPath()[0] : e.target;
     if (Date.now() < suppressUntil) return;
     const fields = loginFieldsFor(el);
-    if (!fields) return hide();
+    if (!fields) return closeMenu();
     show(fields);
   }
 
   document.addEventListener("focusin", onFocus, true);
   document.addEventListener("click", (e) => {
     const el = e.composedPath ? e.composedPath()[0] : e.target;
-    if (el === host) return;
-    if (current && el === current.anchor) return;
+    if (host && el === host) return;
+    if (field && el === field.anchor) return;
     if (el instanceof HTMLInputElement && el === document.activeElement) return onFocus(e);
-    hide();
+    closeMenu();
   }, true);
   document.addEventListener("focusout", () => {
     setTimeout(() => {
-      if (current && document.activeElement !== current.anchor) hide();
+      if (field && document.activeElement !== field.anchor) closeMenu();
     }, 150);
   }, true);
   document.addEventListener("keydown", (e) => {
-    if (!current || e.target !== current.anchor) return;
-    const n = current.accounts.length;
+    if (!field || e.target !== field.anchor) {
+      if (e.key.length === 1) showGen++; // typing elsewhere: don't pop a menu up late
+      return;
+    }
+    const n = field.accounts.length;
     if (e.key === "Escape") {
-      dismissed.add(current.anchor);
-      hide();
+      dismissed.add(field.anchor);
+      closeMenu();
     } else if (n && e.key === "ArrowDown") {
-      current.active = (current.active + 1) % n;
-      render();
+      setActive((field.active + 1) % n);
       e.preventDefault();
     } else if (n && e.key === "ArrowUp") {
-      current.active = (current.active - 1 + n) % n;
-      render();
+      setActive((field.active - 1 + n) % n);
       e.preventDefault();
-    } else if (n && e.key === "Enter" && current.active >= 0) {
+    } else if (n && e.key === "Enter" && field.active >= 0) {
       e.preventDefault();
       e.stopPropagation();
-      choose(current.accounts[current.active]);
+      fillFromApp(field, field.accounts[field.active].id);
     } else if (e.key.length === 1) {
       // the user is typing their own value
-      hide();
+      closeMenu();
     }
   }, true);
-  window.addEventListener("scroll", position, true);
-  window.addEventListener("resize", position);
+  window.addEventListener("scroll", () => {
+    if (IS_TOP && menu && !menu.local) removeMenu(); // the frame moved under the menu
+    else if (IS_TOP) position();
+    else if (field) closeMenu();
+  }, true);
+  window.addEventListener("resize", () => (IS_TOP ? position() : field && closeMenu()));
+
+  // ---------- offering to save ----------
+  //
+  // When a form with a password is submitted, the typed values go to the extension's background
+  // worker, which asks OpenBubbles whether they're new or changed. The "Save password?" banner then
+  // shows in the top frame (after the page navigates, if it does). Nothing is saved unless the user
+  // clicks Save.
+
+  let lastCapture = { key: "", at: 0 };
+
+  function filledPasswords(root) {
+    return [...root.querySelectorAll('input[type="password"]')].filter((p) => p.value && p.isConnected);
+  }
+
+  // the password being set: the new one on sign-up / change-password forms, else the only one
+  function chosenPassword(passwords) {
+    const fresh = passwords.filter(isNewPassword);
+    if (fresh.length) return fresh[0];
+    if (passwords.length >= 2) {
+      const [a, b] = passwords.slice(-2);
+      return a.value === b.value ? a : passwords[passwords.length - 1];
+    }
+    return passwords[0];
+  }
+
+  function capture(root) {
+    const passwords = filledPasswords(root);
+    if (!passwords.length) {
+      // first step of a two-step sign-in: remember the user name for the password step
+      const user = [...root.querySelectorAll("input")].find((e) => isTextLike(e) && e.value && looksLikeUsername(e));
+      if (user) send({ type: "rememberUsername", username: user.value.trim() });
+      return;
+    }
+    const password = chosenPassword(passwords);
+    const user = usernameFor(password);
+    const username = user && user.value ? user.value.trim() : "";
+    const key = `${username}\n${password.value}`;
+    if (key === lastCapture.key && Date.now() - lastCapture.at < 3000) return;
+    lastCapture = { key, at: Date.now() };
+    send({ type: "capture", username, password: password.value });
+  }
+
+  document.addEventListener("submit", (e) => {
+    if (e.target instanceof HTMLFormElement) capture(e.target);
+  }, true);
+
+  // sites that sign in with script instead of submitting a form
+  document.addEventListener("click", (e) => {
+    const el = e.composedPath ? e.composedPath()[0] : e.target;
+    const button = el instanceof Element ? el.closest('button, input[type="submit"], [role="button"]') : null;
+    if (!button || button === host) return;
+    const root = button.closest("form") || (filledPasswords(document).length ? document : null);
+    if (root) capture(root);
+  }, true);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || (field && field.active >= 0)) return;
+    const el = e.target;
+    if (el instanceof HTMLInputElement && (isPassword(el) || isTextLike(el))) capture(scopeOf(el));
+  }, true);
+
+  let banner = null;
+
+  const BANNER_STYLE = `
+    :host { all: initial; }
+    .card {
+      position: fixed; top: 16px; right: 16px; z-index: 2147483647; width: 340px; box-sizing: border-box;
+      background: #fff; color: #1d1d1f; border: 1px solid rgba(0,0,0,.12); border-radius: 14px;
+      box-shadow: 0 12px 36px rgba(0,0,0,.22); padding: 14px 16px 12px;
+      font: 13px/1.35 -apple-system, "Segoe UI", system-ui, sans-serif;
+      animation: in .18s ease-out;
+    }
+    @keyframes in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .top { display: flex; gap: 12px; align-items: center; }
+    .top img { width: 36px; height: 36px; border-radius: 8px; flex: none; }
+    .title { font-weight: 600; font-size: 14px; }
+    .sub { color: #6e6e73; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .text { min-width: 0; }
+    .buttons { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .never { margin-right: auto; background: none; border: 0; padding: 4px 0; color: #6e6e73; cursor: pointer; font: inherit; }
+    .never:hover { text-decoration: underline; }
+    button.b { border: 0; border-radius: 8px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+    .later { background: rgba(0,0,0,.06); color: inherit; }
+    .save { background: #0a84ff; color: #fff; }
+    @media (prefers-color-scheme: dark) {
+      .card { background: #2c2c2e; color: #f5f5f7; border-color: rgba(255,255,255,.12); }
+      .sub, .never { color: #a1a1a6; }
+      .later { background: rgba(255,255,255,.1); }
+    }
+  `;
+
+  function closeBanner() {
+    if (banner) banner.remove();
+    banner = null;
+  }
+
+  function showBanner(pending) {
+    if (window.top !== window) return;
+    closeBanner();
+    banner = document.createElement("openbubbles-save");
+    const root = banner.attachShadow({ mode: "closed" });
+    const style = document.createElement("style");
+    style.textContent = BANNER_STYLE;
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const top = document.createElement("div");
+    top.className = "top";
+    const img = document.createElement("img");
+    img.src = ICON;
+    const text = document.createElement("div");
+    text.className = "text";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = pending.failed
+      ? "Couldn't save. Is OpenBubbles open?"
+      : pending.state === "update" ? "Update saved password?" : "Save password?";
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = `${pending.username || "No user name"} · ${pending.site}`;
+    text.append(title, sub);
+    top.append(img, text);
+
+    const buttons = document.createElement("div");
+    buttons.className = "buttons";
+    const never = document.createElement("button");
+    never.className = "never";
+    never.textContent = "Never for this site";
+    const later = document.createElement("button");
+    later.className = "b later";
+    later.textContent = "Not now";
+    const save = document.createElement("button");
+    save.className = "b save";
+    save.textContent = pending.failed ? "Try again" : pending.state === "update" ? "Update" : "Save";
+    buttons.append(never, later, save);
+
+    const decide = async (decision) => {
+      closeBanner();
+      const res = await send({ type: "saveDecision", id: pending.id, decision });
+      if (decision === "save" && !res.ok) {
+        showBanner({ ...pending, failed: true });
+      }
+    };
+    // only real clicks count; scripts on the page can't reach into the closed shadow root
+    never.addEventListener("click", (e) => e.isTrusted && decide("never"));
+    later.addEventListener("click", (e) => e.isTrusted && decide("dismiss"));
+    save.addEventListener("click", (e) => e.isTrusted && decide("save"));
+
+    card.append(top, buttons);
+    root.append(style, card);
+    document.documentElement.appendChild(banner);
+  }
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg && msg.type === "showSave" && msg.pending) showBanner(msg.pending);
+  });
+
+  // a save offered just before this page loaded (the sign-in form navigated here)
+  if (window.top === window) {
+    send({ type: "pendingSave" }).then((res) => {
+      if (res.ok && res.result) showBanner(res.result);
+    });
+  }
 })();
