@@ -213,6 +213,7 @@ dependencies:
   flutter_contacts: ^1.1.8
   google_sign_in_all_platforms: ^1.0.0
   cbor: ^6.3.5
+  pointycastle: ^3.9.1 # passkeys (P-256 signing) for the browser extension
   dpad: ^2.0.2
   vector_map_tiles: ^8.0.0
   vector_tile_renderer: ^5.2.1

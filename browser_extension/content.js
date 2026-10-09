@@ -148,6 +148,7 @@
     .user { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .site { color: #6e6e73; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .note { padding: 8px; color: #6e6e73; }
+    .key.passkey { background: #5e5ce6; font-size: 14px; }
     @media (prefers-color-scheme: dark) {
       .menu { background: #2c2c2e; color: #f5f5f7; border-color: rgba(255,255,255,.12); }
       .head, .site, .note { color: #a1a1a6; }
@@ -221,7 +222,8 @@
       item.className = "item" + (i === menu.active ? " active" : "");
       const key = document.createElement("div");
       key.className = "key";
-      key.textContent = (account.username || "?").trim().charAt(0).toUpperCase() || "?";
+      key.textContent = account.passkey ? "\u{1F511}" : (account.username || "?").trim().charAt(0).toUpperCase() || "?";
+      if (account.passkey) key.classList.add("passkey");
       const text = document.createElement("div");
       text.className = "text";
       const user = document.createElement("div");
@@ -229,7 +231,7 @@
       user.textContent = account.username || "(no username)";
       const site = document.createElement("div");
       site.className = "site";
-      site.textContent = account.site;
+      site.textContent = account.passkey ? `Passkey · ${account.site}` : account.site;
       text.append(user, site);
       item.append(key, text);
       item.addEventListener("click", (e) => e.isTrusted && pick(account));
@@ -257,6 +259,7 @@
     const m = menu;
     if (!m) return;
     removeMenu();
+    if (account.passkey) return useConditionalPasskey(account);
     if (m.local) return fillFromApp(field, account.id);
     // the field is in another frame: OpenBubbles sends the password straight to that frame
     const res = await send({ type: "remoteChoose", nonce: m.nonce, credentialId: account.id });
@@ -301,6 +304,9 @@
       else return;
     } else {
       accounts = res.result?.accounts || [];
+      if (IS_TOP && conditional && conditional.passkeys.length && fields.username && anchor === fields.username) {
+        accounts = [...conditional.passkeys, ...accounts];
+      }
       if (!accounts.length) return closeMenu();
     }
     field = { ...fields, anchor, accounts, active: -1, nonce: crypto.randomUUID() };
@@ -426,7 +432,13 @@
     } else if (n && e.key === "Enter" && field.active >= 0) {
       e.preventDefault();
       e.stopPropagation();
-      fillFromApp(field, field.accounts[field.active].id);
+      const account = field.accounts[field.active];
+      if (account.passkey) {
+        closeMenu();
+        useConditionalPasskey(account);
+      } else {
+        fillFromApp(field, account.id);
+      }
     } else if (e.key.length === 1) {
       // the user is typing their own value
       closeMenu();
@@ -601,4 +613,200 @@
       if (res.ok && res.result) showBanner(res.result);
     });
   }
+
+  // ---------- passkeys ----------
+  //
+  // passkeys_page.js (in the page's own world) hands navigator.credentials requests over with
+  // window.postMessage. The user chooses in the extension's own cards (closed shadow root, real
+  // clicks only); the background worker builds the client data from the address the browser
+  // reports, and OpenBubbles signs.
+
+  const PASSKEY_CHANNEL = "__openbubbles_passkeys";
+  let conditional = null; // { id, payload, passkeys } waiting in the username box's menu
+  let passkeyCard = null; // { id, el }
+
+  function answer(id, message) {
+    window.postMessage({ [PASSKEY_CHANNEL]: "response", id, ...message }, location.origin);
+  }
+
+  const PASSKEY_ERRORS = {
+    exists: { name: "InvalidStateError", message: "A passkey for this account is already saved." },
+    denied: { name: "NotAllowedError", message: "The operation either timed out or was not allowed." },
+    no_windows_hello: { name: "NotAllowedError", message: "This site requires Windows Hello, which isn't set up." },
+  };
+
+  async function passkeysFor(payload) {
+    if (!IS_TOP) return null;
+    // Apple's own sign-in needs extra Apple data that only Apple devices provide
+    if (payload.extensions && payload.extensions.includes("largeBlob")) return null;
+    const res = await send({ type: "passkeyList", rpId: payload.rpId, allow: payload.allow || [] });
+    if (!res.ok) return null;
+    return (res.result?.passkeys || []).map((p) => ({ ...p, passkey: true }));
+  }
+
+  async function sign(payload, passkey) {
+    return send({
+      type: "passkeyGet",
+      rpId: payload.rpId,
+      id: passkey.id,
+      challenge: payload.challenge,
+      userVerification: payload.userVerification,
+    });
+  }
+
+  async function useConditionalPasskey(account) {
+    const c = conditional;
+    if (!c) return;
+    const res = await sign(c.payload, account);
+    if (res.ok) {
+      conditional = null;
+      answer(c.id, { result: res.result });
+    }
+  }
+
+  function closePasskeyCard() {
+    if (passkeyCard) passkeyCard.el.remove();
+    passkeyCard = null;
+  }
+
+  // a card like the save banner, with a list of passkeys and buttons
+  function showPasskeyCard(id, { title, subtitle, items, buttons }) {
+    closePasskeyCard();
+    const el = document.createElement("openbubbles-passkey");
+    const root = el.attachShadow({ mode: "closed" });
+    const style = document.createElement("style");
+    style.textContent = BANNER_STYLE + PASSKEY_CARD_STYLE;
+    const card = document.createElement("div");
+    card.className = "card";
+    const top = document.createElement("div");
+    top.className = "top";
+    const img = document.createElement("img");
+    img.src = ICON;
+    const text = document.createElement("div");
+    text.className = "text";
+    const t = document.createElement("div");
+    t.className = "title";
+    t.textContent = title;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = subtitle;
+    text.append(t, sub);
+    top.append(img, text);
+    card.append(top);
+    if (items && items.length) {
+      const list = document.createElement("div");
+      list.className = "list";
+      for (const item of items) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const key = document.createElement("div");
+        key.className = "pk";
+        key.textContent = "\u{1F511}";
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = item.label;
+        row.append(key, name);
+        row.addEventListener("click", (e) => e.isTrusted && item.onClick());
+        list.append(row);
+      }
+      card.append(list);
+    }
+    const row = document.createElement("div");
+    row.className = "buttons";
+    for (const b of buttons) {
+      const button = document.createElement("button");
+      button.className = b.kind === "link" ? "never" : `b ${b.kind === "primary" ? "save" : "later"}`;
+      button.textContent = b.label;
+      button.addEventListener("click", (e) => e.isTrusted && b.onClick());
+      row.append(button);
+    }
+    card.append(row);
+    root.append(style, card);
+    document.documentElement.appendChild(el);
+    passkeyCard = { id, el };
+  }
+
+  const PASSKEY_CARD_STYLE = `
+    .list { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
+    .row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
+    .row:hover { background: #0a84ff; color: #fff; }
+    .pk { width: 28px; height: 28px; border-radius: 50%; background: #5e5ce6; display: flex; align-items: center; justify-content: center; flex: none; }
+    .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  `;
+
+  async function handleGet(id, payload) {
+    const passkeys = await passkeysFor(payload);
+    if (!passkeys || !passkeys.length) return answer(id, { fallback: true });
+    const done = (message) => {
+      closePasskeyCard();
+      answer(id, message);
+    };
+    showPasskeyCard(id, {
+      title: "Sign in with a passkey",
+      subtitle: payload.rpId,
+      items: passkeys.map((p) => ({
+        label: p.username || "(no user name)",
+        onClick: async () => {
+          closePasskeyCard();
+          const res = await sign(payload, p);
+          answer(id, res.ok ? { result: res.result } : { error: PASSKEY_ERRORS[res.error] || PASSKEY_ERRORS.denied });
+        },
+      })),
+      buttons: [
+        { label: "Use another device", kind: "link", onClick: () => done({ fallback: true }) },
+        { label: "Cancel", kind: "secondary", onClick: () => done({ error: PASSKEY_ERRORS.denied }) },
+      ],
+    });
+  }
+
+  async function handleCreate(id, payload) {
+    if (!IS_TOP) return answer(id, { fallback: true });
+    const status = await send({ type: "passkeyList", rpId: payload.rpId, allow: [] });
+    if (!status.ok) return answer(id, { fallback: true }); // OpenBubbles isn't available
+    const done = (message) => {
+      closePasskeyCard();
+      answer(id, message);
+    };
+    showPasskeyCard(id, {
+      title: "Save a passkey?",
+      subtitle: `${payload.user.name || payload.user.displayName || "Your account"} · ${payload.rpId}`,
+      buttons: [
+        { label: "Use another device", kind: "link", onClick: () => done({ fallback: true }) },
+        { label: "Cancel", kind: "secondary", onClick: () => done({ error: PASSKEY_ERRORS.denied }) },
+        {
+          label: "Save",
+          kind: "primary",
+          onClick: async () => {
+            closePasskeyCard();
+            const res = await send({
+              type: "passkeyCreate",
+              rpId: payload.rpId,
+              user: payload.user,
+              challenge: payload.challenge,
+              exclude: payload.exclude,
+              userVerification: payload.userVerification,
+            });
+            answer(id, res.ok ? { result: res.result } : { error: PASSKEY_ERRORS[res.error] || PASSKEY_ERRORS.denied });
+          },
+        },
+      ],
+    });
+  }
+
+  window.addEventListener("message", async (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || d[PASSKEY_CHANNEL] !== "request" || typeof d.id !== "string") return;
+    const payload = d.payload || {};
+    if (d.kind === "cancel") {
+      if (passkeyCard && passkeyCard.id === d.id) closePasskeyCard();
+      if (conditional && conditional.id === d.id) conditional = null;
+    } else if (d.kind === "get") {
+      handleGet(d.id, payload);
+    } else if (d.kind === "create") {
+      handleCreate(d.id, payload);
+    } else if (d.kind === "conditional") {
+      const passkeys = await passkeysFor(payload);
+      if (passkeys && passkeys.length) conditional = { id: d.id, payload, passkeys };
+    }
+  });
 })();

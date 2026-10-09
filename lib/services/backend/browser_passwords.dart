@@ -4,6 +4,7 @@ import 'dart:ffi';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:bluebubbles/services/backend/webauthn.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
@@ -244,6 +245,41 @@ class BrowserPasswords {
         if (host == null || password.isEmpty) throw _BridgeError("not_found");
         await _save(host, username, password);
         return {"saved": true};
+      case "passkeys":
+        final rpId = _passkeySite(message);
+        final allow = ((message["allow"] as List?) ?? const []).map((e) => e.toString()).toSet();
+        final list = (await _passkeysFor(rpId))
+            .where((p) => allow.isEmpty || allow.contains(WebAuthn.b64url(p.entry.klbl)));
+        return {
+          "passkeys": list.map((p) {
+            final user = WebAuthn.readUserTag(p.entry.atag);
+            return {
+              "id": p.id,
+              "username": user.name ?? user.displayName ?? "",
+              "site": rpId,
+            };
+          }).toList(),
+        };
+      case "passkeyAssert":
+        final rpId = _passkeySite(message);
+        final passkey = (await _passkeysFor(rpId)).firstWhereOrNull((p) => p.id == message["passkeyId"]);
+        if (passkey == null) throw _BridgeError("not_found");
+        final verified = await _verifyUser(rpId, required: message["userVerification"] == "required");
+        final assertion = WebAuthn.assert_(
+          rpId: rpId,
+          appleKey: passkey.entry.data,
+          clientDataHash: WebAuthn.fromB64url(message["clientDataHash"].toString()),
+          userVerified: verified,
+        );
+        final user = WebAuthn.readUserTag(passkey.entry.atag);
+        return {
+          "credentialId": WebAuthn.b64url(passkey.entry.klbl),
+          "authenticatorData": WebAuthn.b64url(assertion.authenticatorData),
+          "signature": WebAuthn.b64url(assertion.signature),
+          if (user.id != null) "userHandle": WebAuthn.b64url(user.id!),
+        };
+      case "passkeyRegister":
+        return await _registerPasskey(message);
       default:
         throw _BridgeError("unknown");
     }
@@ -432,6 +468,113 @@ class BrowserPasswords {
           ),
         ),
       );
+
+  // ---------- passkeys ----------
+
+  /// The relying party ID for a passkey request, checked against the page address the browser
+  /// reported: it must be that host or a parent domain of it (never just a public suffix).
+  static String _passkeySite(Map<String, dynamic> message) {
+    final uri = Uri.tryParse(message["url"]?.toString() ?? "");
+    final rpId = message["rpId"]?.toString().toLowerCase() ?? "";
+    if (uri == null || rpId.isEmpty || !rpId.contains(".") && rpId != "localhost") throw _BridgeError("denied");
+    final host = uri.host.toLowerCase();
+    final secure = uri.scheme == "https" || host == "localhost";
+    if (!secure || !(host == rpId || host.endsWith(".$rpId"))) throw _BridgeError("denied");
+    if (rpId != "localhost" && _registrable(rpId) != _registrable(host)) throw _BridgeError("denied");
+    if (rpId.split(".").length < 2 || _twoPartSuffixes.contains(rpId)) throw _BridgeError("denied");
+    return rpId;
+  }
+
+  static Future<List<({String id, String? group, api.Passkey entry})>> _passkeysFor(String rpId) async {
+    final manager = pushService.state?.icloudServices?.passwords;
+    if (manager == null || !pushService.cachedInClique) throw _BridgeError("not_ready");
+    final passkeys = await api.getPasskeys(passwords: manager);
+    return [
+      for (final e in passkeys.entries)
+        if (e.value.$2.labl.toLowerCase() == rpId) (id: e.key, group: e.value.$1, entry: e.value.$2),
+    ];
+  }
+
+  /// Passkeys always confirm with Windows Hello (remembered for a few minutes), which is what lets
+  /// them tell the site the user was verified. Without Windows Hello they can only sign in to sites
+  /// that don't require it.
+  static Future<bool> _verifyUser(String rpId, {required bool required}) async {
+    final until = _authorizedUntil;
+    if (until != null && DateTime.now().isBefore(until)) return true;
+    final auth = LocalAuthentication();
+    bool supported;
+    try {
+      supported = await auth.isDeviceSupported();
+    } catch (_) {
+      supported = false;
+    }
+    if (!supported) {
+      if (required) throw _BridgeError("no_windows_hello");
+      return false;
+    }
+    _authInFlight ??= () async {
+      try {
+        return await auth.authenticate(localizedReason: "Use your passkey for $rpId");
+      } catch (e) {
+        Logger.warn("Windows Hello failed: $e");
+        return false;
+      }
+    }();
+    final ok = await _authInFlight!;
+    _authInFlight = null;
+    if (!ok) throw _BridgeError("denied");
+    _authorizedUntil = DateTime.now().add(_authWindow);
+    return true;
+  }
+
+  /// Creates a passkey in iCloud Keychain (replacing this site's passkey for the same account).
+  static Future<Map<String, dynamic>> _registerPasskey(Map<String, dynamic> message) async {
+    final rpId = _passkeySite(message);
+    final manager = pushService.state!.icloudServices!.passwords!;
+    final user = (message["user"] as Map?) ?? const {};
+    final userId = WebAuthn.fromB64url(user["id"]?.toString() ?? "");
+    if (userId.isEmpty) throw _BridgeError("denied");
+    final exclude = ((message["exclude"] as List?) ?? const []).map((e) => e.toString()).toSet();
+
+    final existing = await _passkeysFor(rpId);
+    if (existing.any((p) => exclude.contains(WebAuthn.b64url(p.entry.klbl)))) throw _BridgeError("exists");
+    final verified = await _verifyUser(rpId, required: message["userVerification"] == "required");
+
+    final key = WebAuthn.generateKey();
+    final credentialId = WebAuthn.randomBytes(20);
+    final same = existing.firstWhereOrNull((p) {
+      final id = WebAuthn.readUserTag(p.entry.atag).id;
+      return id != null && const ListEquality<int>().equals(id, userId);
+    });
+    final now = _now();
+    await api.savePasskey(
+      passwords: manager,
+      id: same?.id ?? _newId(),
+      group: same?.group,
+      entry: api.Passkey(
+        cdat: same?.entry.cdat ?? now,
+        mdat: now,
+        agrp: "com.apple.webkit.webauthn",
+        labl: rpId,
+        data: key,
+        atag: WebAuthn.userTag(
+          id: userId,
+          name: user["name"]?.toString(),
+          displayName: user["displayName"]?.toString(),
+        ),
+        klbl: credentialId,
+      ),
+    );
+    Logger.info("Saved a new passkey for $rpId from the browser");
+
+    final registration = WebAuthn.register(rpId: rpId, appleKey: key, credentialId: credentialId, userVerified: verified);
+    return {
+      "credentialId": WebAuthn.b64url(credentialId),
+      "authenticatorData": WebAuthn.b64url(registration.authenticatorData),
+      "attestationObject": WebAuthn.b64url(registration.attestationObject),
+      "publicKey": WebAuthn.b64url(WebAuthn.spki(WebAuthn.publicPoint(key))),
+    };
+  }
 
   /// Optional Windows Hello check, remembered for a few minutes.
   static Future<bool> _authorize(String host) async {

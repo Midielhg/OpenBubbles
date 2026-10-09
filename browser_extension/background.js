@@ -127,6 +127,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "remoteChoose" && sender.frameId === 0 && typeof msg.nonce === "string" && typeof msg.credentialId === "string") {
     return reply(remoteChoose(tabId, msg.nonce, msg.credentialId), sendResponse);
   }
+  // passkeys: top frames only, for the page's own site
+  if (msg.type === "passkeyList" && sender.frameId === 0 && typeof msg.rpId === "string") {
+    return reply(request("passkeys", { url, rpId: msg.rpId, allow: msg.allow || [] }, 15000), sendResponse);
+  }
+  if (msg.type === "passkeyGet" && sender.frameId === 0) {
+    return reply(passkeyGet(url, msg), sendResponse);
+  }
+  if (msg.type === "passkeyCreate" && sender.frameId === 0) {
+    return reply(passkeyCreate(url, msg), sendResponse);
+  }
   if (msg.type === "rememberUsername" && typeof msg.username === "string") {
     return reply(rememberUsername(tabId, url, msg.username), sendResponse);
   }
@@ -141,6 +151,49 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   return false;
 });
+
+// ---------- passkeys ----------
+//
+// The client data the site checks is built here, from the page address the browser reports for the
+// requesting tab, so a page can't claim to be another site. OpenBubbles signs its hash.
+
+function b64url(bytes) {
+  let s = "";
+  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function clientData(type, url, challenge) {
+  if (typeof challenge !== "string" || !/^[A-Za-z0-9_-]+$/.test(challenge)) throw new Error("denied");
+  const json = JSON.stringify({ type, challenge, origin: new URL(url).origin, crossOrigin: false });
+  const bytes = new TextEncoder().encode(json);
+  return { clientDataJSON: b64url(bytes), clientDataHash: b64url(await crypto.subtle.digest("SHA-256", bytes)) };
+}
+
+async function passkeyGet(url, msg) {
+  const data = await clientData("webauthn.get", url, msg.challenge);
+  const result = await request("passkeyAssert", {
+    url,
+    rpId: msg.rpId,
+    passkeyId: msg.id, // not "id": that's the request's own ID
+    clientDataHash: data.clientDataHash,
+    userVerification: msg.userVerification,
+  }, 120000);
+  return { ...result, clientDataJSON: data.clientDataJSON };
+}
+
+async function passkeyCreate(url, msg) {
+  const data = await clientData("webauthn.create", url, msg.challenge);
+  const result = await request("passkeyRegister", {
+    url,
+    rpId: msg.rpId,
+    user: msg.user,
+    exclude: msg.exclude || [],
+    clientDataHash: data.clientDataHash,
+    userVerification: msg.userVerification,
+  }, 120000);
+  return { ...result, clientDataJSON: data.clientDataJSON };
+}
 
 // ---------- menus for fields inside frames ----------
 
