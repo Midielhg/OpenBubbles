@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:universal_io/io.dart';
 
-/// Windows: settings and one-time setup for the OpenBubbles Passwords browser extension.
+/// Windows: settings and one-time setup for the Passwords browser extension.
 class BrowserExtensionPanel extends StatefulWidget {
   const BrowserExtensionPanel({super.key});
 

@@ -51,7 +51,7 @@ class Settings {
   final RxBool cameraFAB = false.obs;
   final RxBool swipeToCloseKeyboard = false.obs;
   final RxBool swipeToOpenKeyboard = false.obs;
-  // Windows: fill iCloud passwords through the OpenBubbles Passwords browser extension
+  // Windows: fill iCloud passwords through the Passwords browser extension
   final RxBool browserPasswordFill = true.obs;
   final RxBool browserPasswordFillRequireAuth = false.obs;
   final RxBool openKeyboardOnSTB = false.obs;

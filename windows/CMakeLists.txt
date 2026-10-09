@@ -52,7 +52,7 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build
 add_subdirectory("runner")
 
-# Native messaging host for the OpenBubbles Passwords browser extension
+# Native messaging host for the Passwords browser extension
 add_subdirectory("password_host")
 add_dependencies(${BINARY_NAME} openbubbles_password_host)
 

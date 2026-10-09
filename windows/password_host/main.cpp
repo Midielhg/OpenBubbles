@@ -1,4 +1,4 @@
-// Native messaging host for the OpenBubbles Passwords browser extension (browser_extension/).
+// Native messaging host for the Passwords browser extension (browser_extension/).
 //
 // Chrome/Edge start this program for that extension only (see the host manifest the app writes,
 // whose allowed_origins lists the extension's fixed ID) and exchange length-prefixed JSON over

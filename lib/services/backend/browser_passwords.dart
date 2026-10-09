@@ -17,7 +17,7 @@ import 'package:universal_io/io.dart';
 import 'package:uuid/uuid.dart';
 import 'package:win32/win32.dart';
 
-/// Windows: lets the OpenBubbles Passwords browser extension (browser_extension/) fill iCloud
+/// Windows: lets the Passwords browser extension (browser_extension/) fill iCloud
 /// passwords on websites.
 ///
 /// Chrome/Edge start openbubbles_password_host.exe for that extension only (the host manifest
@@ -93,7 +93,7 @@ class BrowserPasswords {
     final manifest = File(p.join(_dataDir, "$hostName.json"));
     await manifest.writeAsString(jsonEncode({
       "name": hostName,
-      "description": "OpenBubbles Passwords",
+      "description": "Passwords (OpenBubbles)",
       "path": _hostExe,
       "type": "stdio",
       "allowed_origins": ["chrome-extension://$extensionId/"],

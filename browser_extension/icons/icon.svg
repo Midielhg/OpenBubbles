@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3c"/><stop offset="1" stop-color="#1c1c1e"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#64D2FF"/><stop offset="1" stop-color="#0A6CFF"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BE07F"/><stop offset="1" stop-color="#28B14C"/></linearGradient>
+    <linearGradient id="yellow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD84A"/><stop offset="1" stop-color="#F5B000"/></linearGradient>
+    <!-- one key: round bow with a hole, a shaft, two bits -->
+    <path id="key" fill-rule="nonzero" d="
+      M -82 -40 a 82 82 0 1 1 164 0 a 82 82 0 1 1 -164 0 Z
+      M -30 30 h 60 v 40 h 34 v 34 h -34 v 22 h 34 v 34 h -34 v 30 l -30 26 l -30 -26 Z"/>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <g stroke="#232325" stroke-width="16" stroke-linejoin="round" paint-order="stroke">
+    <use href="#key" transform="translate(172 206) rotate(-7)" fill="url(#yellow)"/>
+    <circle cx="0" cy="-64" r="24" fill="#232325" stroke="none" transform="translate(172 206) rotate(-7)"/>
+    <use href="#key" transform="translate(244 206) rotate(-3)" fill="url(#green)"/>
+    <circle cx="0" cy="-64" r="24" fill="#232325" stroke="none" transform="translate(244 206) rotate(-3)"/>
+    <use href="#key" transform="translate(320 206)" fill="url(#blue)"/>
+    <circle cx="0" cy="-64" r="24" fill="#232325" stroke="none" transform="translate(320 206)"/>
+  </g>
+</svg>

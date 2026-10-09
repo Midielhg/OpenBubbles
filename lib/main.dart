@@ -539,7 +539,7 @@ class _HomeState extends OptimizedState<Home> with WidgetsBindingObserver, TrayL
         await localNotifier.setup(appName: "OpenBubbles");
         // new versions are published by .github/workflows/windows-release.yml
         AppUpdater.start();
-        // fills iCloud passwords through the OpenBubbles Passwords browser extension
+        // fills iCloud passwords through the Passwords browser extension
         if (Platform.isWindows) BrowserPasswords.start();
       }
 
