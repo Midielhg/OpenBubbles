@@ -89,6 +89,7 @@ class _CredentialDetailPanelState
                     passwordMeta: widget.credential.passwordMeta,
                     passwordRaw: widget.credential.passwordRaw,
                     wifiPassword: widget.credential.wifiPassword,
+                    copies: widget.credential.copies,
                     availableGroups: widget.groupNamesById,
                     groupUserId: widget.groupUserId,
                   ),

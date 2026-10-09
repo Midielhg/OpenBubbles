@@ -28,6 +28,9 @@ class PasswordEditorPanel extends StatefulWidget {
   final Map<String, String> availableGroups;
   final String? groupUserId;
 
+  /// Other records of this same login (other addresses of the site); kept in step with it.
+  final List<CredentialCopy> copies;
+
   const PasswordEditorPanel({
     super.key,
     required this.provider,
@@ -38,6 +41,7 @@ class PasswordEditorPanel extends StatefulWidget {
     this.passwordMeta,
     this.passwordRaw,
     this.wifiPassword,
+    this.copies = const [],
     this.availableGroups = const {},
     this.groupUserId,
   });
@@ -488,6 +492,9 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
           ),
         ]);
 
+        // the same login saved for the site's other addresses: same user name, password and group
+        await _saveCopies(passwordEntry, sourceGroup: sourceGroup, targetGroup: targetGroup);
+
         if (groupChanged) {
           try {
             await Future.wait([
@@ -528,6 +535,35 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _saveCopies(
+    api.PasswordRawEntry updated, {
+    required String? sourceGroup,
+    required String? targetGroup,
+  }) async {
+    for (final copy in widget.copies) {
+      try {
+        await api.savePassword(
+          passwords: widget.provider,
+          id: copy.id,
+          group: targetGroup,
+          entry: api.PasswordRawEntry(
+            cdat: copy.raw.cdat,
+            mdat: updated.mdat,
+            srvr: copy.raw.srvr,
+            acct: updated.acct,
+            agrp: copy.raw.agrp,
+            data: updated.data,
+          ),
+        );
+        if (copy.group != targetGroup) {
+          await api.deletePassword(passwords: widget.provider, id: copy.id, group: copy.group);
+        }
+      } catch (error, stack) {
+        Logger.warn("Couldn't update the copy for ${copy.raw.srvr}", error: error, trace: stack);
       }
     }
   }
@@ -1091,6 +1127,8 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
               id: id,
               group: widget.group,
             ),
+            for (final copy in widget.copies)
+              api.deletePassword(passwords: widget.provider, id: copy.id, group: copy.group),
             if (metaId != null)
               api.deletePasswordMeta(
                 passwords: widget.provider,

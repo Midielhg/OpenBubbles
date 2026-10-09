@@ -6,6 +6,7 @@ import 'package:bluebubbles/helpers/types/helpers/date_helpers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cbor/simple.dart';
+import 'package:collection/collection.dart';
 
 class CredentialField {
   final String label;
@@ -54,6 +55,11 @@ class CredentialEntry {
   final api.Passkey? passkey;
   final api.WifiPassword? wifiPassword;
 
+  /// Other saved records of the same login (same user name and password for the same site or its
+  /// linked domains, e.g. ring.com and oauth.ring.com). Shown as one item; edits and deletes apply
+  /// to all of them.
+  final List<CredentialCopy> copies;
+
   const CredentialEntry({
     required this.id,
     this.group,
@@ -64,10 +70,156 @@ class CredentialEntry {
     this.passwordRaw,
     this.passkey,
     this.wifiPassword,
+    this.copies = const [],
   });
 
   bool get isEditable =>
       groupType == PasswordGroupType.web || groupType == PasswordGroupType.wifi;
+}
+
+class CredentialCopy {
+  final String id;
+  final String? group;
+  final api.PasswordRawEntry raw;
+
+  const CredentialCopy({required this.id, this.group, required this.raw});
+}
+
+// ---------- merging duplicate logins ----------
+
+String siteHostOf(String server) {
+  var s = server.trim().toLowerCase();
+  if (s.contains("://")) s = Uri.tryParse(s)?.host ?? s;
+  s = s.split("/").first.split(":").first;
+  return s.startsWith("www.") ? s.substring(4) : s;
+}
+
+const _twoPartSuffixes = {
+  "co.uk", "org.uk", "ac.uk", "gov.uk", "com.au", "net.au", "org.au", "co.nz", "co.jp", "com.br",
+  "com.mx", "com.ar", "com.co", "co.in", "co.za", "com.tr", "com.cn", "com.hk", "com.sg", "com.tw",
+};
+
+/// The part of a host a site owns ("oauth.ring.com" -> "ring.com"). IP addresses stay whole.
+String registrableDomainOf(String host) {
+  if (RegExp(r"^[0-9.]+$").hasMatch(host) || host.contains(":")) return host;
+  final parts = host.split(".");
+  if (parts.length <= 2) return host;
+  final lastTwo = parts.sublist(parts.length - 2).join(".");
+  if (_twoPartSuffixes.contains(lastTwo)) return parts.sublist(parts.length - 3).join(".");
+  return lastTwo;
+}
+
+/// Groups records that are really one login: same group, same user name and same password, for
+/// the same site or domains linked to it. Keeps the first-seen order.
+List<List<T>> groupSameLogins<T>(
+  List<T> items, {
+  required String Function(T) account,
+  required String Function(T) password,
+  required String? Function(T) group,
+  required Set<String> Function(T) sites,
+}) {
+  final groups = <List<T>>[];
+  final buckets = <String, List<(List<T>, Set<String>)>>{};
+  for (final item in items) {
+    final key = "${group(item)}\u0000${account(item).trim().toLowerCase()}\u0000${password(item)}";
+    final mySites = sites(item);
+    final bucket = buckets.putIfAbsent(key, () => []);
+    // join every existing login in this bucket that shares a site (can bridge two of them)
+    final joined = bucket.where((g) => g.$2.any(mySites.contains)).toList();
+    if (joined.isEmpty) {
+      final group = <T>[item];
+      bucket.add((group, {...mySites}));
+      groups.add(group);
+      continue;
+    }
+    final target = joined.first;
+    target.$1.add(item);
+    target.$2.addAll(mySites);
+    for (final other in joined.skip(1)) {
+      target.$1.addAll(other.$1);
+      target.$2.addAll(other.$2);
+      bucket.remove(other);
+      groups.remove(other.$1);
+    }
+  }
+  return groups;
+}
+
+String _rawPassword(api.PasswordRawEntry raw) {
+  try {
+    return utf8.decode(raw.data);
+  } catch (_) {
+    return "";
+  }
+}
+
+Set<String> _entrySites(CredentialEntry e) {
+  final sites = <String>{registrableDomainOf(siteHostOf(e.passwordRaw?.srvr ?? ""))};
+  try {
+    final data = e.passwordMeta?.getPasswordData();
+    for (final d in data?.altDomains ?? const <api.PasswordManagerAltDomain>[]) {
+      sites.add(registrableDomainOf(siteHostOf(d.domain)));
+    }
+  } catch (_) {}
+  sites.remove("");
+  return sites;
+}
+
+/// Shows each login once (see [groupSameLogins]): the record with Passwords app details (title,
+/// notes, history) represents the group, the rest become its [CredentialEntry.copies], and its
+/// websites are listed together.
+List<CredentialEntry> mergeSameLogins(List<CredentialEntry> entries) {
+  final logins = entries.where((e) => e.passwordRaw != null).toList();
+  final others = entries.where((e) => e.passwordRaw == null);
+  final merged = <CredentialEntry>[];
+  for (final group in groupSameLogins<CredentialEntry>(
+    logins,
+    account: (e) => e.passwordRaw!.acct,
+    password: (e) => _rawPassword(e.passwordRaw!),
+    group: (e) => e.group,
+    sites: _entrySites,
+  )) {
+    if (group.length == 1) {
+      merged.add(group.first);
+      continue;
+    }
+    group.sort((a, b) {
+      if ((a.passwordMeta == null) != (b.passwordMeta == null)) return a.passwordMeta == null ? 1 : -1;
+      return siteHostOf(a.passwordRaw!.srvr).length.compareTo(siteHostOf(b.passwordRaw!.srvr).length);
+    });
+    final main = group.first;
+    final hosts = <String>{
+      for (final e in group) siteHostOf(e.passwordRaw!.srvr),
+    }..removeWhere((h) => h.isEmpty);
+    final mainHost = siteHostOf(main.passwordRaw!.srvr);
+    final otherHosts = hosts.where((h) => h != mainHost).toList()..sort();
+    final fields = main.item.fields.where((f) => f.label != "Alternate Domains").toList();
+    final existingAlt = main.item.fields.firstWhereOrNull((f) => f.label == "Alternate Domains")?.value;
+    final alsoUsedOn = {
+      ...otherHosts,
+      if (existingAlt != null) ...existingAlt.split(", ").where((d) => d.trim().isNotEmpty),
+    };
+    if (alsoUsedOn.isNotEmpty) fields.add(CredentialField("Alternate Domains", alsoUsedOn.join(", ")));
+    merged.add(CredentialEntry(
+      id: main.id,
+      group: main.group,
+      passwordMetaId: main.passwordMetaId,
+      groupType: main.groupType,
+      item: BasicCredentialItem(
+        title: main.item.title,
+        subtitle: main.item.subtitle,
+        icon: main.item.icon,
+        color: main.item.color,
+        fields: fields,
+      ),
+      passwordMeta: main.passwordMeta,
+      passwordRaw: main.passwordRaw,
+      copies: [
+        for (final e in group.skip(1)) CredentialCopy(id: e.id, group: e.group, raw: e.passwordRaw!),
+      ],
+    ));
+  }
+  return [...merged, ...others];
 }
 
 enum PasswordGroupType {

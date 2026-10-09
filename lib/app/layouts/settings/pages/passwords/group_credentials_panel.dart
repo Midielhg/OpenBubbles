@@ -116,7 +116,7 @@ class _GroupCredentialsPanelState
     }
 
     items.sort((a, b) => _entryModifiedAt(b).compareTo(_entryModifiedAt(a)));
-    return items;
+    return mergeSameLogins(items); // one row per login
   }
 
   int _entryModifiedAt(CredentialEntry entry) {

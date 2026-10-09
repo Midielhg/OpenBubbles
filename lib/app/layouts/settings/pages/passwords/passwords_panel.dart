@@ -113,8 +113,15 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     if (manager == null) return;
     final counts = <PasswordGroupType, int>{};
     try {
-      counts[PasswordGroupType.web] =
-          (await api.getPasswords(passwords: manager!)).length;
+      // logins, not records: copies for a site's other addresses count once
+      final passwords = (await api.getPasswords(passwords: manager!)).values.toList();
+      counts[PasswordGroupType.web] = groupSameLogins<(String?, api.PasswordRawEntry)>(
+        passwords,
+        account: (p) => p.$2.acct,
+        password: (p) => utf8.decode(p.$2.data, allowMalformed: true),
+        group: (p) => p.$1,
+        sites: (p) => {registrableDomainOf(siteHostOf(p.$2.srvr))},
+      ).length;
     } catch (_) {}
     try {
       counts[PasswordGroupType.passkeys] =
@@ -643,6 +650,30 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     }
   }
 
+  /// Searched word by word: "ring seascape" finds ring.com / seascapepm@... Covers the title, user
+  /// name, every website of the login, group, other domains and notes.
+  _PasswordSearchItem _searchItemFor(CredentialEntry credential) {
+    final raw = credential.passwordRaw!;
+    final website = siteHostOf(raw.srvr);
+    const skip = {"Password", "Created", "Modified"};
+    return _PasswordSearchItem(
+      entry: credential,
+      queryText: [
+        credential.item.title,
+        credential.item.subtitle,
+        raw.srvr,
+        for (final copy in credential.copies) copy.raw.srvr,
+        for (final f in credential.item.fields)
+          if (!skip.contains(f.label)) f.value,
+      ].join(" ").toLowerCase(),
+      subtitle: [
+        if (raw.acct.trim().isNotEmpty) raw.acct.trim(),
+        if (website.isNotEmpty && website != credential.item.title)
+          credential.copies.isEmpty ? website : "$website +${credential.copies.length}",
+      ].join(" · "),
+    );
+  }
+
   Future<List<_PasswordSearchItem>> _loadSearchItems() async {
     if (manager == null) return const [];
     final passwords = await api.getPasswords(passwords: manager!);
@@ -650,6 +681,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     final metas = await api.getPasswordsMeta(passwords: manager!);
     final metasBySiteUser = _indexMetasBySiteAndUser(metas);
     final items = <_PasswordSearchItem>[];
+    final webEntries = <CredentialEntry>[];
 
     for (final entry in passwords.entries) {
       final passwordGroup = entry.value.$1;
@@ -662,7 +694,6 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       );
       final meta = match?.$2;
       final data = meta?.getPasswordData();
-      final website = (meta?.srvr ?? password.srvr).trim();
       final groupName = _resolveGroupName(passwordGroup);
       final credential = CredentialEntry(
         id: entry.key,
@@ -679,24 +710,11 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
         passwordMeta: meta,
         passwordRaw: password,
       );
-      items.add(
-        _PasswordSearchItem(
-          entry: credential,
-          // searched word by word: "ring seascape" finds ring.com / seascapepm@...
-          queryText: [
-            website,
-            credential.item.title,
-            password.acct,
-            if (passwordGroup != null) groupName,
-            ...data?.altDomains.map((d) => d.domain) ?? const <String>[],
-            if (data?.notes != null) utf8.decode(data!.notes!, allowMalformed: true),
-          ].join(" ").toLowerCase(),
-          subtitle: [
-            if (password.acct.trim().isNotEmpty) password.acct.trim(),
-            if (website.isNotEmpty && website != credential.item.title) website,
-          ].join(" · "),
-        ),
-      );
+      webEntries.add(credential);
+    }
+    // one result per login (copies for a site's other addresses are merged)
+    for (final credential in mergeSameLogins(webEntries)) {
+      items.add(_searchItemFor(credential));
     }
 
     for (final entry in wifi.entries) {

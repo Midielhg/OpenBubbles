@@ -46,7 +46,14 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
     _credentialsFuture = _loadCredentials(widget.groupType);
   }
 
+  /// One row per login: copies of a login saved for several of a site's addresses are merged.
   Future<List<CredentialEntry>> _loadCredentials(PasswordGroupType type) async {
+    final entries = await _loadAllCredentials(type);
+    if (type == PasswordGroupType.web || type == PasswordGroupType.codes) return mergeSameLogins(entries);
+    return entries;
+  }
+
+  Future<List<CredentialEntry>> _loadAllCredentials(PasswordGroupType type) async {
     switch (type) {
       case PasswordGroupType.web:
         final passwords = await api.getPasswords(passwords: widget.provider);
