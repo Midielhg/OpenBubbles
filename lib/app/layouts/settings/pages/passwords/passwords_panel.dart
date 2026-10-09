@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/browser_extension_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/group_credentials_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
@@ -7,7 +9,7 @@ import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_widge
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
-import 'package:bluebubbles/helpers/ui/ui_helpers.dart';
+import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/cupertino.dart';
@@ -611,9 +613,14 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     if (manager == null) return;
     final items = await _loadSearchItems();
     if (!mounted) return;
-    final selected = await showSearch<_PasswordSearchItem?>(
-      context: context,
-      delegate: _PasswordSearchDelegate(items: items),
+    final selected = await Navigator.of(context).push<_PasswordSearchItem?>(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 150),
+        pageBuilder: (context, animation, _) => FadeTransition(
+          opacity: animation,
+          child: _PasswordSearchPage(items: items),
+        ),
+      ),
     );
     if (selected == null || !mounted) return;
     final result = await ns.pushSettings(
@@ -678,6 +685,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
             password.acct,
             if (passwordGroup != null) groupName,
             ...data?.altDomains.map((d) => d.domain) ?? const <String>[],
+            if (data?.notes != null) utf8.decode(data!.notes!, allowMalformed: true),
           ].join(" ").toLowerCase(),
           subtitle: [
             if (password.acct.trim().isNotEmpty) password.acct.trim(),
@@ -705,11 +713,39 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       items.add(
         _PasswordSearchItem(
           entry: credential,
-          queryText: ssid.toLowerCase(),
-          subtitle: ssid.isNotEmpty ? "SSID: $ssid" : "SSID",
+          queryText: "$ssid wi-fi wifi".toLowerCase(),
+          subtitle: "Wi-Fi network",
         ),
       );
     }
+
+    // passkeys too, so a search finds every way to sign in to a site
+    try {
+      final passkeys = await api.getPasskeys(passwords: manager!);
+      for (final entry in passkeys.entries) {
+        final passkeyGroup = entry.value.$1;
+        final passkey = entry.value.$2;
+        final groupName = _resolveGroupName(passkeyGroup);
+        final item = buildPasskeyCredential(passkey: passkey, group: groupName);
+        items.add(
+          _PasswordSearchItem(
+            entry: CredentialEntry(
+              id: entry.key,
+              group: passkeyGroup,
+              groupType: PasswordGroupType.passkeys,
+              item: item,
+              passkey: passkey,
+            ),
+            queryText: [passkey.labl, item.title, item.subtitle, if (passkeyGroup != null) groupName, "passkey"]
+                .join(" ")
+                .toLowerCase(),
+            subtitle: [if (item.subtitle.trim().isNotEmpty) item.subtitle.trim(), "Passkey"].join(" · "),
+          ),
+        );
+      }
+    } catch (_) {}
+
+    items.sort((a, b) => a.entry.item.title.toLowerCase().compareTo(b.entry.item.title.toLowerCase()));
 
     return items;
   }
@@ -784,73 +820,131 @@ class _PasswordSearchItem {
   });
 }
 
-class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
+/// Searches saved passwords and Wi-Fi networks word by word. Its own page rather than
+/// showSearch(), so the search box sits below the Windows title bar's drag strip and can be
+/// clicked into and selected normally.
+class _PasswordSearchPage extends StatefulWidget {
+  const _PasswordSearchPage({required this.items});
+
   final List<_PasswordSearchItem> items;
 
-  _PasswordSearchDelegate({required this.items});
+  @override
+  State<_PasswordSearchPage> createState() => _PasswordSearchPageState();
+}
+
+class _PasswordSearchPageState extends OptimizedState<_PasswordSearchPage> {
+  final _controller = TextEditingController();
 
   @override
-  String get searchFieldLabel => "Search website or SSID";
-
-  @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      if (query.isNotEmpty)
-        IconButton(
-          onPressed: () => query = "",
-          icon: const Icon(CupertinoIcons.xmark_circle_fill),
-        ),
-    ];
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
   }
 
   @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      onPressed: () => close(context, null),
-      icon: const Icon(CupertinoIcons.arrow_left),
-    );
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  @override
-  Widget buildResults(BuildContext context) {
-    return _buildList(context);
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    return _buildList(context);
-  }
-
-  Widget _buildList(BuildContext context) {
-    final words = query.trim().toLowerCase().split(RegExp(r"\s+")).where((w) => w.isNotEmpty).toList();
-    final dividerColor = Theme.of(context).dividerColor.withOpacity(0.35);
+  List<_PasswordSearchItem> get _results {
+    final words = _controller.text.trim().toLowerCase().split(RegExp(r"\s+")).where((w) => w.isNotEmpty).toList();
     // every word has to match somewhere (site, user name, title, group, other domains)
-    final filtered = words.isEmpty
-        ? items
-        : items
-            .where((item) => words.every(item.queryText.contains))
-            .toList(growable: false);
-    if (filtered.isEmpty) {
-      return const Center(
-        child: Text("No matching passwords or Wi-Fi networks."),
-      );
-    }
-    return ListView.separated(
-      itemCount: filtered.length,
-      separatorBuilder: (_, __) => Divider(
-        height: 1,
-        color: dividerColor,
+    if (words.isEmpty) return widget.items;
+    return widget.items.where((item) => words.every(item.queryText.contains)).toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final results = _results;
+    return Scaffold(
+      backgroundColor: headerColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // clear of the custom title bar's drag strip on desktop
+            SizedBox(height: kIsDesktop ? 36 : 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 12, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: "Back",
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(CupertinoIcons.arrow_left),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) {
+                        if (results.length == 1) Navigator.of(context).pop(results.first);
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Search sites, user names, notes, groups",
+                        prefixIcon: const Icon(CupertinoIcons.search, size: 18),
+                        suffixIcon: _controller.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: "Clear",
+                                onPressed: _controller.clear,
+                                icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 18),
+                              ),
+                        filled: true,
+                        fillColor: tileColor,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: results.isEmpty
+                  ? const Center(child: Text("No matching passwords, passkeys or Wi-Fi networks."))
+                  // the same rows as the Passwords lists: site tile, name, user name
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final item = results[index];
+                        final first = index == 0;
+                        final last = index == results.length - 1;
+                        return ClipRRect(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(first ? 12 : 0),
+                            bottom: Radius.circular(last ? 12 : 0),
+                          ),
+                          child: Container(
+                            color: tileColor,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SettingsTile(
+                                  backgroundColor: tileColor,
+                                  title: item.entry.item.title,
+                                  subtitle: item.subtitle,
+                                  leading: CredentialAvatar(credential: item.entry.item),
+                                  trailing: const NextButton(),
+                                  onTap: () => Navigator.of(context).pop(item),
+                                ),
+                                if (!last) const SettingsDivider(),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
-      itemBuilder: (context, index) {
-        final item = filtered[index];
-        return ListTile(
-          onTap: () => close(context, item),
-          leading: CredentialAvatar(credential: item.entry.item),
-          title: Text(item.entry.item.title),
-          subtitle: item.subtitle.isEmpty ? null : Text(item.subtitle),
-          trailing: const Icon(CupertinoIcons.chevron_right),
-        );
-      },
     );
   }
 }

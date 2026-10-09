@@ -555,10 +555,20 @@
     const password = chosenPassword(passwords);
     const user = usernameFor(password);
     const username = user && user.value ? user.value.trim() : "";
+    // change-password forms: the current password tells OpenBubbles which saved login this is
+    const others = passwords.filter((p) => p !== password && p.value !== password.value);
+    const old = others.find((p) => /current-password/i.test(p.autocomplete || "")) || others[0];
+    // no user name box (signed in already): pass along user names shown on the page
+    const hints = [];
+    if (!username) {
+      const hidden = hiddenUsername({ password, username: null });
+      if (hidden) hints.push(hidden);
+      hints.push(...(nearbyText(password).match(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi) || []).slice(0, 5));
+    }
     const key = `${username}\n${password.value}`;
     if (key === lastCapture.key && Date.now() - lastCapture.at < 3000) return;
     lastCapture = { key, at: Date.now() };
-    send({ type: "capture", username, password: password.value });
+    send({ type: "capture", username, password: password.value, oldPassword: old ? old.value : "", hints });
   }
 
   document.addEventListener("submit", (e) => {

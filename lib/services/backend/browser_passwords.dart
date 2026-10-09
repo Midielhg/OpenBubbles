@@ -236,9 +236,15 @@ class BrowserPasswords {
       case "checkSave":
         final host = _pageHost(message["url"]);
         if (host == null) return {"state": "none"};
-        final found = await _existingLogin(host, message["username"]?.toString() ?? "");
         final password = message["password"]?.toString() ?? "";
-        return {"state": _saveState(found, password), "site": host};
+        final username = await _resolveUsername(
+          host,
+          message["username"]?.toString().trim() ?? "",
+          oldPassword: message["oldPassword"]?.toString() ?? "",
+          hints: ((message["hints"] as List?) ?? const []).map((h) => h.toString()).toList(),
+        );
+        final found = await _existingLogin(host, username);
+        return {"state": _saveState(found, password), "site": host, "username": username};
       case "save":
         final host = _pageHost(message["url"]);
         final username = message["username"]?.toString().trim() ?? "";
@@ -343,6 +349,27 @@ class BrowserPasswords {
   /// Saved logins for this site and user name, best match (same host) first.
   static Future<List<_Match>> _existingLogin(String host, String username) async =>
       (await _matches(host)).where((m) => m.score >= 2 && _sameUser(m.entry.acct, username)).toList();
+
+  /// The user name a captured password belongs to. Change-password pages usually have no user name
+  /// box: find the saved login by the current password typed on the form, a user name shown on the
+  /// page, or the site's only login.
+  static Future<String> _resolveUsername(String host, String username,
+      {String oldPassword = "", List<String> hints = const []}) async {
+    if (username.isNotEmpty) return username;
+    final logins = (await _matches(host)).where((m) => m.score >= 2).toList();
+    String? only(Iterable<_Match> candidates) {
+      final names = candidates.map((m) => m.entry.acct.trim().toLowerCase()).toSet();
+      return names.length == 1 ? candidates.first.entry.acct : null;
+    }
+
+    if (oldPassword.isNotEmpty) {
+      final byOld = only(logins.where((m) => utf8.decode(m.entry.data, allowMalformed: true) == oldPassword));
+      if (byOld != null) return byOld;
+    }
+    final byHint = only(logins.where((m) => hints.any((h) => _sameUser(h, m.entry.acct))));
+    if (byHint != null) return byHint;
+    return only(logins) ?? "";
+  }
 
   static String _saveState(List<_Match> found, String password) {
     if (found.isEmpty) return "new";

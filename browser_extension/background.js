@@ -145,7 +145,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(rememberUsername(tabId, url, msg.username), sendResponse);
   }
   if (msg.type === "capture" && typeof msg.password === "string" && typeof msg.username === "string") {
-    return reply(capture(tabId, sender.frameId, url, msg.username, msg.password), sendResponse);
+    const extra = {
+      oldPassword: typeof msg.oldPassword === "string" ? msg.oldPassword : "",
+      hints: Array.isArray(msg.hints) ? msg.hints.filter((h) => typeof h === "string").slice(0, 6) : [],
+    };
+    return reply(capture(tabId, sender.frameId, url, msg.username, msg.password, extra), sendResponse);
   }
   if (msg.type === "knownUsername") {
     return reply(knownUsername(tabId, url), sendResponse);
@@ -287,7 +291,7 @@ async function knownUsername(tabId, url) {
   return remembered.username;
 }
 
-async function capture(tabId, frameId, url, username, password) {
+async function capture(tabId, frameId, url, username, password, extra = {}) {
   const site = siteOf(url);
   if (!site || !password || (await neverSites()).includes(site)) return null;
   if (!username) {
@@ -297,8 +301,10 @@ async function capture(tabId, frameId, url, username, password) {
       username = remembered.username;
     }
   }
-  const check = await request("checkSave", { url, username, password }, 15000);
+  const check = await request("checkSave", { url, username, password, ...extra }, 15000);
   if (!check || (check.state !== "new" && check.state !== "update")) return null;
+  // on a change-password page OpenBubbles works out which saved login is being changed
+  if (check.username !== undefined && check.username !== null) username = check.username;
   const pending = {
     id: crypto.randomUUID(),
     url,
