@@ -42,3 +42,12 @@ async function details() {
     el.hidden = false;
   }
 }
+
+// opens OpenBubbles straight to password search; if the app isn't running, start it through the
+// openbubbles:// link (the browser asks once whether to open OpenBubbles)
+document.getElementById("open").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "openApp" }, (res) => {
+    if (chrome.runtime.lastError || !res || !res.ok) chrome.tabs.create({ url: "openbubbles://passwords" });
+    window.close();
+  });
+});

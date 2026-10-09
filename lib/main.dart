@@ -37,6 +37,7 @@ import 'package:google_ml_kit/google_ml_kit.dart' hide Message;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:bluebubbles/services/backend/browser_passwords.dart';
+import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/network/app_updater.dart';
 import 'package:local_notifier/local_notifier.dart';
 import 'package:path/path.dart' show join;
@@ -541,6 +542,8 @@ class _HomeState extends OptimizedState<Home> with WidgetsBindingObserver, TrayL
         AppUpdater.start();
         // fills iCloud passwords through the Passwords browser extension
         if (Platform.isWindows) BrowserPasswords.start();
+        // Ctrl+Alt+P opens Passwords from anywhere
+        if (Platform.isWindows) PasswordsQuickOpen.listen();
       }
 
       if (!ss.settings.finishedSetup.value) {
@@ -707,6 +710,10 @@ Future<void> setSystemTrayContextMenu({bool windowHidden = false}) async {
             await windowManager.hide();
           }
         },
+      ),
+      st.MenuItemLabel(
+        label: 'Passwords',
+        onClicked: (_) => PasswordsQuickOpen.open(),
       ),
       st.MenuSeparator(),
       st.MenuItemLabel(

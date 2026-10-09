@@ -88,6 +88,9 @@ install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
 # from this folder via "Load unpacked" (Settings > Passwords > Browser Extension).
 install(TARGETS openbubbles_password_host RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
+# icon for the "Passwords" Start menu shortcut
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/passwords.ico"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
 install(CODE "
   file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/browser_extension\")
   " COMPONENT Runtime)

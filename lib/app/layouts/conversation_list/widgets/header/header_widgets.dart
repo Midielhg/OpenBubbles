@@ -437,14 +437,14 @@ final currentChat = cm.activeChat?.chat;
   }
 }
 
-Future<void> goToPasswords(BuildContext context) async {
+Future<void> goToPasswords(BuildContext context, {bool openSearch = false}) async {
   final currentChat = cm.activeChat?.chat;
   ns.closeAllConversationView(context);
   await cm.setAllInactive();
   await Navigator.of(Get.context!).push(
     ThemeSwitcher.buildPageRoute(
       builder: (BuildContext context) {
-        return const PasswordsPanel();
+        return PasswordsPanel(openSearch: openSearch);
       },
     ),
   );

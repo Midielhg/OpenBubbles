@@ -63,6 +63,8 @@ Source: "{#ProjectRoot}\build\windows\x64\runner\Release\*"; DestDir: "{app}"; F
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+; opens OpenBubbles straight to password search (pin it to the taskbar, or press Windows and type "Passwords")
+Name: "{autoprograms}\Passwords"; Filename: "{app}\{#MyAppExeName}"; Parameters: "openbubbles://passwords"; IconFilename: "{app}\passwords.ico"; Comment: "Search your iCloud passwords in OpenBubbles"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
@@ -70,6 +72,11 @@ Root: HKA; Subkey: "Software\Classes\imessage"; ValueType: "string"; ValueData: 
 Root: HKA; Subkey: "Software\Classes\imessage"; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""
 Root: HKA; Subkey: "Software\Classes\imessage\DefaultIcon"; ValueType: "string"; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKA; Subkey: "Software\Classes\imessage\shell\open\command"; ValueType: "string"; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+; openbubbles://passwords (the Passwords shortcut, and the browser extension when the app isn't running)
+Root: HKA; Subkey: "Software\Classes\openbubbles"; ValueType: "string"; ValueData: "URL:OpenBubbles"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\openbubbles"; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\openbubbles\DefaultIcon"; ValueType: "string"; ValueData: "{app}\passwords.ico"
+Root: HKA; Subkey: "Software\Classes\openbubbles\shell\open\command"; ValueType: "string"; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

@@ -1,3 +1,4 @@
+import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -160,7 +161,13 @@ class ChatsService extends GetxService {
     if (kIsDesktop && Platform.isWindows) {
       /* ----- IMESSAGE:// HANDLER ----- */
       final _appLinks = AppLinks();
+      // started from the "Passwords" shortcut
+      _appLinks.getInitialLinkString().then((link) {
+        if (link != null && PasswordsQuickOpen.handlesLink(link)) PasswordsQuickOpen.open();
+      });
       _appLinks.stringLinkStream.listen((String string) async {
+        // the "Passwords" Start menu shortcut
+        if (PasswordsQuickOpen.handlesLink(string)) return PasswordsQuickOpen.open();
         if (!string.startsWith("imessage://")) return;
         final uri = Uri.tryParse(string
             .replaceFirst("imessage://", "imessage:")

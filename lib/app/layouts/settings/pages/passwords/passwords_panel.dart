@@ -21,7 +21,10 @@ import 'package:bluebubbles/src/rust/lib.dart' as lib;
 import 'package:get/get.dart';
 
 class PasswordsPanel extends StatefulWidget {
-  const PasswordsPanel({super.key});
+  const PasswordsPanel({super.key, this.openSearch = false});
+
+  /// Go straight to search once the passwords are loaded (quick-open shortcuts).
+  final bool openSearch;
 
   @override
   State<PasswordsPanel> createState() => _PasswordsPanelState();
@@ -63,6 +66,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       manager = pushService.state!.icloudServices!.passwords!;
     }
     if (inClique && manager != null) {
+      if (widget.openSearch) WidgetsBinding.instance.addPostFrameCallback((_) => _openSearch());
       await _loadCredentialCaches();
       await _loadGroups();
     }

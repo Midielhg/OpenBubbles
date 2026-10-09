@@ -94,6 +94,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "status" && sender.url?.startsWith(chrome.runtime.getURL(""))) {
     return reply(request("status", {}, 15000), sendResponse);
   }
+  if (msg.type === "openApp" && sender.url?.startsWith(chrome.runtime.getURL(""))) {
+    return reply(request("open", {}, 15000), sendResponse);
+  }
 
   // content scripts: use the frame address the browser reports
   const url = sender.url;

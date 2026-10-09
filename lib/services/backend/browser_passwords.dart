@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bluebubbles/services/backend/webauthn.dart';
+import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
@@ -252,6 +253,10 @@ class BrowserPasswords {
         if (host == null || password.isEmpty) throw _BridgeError("not_found");
         await _save(host, username, password);
         return {"saved": true};
+      case "open":
+        // "Open Passwords" in the extension's popup
+        PasswordsQuickOpen.open();
+        return {};
       case "passkeys":
         final rpId = _passkeySite(message);
         final allow = ((message["allow"] as List?) ?? const []).map((e) => e.toString()).toSet();
