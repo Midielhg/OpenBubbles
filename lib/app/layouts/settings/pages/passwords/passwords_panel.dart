@@ -671,8 +671,18 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       items.add(
         _PasswordSearchItem(
           entry: credential,
-          queryText: website.toLowerCase(),
-          subtitle: website.isNotEmpty ? "Website: $website" : "Website",
+          // searched word by word: "ring seascape" finds ring.com / seascapepm@...
+          queryText: [
+            website,
+            credential.item.title,
+            password.acct,
+            if (passwordGroup != null) groupName,
+            ...data?.altDomains.map((d) => d.domain) ?? const <String>[],
+          ].join(" ").toLowerCase(),
+          subtitle: [
+            if (password.acct.trim().isNotEmpty) password.acct.trim(),
+            if (website.isNotEmpty && website != credential.item.title) website,
+          ].join(" · "),
         ),
       );
     }
@@ -812,12 +822,13 @@ class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
   }
 
   Widget _buildList(BuildContext context) {
-    final normalizedQuery = query.trim().toLowerCase();
+    final words = query.trim().toLowerCase().split(RegExp(r"\s+")).where((w) => w.isNotEmpty).toList();
     final dividerColor = Theme.of(context).dividerColor.withOpacity(0.35);
-    final filtered = normalizedQuery.isEmpty
+    // every word has to match somewhere (site, user name, title, group, other domains)
+    final filtered = words.isEmpty
         ? items
         : items
-            .where((item) => item.queryText.contains(normalizedQuery))
+            .where((item) => words.every(item.queryText.contains))
             .toList(growable: false);
     if (filtered.isEmpty) {
       return const Center(
@@ -832,12 +843,11 @@ class _PasswordSearchDelegate extends SearchDelegate<_PasswordSearchItem?> {
       ),
       itemBuilder: (context, index) {
         final item = filtered[index];
-        final style = styleForPasswordGroup(item.entry.groupType);
         return ListTile(
           onTap: () => close(context, item),
-          leading: Icon(style.icon, color: style.color),
+          leading: CredentialAvatar(credential: item.entry.item),
           title: Text(item.entry.item.title),
-          subtitle: Text(item.subtitle),
+          subtitle: item.subtitle.isEmpty ? null : Text(item.subtitle),
           trailing: const Icon(CupertinoIcons.chevron_right),
         );
       },
