@@ -84,11 +84,25 @@
     return USERNAME_HINT.test([el.name, el.id, el.placeholder, el.getAttribute("aria-label")].join(" "));
   }
 
+  // Creating an account or setting a new password: offer a strong password instead of saved logins.
+  const SIGNUP_HINT = /sign ?up|create (an |your )?account|register|join now|new password|choose (a )?password|set (a |your )?password|confirm password|crear (una )?cuenta|registr/i;
+
+  function isCurrentPassword(el) {
+    return /current-password/i.test(el.autocomplete || "") || /current|old|existing/i.test(`${el.name} ${el.id}`);
+  }
+
+  function isSignup(password) {
+    if (isNewPassword(password)) return true;
+    if (isCurrentPassword(password)) return false;
+    if (/new|confirm|create|repeat|again|verify/i.test(`${password.name} ${password.id} ${password.placeholder} ${password.getAttribute("aria-label") || ""}`)) return true;
+    if (passwordInputs(scopeOf(password)).length >= 2) return true;
+    return SIGNUP_HINT.test(nearbyText(password).slice(0, 3000));
+  }
+
   function loginFieldsFor(el) {
     if (!usable(el)) return null;
     if (isPassword(el)) {
-      if (isNewPassword(el)) return null;
-      return { password: el, username: usernameFor(el) };
+      return { password: el, username: usernameFor(el), signup: isSignup(el) };
     }
     if (!isTextLike(el)) return null;
     const passwords = passwordInputs(scopeOf(el)).filter(
@@ -206,6 +220,8 @@
     .site { color: #6e6e73; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .note { padding: 8px; color: #6e6e73; }
     .key.passkey { background: #5e5ce6; font-size: 14px; }
+    .key.generate { background: #ff9f0a; font-size: 14px; }
+    .site.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; letter-spacing: .3px; }
     @media (prefers-color-scheme: dark) {
       .menu { background: #2c2c2e; color: #f5f5f7; border-color: rgba(255,255,255,.12); }
       .head, .site, .note { color: #a1a1a6; }
@@ -279,8 +295,9 @@
       item.className = "item" + (i === menu.active ? " active" : "");
       const key = document.createElement("div");
       key.className = "key";
-      key.textContent = account.passkey ? "\u{1F511}" : (account.username || "?").trim().charAt(0).toUpperCase() || "?";
+      key.textContent = account.generate ? "\u{1F510}" : account.passkey ? "\u{1F511}" : (account.username || "?").trim().charAt(0).toUpperCase() || "?";
       if (account.passkey) key.classList.add("passkey");
+      if (account.generate) key.classList.add("generate");
       const text = document.createElement("div");
       text.className = "text";
       const user = document.createElement("div");
@@ -289,6 +306,7 @@
       const site = document.createElement("div");
       site.className = "site";
       site.textContent = account.passkey ? `Passkey · ${account.site}` : account.site;
+      if (account.generate) site.classList.add("mono");
       text.append(user, site);
       item.append(key, text);
       item.addEventListener("click", (e) => e.isTrusted && pick(account));
@@ -317,6 +335,7 @@
     if (!m) return;
     removeMenu();
     if (account.passkey) return useConditionalPasskey(account);
+    if (account.generate && m.local) return fillGenerated(field);
     if (m.local) return fillFromApp(field, account.id);
     // the field is in another frame: OpenBubbles sends the password straight to that frame
     const res = await send({ type: "remoteChoose", nonce: m.nonce, credentialId: account.id });
@@ -344,8 +363,46 @@
     }
   }
 
+  // Apple-style strong password: three groups of six, e.g. "kibgo2-Zuwmyx-qopxu7" (71+ bits)
+  function strongPassword() {
+    const letters = "abcdefghijkmnopqrstuvwxyz";
+    const random = (n) => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+    const chars = Array.from({ length: 18 }, () => letters[random(letters.length)]);
+    const digit = random(18);
+    let upper = random(18);
+    while (upper === digit) upper = random(18);
+    chars[digit] = String(random(10));
+    chars[upper] = chars[upper].toUpperCase();
+    return [chars.slice(0, 6), chars.slice(6, 12), chars.slice(12)].map((g) => g.join("")).join("-");
+  }
+
+  function offerStrongPassword(fields, anchor) {
+    const generated = strongPassword();
+    const accounts = [{ generate: true, id: "__generate__", username: "Use Strong Password", site: generated }];
+    field = { ...fields, anchor, accounts, active: -1, nonce: crypto.randomUUID(), generated };
+    if (IS_TOP) return openMenu({ nonce: field.nonce, accounts, note: null, local: true });
+    fieldsByNonce.set(field.nonce, field);
+    window.parent.postMessage({ __openbubbles: "offset", nonce: field.nonce, rect: rectOf(anchor) }, "*");
+    send({ type: "remoteMenu", nonce: field.nonce, accounts, note: null });
+  }
+
+  // fills the strong password into the new-password boxes (password and its confirmation)
+  function fillGenerated(fields) {
+    if (!fields || !fields.generated) return;
+    closeMenu();
+    suppressUntil = Date.now() + 1500;
+    const targets = passwordInputs(scopeOf(fields.password)).filter((p) =>
+      p === fields.password || (usable(p) && !isCurrentPassword(p)));
+    for (const p of targets) setValue(p, fields.generated);
+    fields.password.focus();
+  }
+
   async function show(fields) {
     const gen = ++showGen;
+    if (fields.signup && fields.password && document.activeElement === fields.password) {
+      if (dismissed.has(fields.password) || fields.password.value) return;
+      return offerStrongPassword(fields, fields.password);
+    }
     const res = await getAccounts();
     // the user may have typed, or moved on, while we waited
     if (gen !== showGen) return;
@@ -420,7 +477,8 @@
     if (!msg) return;
     if (msg.type === "doFill") {
       const fields = fieldsByNonce.get(msg.nonce);
-      if (fields) applyFill(fields, msg);
+      if (fields && msg.generate) fillGenerated(fields);
+      else if (fields) applyFill(fields, msg);
       return;
     }
     if (!IS_TOP) return;
@@ -502,7 +560,9 @@
       e.preventDefault();
       e.stopPropagation();
       const account = field.accounts[field.active];
-      if (account.passkey) {
+      if (account.generate) {
+        fillGenerated(field);
+      } else if (account.passkey) {
         closeMenu();
         useConditionalPasskey(account);
       } else {
@@ -608,6 +668,11 @@
     .sub { color: #6e6e73; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .text { min-width: 0; }
     .buttons { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .user-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .user-row span { color: #6e6e73; flex: none; }
+    .user-input { flex: 1; min-width: 0; font: inherit; color: inherit; background: rgba(0,0,0,.05);
+      border: 1px solid rgba(0,0,0,.1); border-radius: 7px; padding: 5px 8px; outline: none; }
+    .user-input:focus { border-color: #0a84ff; box-shadow: 0 0 0 3px rgba(10,132,255,.2); }
     .never { margin-right: auto; background: none; border: 0; padding: 4px 0; color: #6e6e73; cursor: pointer; font: inherit; }
     .never:hover { text-decoration: underline; }
     button.b { border: 0; border-radius: 8px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
@@ -617,6 +682,8 @@
       .card { background: #2c2c2e; color: #f5f5f7; border-color: rgba(255,255,255,.12); }
       .sub, .never { color: #a1a1a6; }
       .later { background: rgba(255,255,255,.1); }
+      .user-row span { color: #a1a1a6; }
+      .user-input { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); }
     }
   `;
 
@@ -648,9 +715,24 @@
       : pending.state === "update" ? "Update saved password?" : "Save password?";
     const sub = document.createElement("div");
     sub.className = "sub";
-    sub.textContent = `${pending.username || "No user name"} · ${pending.site}`;
+    sub.textContent = pending.site;
     text.append(title, sub);
     top.append(img, text);
+    // the user name to save it under, editable (e.g. the account name instead of the email)
+    const userRow = document.createElement("label");
+    userRow.className = "user-row";
+    const userLabel = document.createElement("span");
+    userLabel.textContent = "User name";
+    const userInput = document.createElement("input");
+    userInput.className = "user-input";
+    userInput.value = pending.username || "";
+    userInput.placeholder = "No user name";
+    userInput.spellcheck = false;
+    userRow.append(userLabel, userInput);
+    // keep typing here away from the page's own keyboard handlers
+    for (const type of ["keydown", "keyup", "keypress", "input"]) {
+      userRow.addEventListener(type, (e) => e.stopPropagation());
+    }
 
     const buttons = document.createElement("div");
     buttons.className = "buttons";
@@ -666,10 +748,11 @@
     buttons.append(never, later, save);
 
     const decide = async (decision) => {
+      const username = userInput.value.trim();
       closeBanner();
-      const res = await send({ type: "saveDecision", id: pending.id, decision });
+      const res = await send({ type: "saveDecision", id: pending.id, decision, username });
       if (decision === "save" && !res.ok) {
-        showBanner({ ...pending, failed: true });
+        showBanner({ ...pending, username, failed: true });
       }
     };
     // only real clicks count; scripts on the page can't reach into the closed shadow root
@@ -677,7 +760,7 @@
     later.addEventListener("click", (e) => e.isTrusted && decide("dismiss"));
     save.addEventListener("click", (e) => e.isTrusted && decide("save"));
 
-    card.append(top, buttons);
+    card.append(top, userRow, buttons);
     root.append(style, card);
     document.documentElement.appendChild(banner);
   }

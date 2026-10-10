@@ -161,7 +161,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(pendingFor(tabId), sendResponse);
   }
   if (msg.type === "saveDecision" && sender.frameId === 0 && typeof msg.id === "string") {
-    return reply(decide(tabId, msg.id, msg.decision), sendResponse);
+    return reply(decide(tabId, msg.id, msg.decision, typeof msg.username === "string" ? msg.username : null), sendResponse);
   }
   return false;
 });
@@ -252,6 +252,11 @@ function pruneRemoteMenus() {
 async function remoteChoose(tabId, nonce, credentialId) {
   const m = remoteMenus.get(nonce);
   if (!m || m.tabId !== tabId) throw new Error("expired");
+  if (credentialId === "__generate__") {
+    // "Use Strong Password": the frame with the field already has it
+    await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, generate: true }, { frameId: m.frameId });
+    return null;
+  }
   const result = await request("fill", { url: m.url, credentialId }, 120000);
   await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, ...result }, { frameId: m.frameId });
   return null;
@@ -338,13 +343,15 @@ async function pendingFor(tabId) {
   return publicView(pending);
 }
 
-async function decide(tabId, id, decision) {
+async function decide(tabId, id, decision, username) {
   const key = `save:${tabId}`;
   const pending = await sessionGet(key);
   if (!pending || pending.id !== id) throw new Error("expired");
   if (decision === "save") {
     // the address the login was typed on, as reported by the browser when it was captured
-    await request("save", { url: pending.url, username: pending.username, password: pending.password }, 30000);
+    // the user name as edited in the banner
+    const name = username !== null ? username.slice(0, 256) : pending.username;
+    await request("save", { url: pending.url, username: name, password: pending.password }, 30000);
   } else if (decision === "never") {
     const sites = await neverSites();
     if (!sites.includes(pending.site)) await chrome.storage.local.set({ neverSave: [...sites, pending.site] });
