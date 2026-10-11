@@ -766,6 +766,17 @@ class NotificationsService extends GetxService {
     }
 
     if (kIsDesktop) {
+      // bring OpenBubbles to the front (also from the tray or minimized) so the request is seen
+      try {
+        if (await windowManager.isMinimized()) await windowManager.restore();
+        await windowManager.show();
+        await windowManager.focus();
+        await windowManager.setAlwaysOnTop(true);
+        await Future.delayed(const Duration(milliseconds: 300));
+        await windowManager.setAlwaysOnTop(false);
+      } catch (e) {
+        Logger.warn("Couldn't bring the window forward: $e");
+      }
       await showDialog(
           context: Get.context!,
           barrierDismissible: false,
