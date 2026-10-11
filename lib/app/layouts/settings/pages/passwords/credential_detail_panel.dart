@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/src/rust/lib.dart' as lib;
 import 'package:get/get.dart';
+import 'package:uuid/uuid.dart';
 
 class CredentialDetailPanel extends StatefulWidget {
   final CredentialEntry credential;
@@ -224,29 +225,13 @@ class _CredentialDetailPanelState
   bool get _canAddWebsite =>
       widget.credential.isEditable && widget.credential.passwordRaw != null;
 
-  /// Adds a website this login also works on (Apple's "also used on" list). The browser extension
-  /// then offers the login there too.
+  /// Adds a website this login also works on. Like Apple's Passwords app, every website of a login is
+  /// its own keychain record (same user name and password), so this saves one for the new site, which
+  /// Safari, the iPhone and the browser extension all use. The site is also noted in the login's
+  /// Passwords-app details ("also used on"), which keeps OpenBubbles showing them as one login.
   Future<void> _addWebsite() async {
-    final meta = widget.credential.passwordMeta;
-    final metaId = widget.credential.passwordMetaId;
-    if (meta == null || metaId == null) {
-      // no Passwords-app record yet: the editor creates one
-      final result = await ns.pushSettings(
-        context,
-        PasswordEditorPanel(
-          provider: widget.provider,
-          groupType: widget.credential.groupType,
-          id: widget.credential.id,
-          group: widget.credential.group,
-          passwordRaw: widget.credential.passwordRaw,
-          copies: widget.credential.copies,
-          availableGroups: widget.groupNamesById,
-          groupUserId: widget.groupUserId,
-        ),
-      );
-      if (result == true && mounted) Navigator.of(context).pop(true);
-      return;
-    }
+    final raw = widget.credential.passwordRaw;
+    if (raw == null) return;
     final controller = TextEditingController();
     final domain = await showDialog<String>(
       context: context,
@@ -267,37 +252,65 @@ class _CredentialDetailPanelState
     );
     final host = siteHostOf(domain ?? "");
     if (host.isEmpty || !host.contains(".")) return;
+    final existingHosts = {
+      siteHostOf(raw.srvr),
+      for (final copy in widget.credential.copies) siteHostOf(copy.raw.srvr),
+    };
+    if (existingHosts.contains(host)) {
+      showSnackbar("Already added", "This login is already saved for $host.");
+      return;
+    }
     try {
-      final data = meta.getPasswordData();
-      if (data.altDomains.any((d) => siteHostOf(d.domain) == host)) return;
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-      await api.savePasswordMeta(
+      // the keychain record for the new website
+      await api.savePassword(
         passwords: widget.provider,
-        id: metaId,
+        id: const Uuid().v4().toUpperCase(),
         group: widget.credential.group,
-        entry: api.PasswordManagerMeta(
-          cdat: meta.cdat,
+        entry: api.PasswordRawEntry(
+          cdat: now,
           mdat: now,
-          srvr: meta.srvr,
-          acct: meta.acct,
-          agrp: meta.agrp,
-          data: api.PasswordManagerMeta.getData(
-            data: api.PasswordManagerMetaData(
-              history: data.history,
-              altDomains: [...data.altDomains, api.PasswordManagerAltDomain(domain: host)],
-              totp: data.totp,
-              ctxt: data.ctxt,
-              title: data.title,
-              notes: data.notes,
-              formerlyShared: data.formerlyShared,
-              ocpid: data.ocpid,
-            ),
-          ),
+          srvr: host,
+          acct: raw.acct,
+          agrp: raw.agrp,
+          data: raw.data,
         ),
       );
+      // and the note in the login's details
+      final meta = widget.credential.passwordMeta;
+      final metaId = widget.credential.passwordMetaId;
+      if (meta != null && metaId != null) {
+        final data = meta.getPasswordData();
+        if (!data.altDomains.any((d) => siteHostOf(d.domain) == host)) {
+          await api.savePasswordMeta(
+            passwords: widget.provider,
+            id: metaId,
+            group: widget.credential.group,
+            entry: api.PasswordManagerMeta(
+              cdat: meta.cdat,
+              mdat: now,
+              srvr: meta.srvr,
+              acct: meta.acct,
+              agrp: meta.agrp,
+              data: api.PasswordManagerMeta.getData(
+                data: api.PasswordManagerMetaData(
+                  history: data.history,
+                  altDomains: [...data.altDomains, api.PasswordManagerAltDomain(domain: host)],
+                  totp: data.totp,
+                  ctxt: data.ctxt,
+                  title: data.title,
+                  notes: data.notes,
+                  formerlyShared: data.formerlyShared,
+                  ocpid: data.ocpid,
+                ),
+              ),
+            ),
+          );
+        }
+      }
       if (!mounted) return;
       setState(() => _addedDomains.add(host));
-      showSnackbar("Added", "This login is now also offered on $host.");
+      showSnackbar("Added", "This login is now saved for $host too.");
     } catch (e) {
       showSnackbar("Error", "Couldn't add the website: $e");
     }

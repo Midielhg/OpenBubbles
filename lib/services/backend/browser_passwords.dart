@@ -320,7 +320,7 @@ class BrowserPasswords {
         final data = meta.$2.getPasswordData();
         if (data.altDomains.isEmpty) continue;
         altDomains
-            .putIfAbsent("${_registrable(_siteHost(meta.$2.srvr))}|${meta.$2.acct}", () => {})
+            .putIfAbsent("${_registrable(_siteHost(meta.$2.srvr))}|${meta.$2.acct.trim().toLowerCase()}", () => {})
             .addAll(data.altDomains.map((d) => _registrable(_siteHost(d.domain))));
       }
     } catch (_) {}
@@ -336,7 +336,7 @@ class BrowserPasswords {
         score = 3;
       } else if (site == pageSite) {
         score = 2;
-      } else if (altDomains["$site|${password.acct}"]?.contains(pageSite) ?? false) {
+      } else if (altDomains["$site|${password.acct.trim().toLowerCase()}"]?.contains(pageSite) ?? false) {
         score = 1;
       } else {
         continue;
