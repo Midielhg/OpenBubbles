@@ -242,7 +242,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Text(
-          "Secondary Servers",
+          "Also Used On (Websites)",
           style: context.theme.textTheme.bodyLarge,
         ),
       ),
@@ -256,7 +256,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
                   controller: _altDomainControllers[i],
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    labelText: "Domain",
+                    labelText: "Website",
                     enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                         color: context.theme.colorScheme.outline,
@@ -287,7 +287,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
         child: OutlinedButton.icon(
           onPressed: _addAltDomain,
           icon: const Icon(CupertinoIcons.add),
-          label: const Text("Add Secondary Server"),
+          label: const Text("Add Website"),
         ),
       ),
       const SettingsDivider(),

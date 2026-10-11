@@ -39,6 +39,8 @@ class _CredentialDetailPanelState
     extends OptimizedState<CredentialDetailPanel> {
   bool get _canEdit => widget.credential.isEditable;
   bool _showPassword = false;
+  // websites added on this page (saved already; the item itself refreshes when the list reloads)
+  final List<String> _addedDomains = [];
   bool get _isApplePasskey {
     if (widget.credential.groupType != PasswordGroupType.passkeys) {
       return false;
@@ -190,15 +192,19 @@ class _CredentialDetailPanelState
   List<Widget> _primaryRows() {
     final rows = <Widget>[];
     for (final entry in _primaryLabels.entries) {
-      final value = _field(entry.key);
+      var value = _field(entry.key);
+      if (entry.key == "Alternate Domains" && _addedDomains.isNotEmpty) {
+        value = [if (value != null) value, ..._addedDomains].join(", ");
+      }
       if (value == null) continue;
+      final shown = value;
       final isPassword = entry.key == "Password";
       rows.add(CredentialFieldRow(
         label: entry.value,
-        value: value,
+        value: shown,
         obscured: isPassword && !_showPassword,
         monospace: isPassword,
-        onCopy: () => _copy(entry.value, value),
+        onCopy: () => _copy(entry.value, shown),
         onToggleObscured: isPassword
             ? () => setState(() => _showPassword = !_showPassword)
             : null,
@@ -215,8 +221,104 @@ class _CredentialDetailPanelState
             CredentialFieldRow(label: label, value: _field(label)!, inline: true),
       ];
 
+  bool get _canAddWebsite =>
+      widget.credential.isEditable && widget.credential.passwordRaw != null;
+
+  /// Adds a website this login also works on (Apple's "also used on" list). The browser extension
+  /// then offers the login there too.
+  Future<void> _addWebsite() async {
+    final meta = widget.credential.passwordMeta;
+    final metaId = widget.credential.passwordMetaId;
+    if (meta == null || metaId == null) {
+      // no Passwords-app record yet: the editor creates one
+      final result = await ns.pushSettings(
+        context,
+        PasswordEditorPanel(
+          provider: widget.provider,
+          groupType: widget.credential.groupType,
+          id: widget.credential.id,
+          group: widget.credential.group,
+          passwordRaw: widget.credential.passwordRaw,
+          copies: widget.credential.copies,
+          availableGroups: widget.groupNamesById,
+          groupUserId: widget.groupUserId,
+        ),
+      );
+      if (result == true && mounted) Navigator.of(context).pop(true);
+      return;
+    }
+    final controller = TextEditingController();
+    final domain = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Add Website"),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(hintText: "example.com"),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text("Add")),
+        ],
+      ),
+    );
+    final host = siteHostOf(domain ?? "");
+    if (host.isEmpty || !host.contains(".")) return;
+    try {
+      final data = meta.getPasswordData();
+      if (data.altDomains.any((d) => siteHostOf(d.domain) == host)) return;
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await api.savePasswordMeta(
+        passwords: widget.provider,
+        id: metaId,
+        group: widget.credential.group,
+        entry: api.PasswordManagerMeta(
+          cdat: meta.cdat,
+          mdat: now,
+          srvr: meta.srvr,
+          acct: meta.acct,
+          agrp: meta.agrp,
+          data: api.PasswordManagerMeta.getData(
+            data: api.PasswordManagerMetaData(
+              history: data.history,
+              altDomains: [...data.altDomains, api.PasswordManagerAltDomain(domain: host)],
+              totp: data.totp,
+              ctxt: data.ctxt,
+              title: data.title,
+              notes: data.notes,
+              formerlyShared: data.formerlyShared,
+              ocpid: data.ocpid,
+            ),
+          ),
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _addedDomains.add(host));
+      showSnackbar("Added", "This login is now also offered on $host.");
+    } catch (e) {
+      showSnackbar("Error", "Couldn't add the website: $e");
+    }
+  }
+
   List<Widget> _actionTiles() {
     final tiles = <Widget>[];
+    if (_canAddWebsite) {
+      tiles.add(
+        SettingsTile(
+          backgroundColor: tileColor,
+          title: "Add Website",
+          subtitle: "Use this login on another website too",
+          onTap: _addWebsite,
+          trailing: Icon(
+            iOS ? CupertinoIcons.add_circled : Icons.add_circle_outline,
+            color: context.theme.colorScheme.primary,
+          ),
+        ),
+      );
+    }
     if (widget.credential.wifiPassword != null) {
       tiles.add(
         SettingsTile(

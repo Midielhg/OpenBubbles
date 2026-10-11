@@ -15,6 +15,7 @@ import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:universal_io/io.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
 import 'package:bluebubbles/src/rust/lib.dart' as lib;
@@ -382,6 +383,28 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                   ],
                 ),
               ),
+              SettingsHeader(
+                iosSubtitle: iosSubtitle,
+                materialSubtitle: materialSubtitle,
+                text: "Apple Account",
+              ),
+              SettingsSection(
+                backgroundColor: tileColor,
+                children: [
+                  SettingsTile(
+                    backgroundColor: tileColor,
+                    title: "Apple Verification Code",
+                    subtitle: "Sign in to your Apple Account on another device or website",
+                    leading: const SettingsLeadingIcon(
+                      iosIcon: CupertinoIcons.lock_shield_fill,
+                      materialIcon: Icons.verified_user,
+                      containerColor: Colors.blueGrey,
+                    ),
+                    onTap: _showAppleCode,
+                    trailing: const NextButton(),
+                  ),
+                ],
+              ),
               if (isAndroid || (!kIsWeb && Platform.isWindows))
                 SettingsHeader(
                   iosSubtitle: iosSubtitle,
@@ -479,6 +502,46 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
           ),
         ),
       ],
+    );
+  }
+
+  /// The six-digit code a trusted Apple device shows when signing in to the Apple Account
+  /// elsewhere; OpenBubbles is one of the account's trusted devices.
+  Future<void> _showAppleCode() async {
+    String code;
+    try {
+      code = (await api.get2FaCode(anisette: pushService.state!.anisette)).toString().padLeft(6, "0");
+    } catch (e) {
+      showSnackbar("Error", "Couldn't get a verification code: $e");
+      return;
+    }
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Apple Verification Code"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Enter this code where your Apple Account asks for one.", style: context.textTheme.bodyLarge),
+            const SizedBox(height: 24),
+            SelectableText(
+              "${code.substring(0, 3)} ${code.substring(3)}",
+              style: context.textTheme.displaySmall?.copyWith(letterSpacing: 6, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: code));
+              showSnackbar("Copied", "Verification code copied to clipboard.");
+            },
+            child: const Text("Copy"),
+          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Done")),
+        ],
+      ),
     );
   }
 
