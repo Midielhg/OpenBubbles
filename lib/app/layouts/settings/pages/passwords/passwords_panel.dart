@@ -43,6 +43,9 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
   Map<String, api.ShareInviteContentData> _invitesById = const {};
   final Set<String> _pendingInviteActions = <String>{};
   Map<PasswordGroupType, int> _counts = const {};
+  // Apple verification codes need Apple's closed-source ADI component (ClearADI), which only
+  // official builds include; this build's placeholder reports "Missing Libraries".
+  bool _appleCodesAvailable = false;
 
   @override
   void initState() {
@@ -66,6 +69,7 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
     if (inClique && manager == null) {
       manager = pushService.state!.icloudServices!.passwords!;
     }
+    _checkAppleCodes();
     if (inClique && manager != null) {
       if (widget.openSearch) WidgetsBinding.instance.addPostFrameCallback((_) => _openSearch());
       await _loadCredentialCaches();
@@ -383,12 +387,14 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                   ],
                 ),
               ),
-              SettingsHeader(
-                iosSubtitle: iosSubtitle,
-                materialSubtitle: materialSubtitle,
-                text: "Apple Account",
-              ),
-              SettingsSection(
+              if (_appleCodesAvailable)
+                SettingsHeader(
+                  iosSubtitle: iosSubtitle,
+                  materialSubtitle: materialSubtitle,
+                  text: "Apple Account",
+                ),
+              if (_appleCodesAvailable)
+                SettingsSection(
                 backgroundColor: tileColor,
                 children: [
                   SettingsTile(
@@ -503,6 +509,13 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
         ),
       ],
     );
+  }
+
+  Future<void> _checkAppleCodes() async {
+    try {
+      await api.get2FaCode(anisette: pushService.state!.anisette);
+      if (mounted) setState(() => _appleCodesAvailable = true);
+    } catch (_) {}
   }
 
   /// The six-digit code a trusted Apple device shows when signing in to the Apple Account
