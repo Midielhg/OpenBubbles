@@ -883,7 +883,31 @@ class _ProfilePanelState extends OptimizedState<ProfilePanel> with WidgetsBindin
                         SettingsTile(
                           title: "Get a verification code",
                           onTap: () async {
-                            var code = await api.get2FaCode(anisette: pushService.state!.anisette);
+                            int code;
+                            try {
+                              code = await api.get2FaCode(anisette: pushService.state!.anisette);
+                            } catch (e) {
+                              // codes are made by Apple's code generator (ClearADI), which official
+                              // OpenBubbles builds include and this build doesn't
+                              await showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  backgroundColor: context.theme.colorScheme.properSurface,
+                                  title: Text("No Code Available", style: context.theme.textTheme.titleLarge),
+                                  content: Text(
+                                    "This build of OpenBubbles can't create Apple verification codes. Use the code on your iPhone or another Apple device, or choose \"Didn't get a verification code?\" on the sign-in page to get one by text message.",
+                                    style: context.textTheme.bodyLarge,
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      child: Text("OK", style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.primary)),
+                                      onPressed: () => Get.back(),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
                             await showDialog(
                               context: context,
                               builder: (_) {
