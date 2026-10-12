@@ -799,7 +799,34 @@ class NotificationsService extends GetxService {
                     api.teardown2Fa(account: pushService.state!.icloudServices!.account, action: "defbtn", txnid: message.txnid);
                     Get.back();
 
-                    var code = await api.approveCircle(state: pushService.state!.activeCircleSessions, account: pushService.state!.icloudServices!.account, txnid: message.txnid);
+                    int code;
+                    try {
+                      code = await api.approveCircle(state: pushService.state!.activeCircleSessions, account: pushService.state!.icloudServices!.account, txnid: message.txnid);
+                    } catch (e, s) {
+                      // Sign-ins that don't set up a new device (websites such as iCloud.com) need Apple's
+                      // code generator (ClearADI), which this build doesn't include
+                      Logger.error("Couldn't get a sign-in code", error: e, trace: s);
+                      await showDialog(
+                        context: Get.context!,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: context.theme.colorScheme.properSurface,
+                          title: Text("No Code Available", style: context.theme.textTheme.titleLarge),
+                          content: Text(
+                            "The sign-in was allowed, but OpenBubbles can't create the verification code for this kind of sign-in. "
+                            "Use the code shown on your iPhone or another Apple device, or choose \"Didn't get a verification code?\" "
+                            "on the sign-in page to get one by text message.",
+                            style: context.textTheme.bodyLarge,
+                          ),
+                          actions: [
+                            TextButton(
+                              child: Text("OK", style: context.theme.textTheme.bodyLarge!.copyWith(color: context.theme.colorScheme.primary)),
+                              onPressed: () => Get.back(),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
                     pushService.authing = true;
                     var context = Get.context!;
                     await showDialog(
