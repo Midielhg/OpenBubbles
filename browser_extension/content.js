@@ -109,7 +109,9 @@
     if (isNewPassword(password)) return true;
     if (isCurrentPassword(password)) return false;
     if (/new|confirm|create|repeat|again|verify/i.test(`${password.name} ${password.id} ${password.placeholder} ${password.getAttribute("aria-label") || ""}`)) return true;
-    if (passwordInputs(scopeOf(password)).length >= 2) return true;
+    // a new password and its confirmation (pages often keep hidden password boxes for other
+    // steps, e.g. Microsoft's sign-in pages, so only count the ones shown)
+    if (passwordInputs(scopeOf(password)).filter(usable).length >= 2) return true;
     // The form's own button and heading say what it is ("Log in" vs "Create account"). Page text is
     // a weaker hint, since sign-in pages link to "Create an account" and sign-up pages to "Log in",
     // so a sign-up judged only from it still offers saved logins first (see show).
@@ -437,11 +439,18 @@
     const gen = ++showGen;
     if (fields.signup && fields.password && document.activeElement === fields.password) {
       if (dismissed.has(fields.password) || fields.password.value) return;
-      if (fields.signup !== "guess") return offerStrongPassword(fields, fields.password);
-      // only the page's wording says sign-up: if there are saved logins for this site, offer those
+      if (isNewPassword(fields.password)) return offerStrongPassword(fields, fields.password);
+      // Not marked as a new password by the page, so check the saved logins first: offer them when the
+      // sign-up was only guessed from the page's wording, or when the user name typed is a saved one
       const saved = await getAccounts();
       if (gen !== showGen || document.activeElement !== fields.password) return;
-      if (!(saved.ok && (saved.result?.accounts || []).length)) return offerStrongPassword(fields, fields.password);
+      const savedAccounts = saved.ok ? saved.result?.accounts || [] : [];
+      const typed = fields.username && fields.username.value;
+      // (a single password box: a new password with its confirmation is a sign-up whatever the name)
+      const single = passwordInputs(scopeOf(fields.password)).filter(usable).length === 1;
+      const known = savedAccounts.length && (fields.signup === "guess" ||
+        (single && typed && savedAccounts.some((a) => sameUser(a.username, typed))));
+      if (!known) return offerStrongPassword(fields, fields.password);
     }
     const res = await getAccounts();
     // the user may have typed, or moved on, while we waited
