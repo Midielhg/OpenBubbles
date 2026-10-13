@@ -110,7 +110,29 @@
     if (isCurrentPassword(password)) return false;
     if (/new|confirm|create|repeat|again|verify/i.test(`${password.name} ${password.id} ${password.placeholder} ${password.getAttribute("aria-label") || ""}`)) return true;
     if (passwordInputs(scopeOf(password)).length >= 2) return true;
-    return SIGNUP_HINT.test(nearbyText(password).slice(0, 3000));
+    // The form's own button and heading say what it is ("Log in" vs "Create account"). Page text is
+    // a weaker hint, since sign-in pages link to "Create an account" and sign-up pages to "Log in",
+    // so a sign-up judged only from it still offers saved logins first (see show).
+    const own = formWording(password);
+    if (SIGNUP_HINT.test(own)) return true;
+    if (LOGIN_HINT.test(own)) return false;
+    return SIGNUP_HINT.test(nearbyText(password).slice(0, 3000)) ? "guess" : false;
+  }
+
+  const LOGIN_HINT = /\blog ?in\b|\blogin\b|\bsign ?in\b|\bsign on\b|iniciar sesi[oó]n|entrar|acceder/i;
+
+  // text of the form's submit button(s) and the closest heading above the password box
+  function formWording(password) {
+    const scope = scopeOf(password);
+    const buttons = [...scope.querySelectorAll('button, input[type="submit"], [role="button"]')]
+      .filter((b) => visible(b) && follows(password, b))
+      .slice(0, 2)
+      .map((b) => b.innerText || b.value || b.getAttribute("aria-label") || "");
+    let heading = "";
+    for (const h of document.querySelectorAll("h1, h2, h3, legend")) {
+      if (visible(h) && follows(h, password)) heading = h.innerText || "";
+    }
+    return [...buttons, heading].join(" ");
   }
 
   function loginFieldsFor(el) {
@@ -415,7 +437,11 @@
     const gen = ++showGen;
     if (fields.signup && fields.password && document.activeElement === fields.password) {
       if (dismissed.has(fields.password) || fields.password.value) return;
-      return offerStrongPassword(fields, fields.password);
+      if (fields.signup !== "guess") return offerStrongPassword(fields, fields.password);
+      // only the page's wording says sign-up: if there are saved logins for this site, offer those
+      const saved = await getAccounts();
+      if (gen !== showGen || document.activeElement !== fields.password) return;
+      if (!(saved.ok && (saved.result?.accounts || []).length)) return offerStrongPassword(fields, fields.password);
     }
     const res = await getAccounts();
     // the user may have typed, or moved on, while we waited
