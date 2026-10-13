@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_editor_panel.dart';
@@ -9,6 +10,7 @@ import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:cbor/cbor.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -345,6 +347,19 @@ class _CredentialDetailPanelState
         ),
       );
     }
+    if (widget.credential.passkey != null) {
+      tiles.add(
+        SettingsTile(
+          backgroundColor: tileColor,
+          title: "Edit User Name",
+          trailing: Icon(
+            iOS ? CupertinoIcons.pencil : Icons.edit_outlined,
+            color: context.theme.colorScheme.onBackground,
+          ),
+          onTap: _editPasskeyUserName,
+        ),
+      );
+    }
     if (widget.credential.groupType == PasswordGroupType.passkeys &&
         !_isApplePasskey) {
       tiles.add(
@@ -430,6 +445,76 @@ class _CredentialDetailPanelState
         .replaceAll(",", r"\,")
         .replaceAll(":", r"\:");
     return "WIFI:T:WPA;S:$escapedSsid;P:$escapedPassword;;";
+  }
+
+  /// Changes the user name shown for a passkey. It lives in the passkey's user tag (CBOR with the
+  /// site's user id and names); only the names change, so signing in keeps working. Like Apple's
+  /// Passwords app, this only renames it here and on your devices, not on the website.
+  Future<void> _editPasskeyUserName() async {
+    final passkey = widget.credential.passkey;
+    if (passkey == null) return;
+    CborMap tag;
+    try {
+      final decoded = cbor.decode(passkey.atag);
+      if (decoded is! CborMap) throw const FormatException();
+      tag = decoded;
+    } catch (_) {
+      showSnackbar("Error", "This passkey's details can't be read.");
+      return;
+    }
+    String? text(String key) {
+      final value = tag[CborString(key)];
+      return value is CborString ? value.toString() : null;
+    }
+
+    final oldName = text("name") ?? "";
+    final controller = TextEditingController(text: oldName);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Edit User Name"),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: "User name"),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text("Save")),
+        ],
+      ),
+    );
+    final newName = name?.trim();
+    if (newName == null || newName.isEmpty || newName == oldName) return;
+
+    final updated = Map<CborValue, CborValue>.of(tag);
+    updated[CborString("name")] = CborString(newName);
+    // the display name usually mirrors the user name; keep them together unless it was set apart
+    final displayName = text("displayName");
+    if (displayName == null || displayName == oldName) {
+      updated[CborString("displayName")] = CborString(newName);
+    }
+    try {
+      await api.savePasskey(
+        passwords: widget.provider,
+        id: widget.credential.id,
+        group: widget.credential.group,
+        entry: api.Passkey(
+          cdat: passkey.cdat,
+          mdat: DateTime.now().toUtc().millisecondsSinceEpoch,
+          agrp: passkey.agrp,
+          labl: passkey.labl,
+          data: passkey.data,
+          atag: Uint8List.fromList(cbor.encode(CborMap(updated))),
+          klbl: passkey.klbl,
+        ),
+      );
+      showSnackbar("Saved", "The passkey's user name is now $newName.");
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      showSnackbar("Error", "Couldn't save the user name: $e");
+    }
   }
 
   void _confirmDeletePasskey() {
