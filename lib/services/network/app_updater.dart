@@ -48,38 +48,84 @@ class AppUpdater {
   static Future<AppUpdate?> check({bool userInitiated = false}) async {
     if (!Platform.isWindows) return null;
     try {
+      final current = (await PackageInfo.fromPlatform()).version;
       final res = await _dio.get("https://api.github.com/repos/$_repo/releases/latest");
-      if (res.statusCode != 200 || res.data is! Map) {
+      ({String version, AppUpdate? update})? latest;
+      if (res.statusCode == 200 && res.data is Map) {
+        latest = _fromApi(res.data as Map);
+      } else {
+        // GitHub's API allows ~60 unauthenticated requests an hour per network (403 once used up,
+        // e.g. on an office connection); the regular releases pages have no such limit
+        Logger.warn("GitHub API returned ${res.statusCode}; checking the releases page instead");
+        latest = await _fromWebsite();
+      }
+      if (latest == null) {
         if (userInitiated) showSnackbar("Updates", "Couldn't check for updates (${res.statusCode})");
         return null;
       }
-      final tag = (res.data["tag_name"] ?? "").toString();
-      final latest = tag.replaceFirst(RegExp(r'^v'), "");
-      final current = (await PackageInfo.fromPlatform()).version;
-      if (!_isNewer(latest, current)) {
+      if (!_isNewer(latest.version, current)) {
         available.value = null;
         if (userInitiated) showSnackbar("Updates", "You're on the latest version ($current)");
         return null;
       }
-      final asset = ((res.data["assets"] as List?) ?? []).cast<Map>().firstWhereOrNull(
-          (a) => (a["name"] ?? "").toString().startsWith("OpenBubbles-Desktop-Setup") && a["name"].toString().endsWith(".exe"));
-      if (asset == null) return null;
-      final digest = asset["digest"]?.toString();
-      final update = AppUpdate(
-        version: latest,
-        url: asset["browser_download_url"].toString(),
-        size: (asset["size"] as num?)?.toInt() ?? 0,
-        sha256: digest != null && digest.startsWith("sha256:") ? digest.substring(7).toLowerCase() : null,
-        pageUrl: (res.data["html_url"] ?? "https://github.com/$_repo/releases").toString(),
-      );
+      final update = latest.update;
+      if (update == null) return null;
       available.value = update;
-      if (userInitiated || ss.prefs.getString(_kSnoozed) != latest) _notify(update);
+      if (userInitiated || ss.prefs.getString(_kSnoozed) != update.version) _notify(update);
       return update;
     } catch (e, s) {
       Logger.warn("Update check failed", error: e, trace: s);
       if (userInitiated) showSnackbar("Updates", "Couldn't check for updates");
       return null;
     }
+  }
+
+  static bool _isSetup(String name) => name.startsWith("OpenBubbles-Desktop-Setup") && name.endsWith(".exe");
+
+  static ({String version, AppUpdate? update}) _fromApi(Map data) {
+    final latest = (data["tag_name"] ?? "").toString().replaceFirst(RegExp(r'^v'), "");
+    final asset = ((data["assets"] as List?) ?? []).cast<Map>().firstWhereOrNull((a) => _isSetup((a["name"] ?? "").toString()));
+    if (asset == null) return (version: latest, update: null);
+    final digest = asset["digest"]?.toString();
+    return (
+      version: latest,
+      update: AppUpdate(
+        version: latest,
+        url: asset["browser_download_url"].toString(),
+        size: (asset["size"] as num?)?.toInt() ?? 0,
+        sha256: digest != null && digest.startsWith("sha256:") ? digest.substring(7).toLowerCase() : null,
+        pageUrl: (data["html_url"] ?? "https://github.com/$_repo/releases").toString(),
+      ),
+    );
+  }
+
+  /// The same details from github.com: /releases/latest redirects to the newest tag, and the
+  /// release's asset list names the installer with its SHA-256.
+  static Future<({String version, AppUpdate? update})?> _fromWebsite() async {
+    final web = Dio(BaseOptions(validateStatus: (_) => true, followRedirects: false));
+    final redirect = await web.get("https://github.com/$_repo/releases/latest");
+    final location = redirect.headers.value("location") ?? "";
+    final tag = RegExp(r'/releases/tag/([^/?#]+)').firstMatch(location)?.group(1);
+    if (tag == null) return null;
+    final latest = Uri.decodeComponent(tag).replaceFirst(RegExp(r'^v'), "");
+    final assets = await web.get<String>("https://github.com/$_repo/releases/expanded_assets/$tag",
+        options: Options(responseType: ResponseType.plain));
+    final html = assets.statusCode == 200 ? assets.data ?? "" : "";
+    final name = RegExp(r'OpenBubbles-Desktop-Setup-[\w.\-]+?\.exe').firstMatch(html)?.group(0);
+    if (name == null || !_isSetup(name)) return (version: latest, update: null);
+    // the digest listed after the installer's name
+    final after = html.substring(html.indexOf(name));
+    final digest = RegExp(r'sha256:([0-9a-f]{64})').firstMatch(after)?.group(1);
+    return (
+      version: latest,
+      update: AppUpdate(
+        version: latest,
+        url: "https://github.com/$_repo/releases/download/$tag/$name",
+        size: 0,
+        sha256: digest,
+        pageUrl: "https://github.com/$_repo/releases/tag/$tag",
+      ),
+    );
   }
 
   /// "1.15.12" vs "1.15.3": numeric per part; tags with extra suffixes (v1.15.0-desktop.1) compare by
