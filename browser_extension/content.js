@@ -78,8 +78,22 @@
     return best;
   }
 
+  // Search boxes, filters and pickers (e.g. Cloudflare's account switcher) aren't sign-in fields,
+  // even when they mention "account"
+  const SEARCH_HINT = /search|filter|find|query|lookup|jump to|go to|switch|select|choose|buscar/i;
+
+  function isSearchLike(el) {
+    if (el.type === "search") return true;
+    const role = (el.getAttribute("role") || "").toLowerCase();
+    if (role === "combobox" || role === "searchbox") return true;
+    if (el.getAttribute("aria-autocomplete") === "list" || el.hasAttribute("aria-activedescendant")) return true;
+    if (el.closest('[role="search"], [role="combobox"], [role="listbox"], [role="menu"], [role="dialog"] [role="combobox"], search')) return true;
+    return SEARCH_HINT.test([el.name, el.id, el.placeholder, el.getAttribute("aria-label")].join(" "));
+  }
+
   function looksLikeUsername(el) {
     if (/username|email/i.test(el.autocomplete || "")) return true;
+    if (isSearchLike(el)) return false;
     if (el.type === "email") return true;
     return USERNAME_HINT.test([el.name, el.id, el.placeholder, el.getAttribute("aria-label")].join(" "));
   }
