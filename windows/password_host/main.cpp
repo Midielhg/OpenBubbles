@@ -110,6 +110,9 @@ int main(int argc, char** argv) {
     for (;;) {
       DWORD read = 0;
       if (!ReadFile(std_in, buffer, sizeof(buffer), &read, nullptr) || read == 0) break;
+      // Windows lets only the app in front (the browser, which started this helper) bring a window
+      // forward; pass that on so OpenBubbles can show its Windows Hello prompt on top of the browser
+      AllowSetForegroundWindow(ASFW_ANY);
       if (!SendAll(app, buffer, static_cast<int>(read))) break;
     }
     // the browser closed the connection

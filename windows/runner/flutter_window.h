@@ -34,6 +34,9 @@ class FlutterWindow : public Win32Window {
   // Ctrl+Alt+P, anywhere in Windows: open Passwords (see PasswordsQuickOpen in Dart).
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> shortcuts_channel_;
   bool passwords_hotkey_ = false;
+
+  // The Dart call waiting for the open Windows Hello prompt ("verifyUser"), if any.
+  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> hello_result_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

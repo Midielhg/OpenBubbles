@@ -13,6 +13,7 @@ import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -535,6 +536,8 @@ class BrowserPasswords {
   /// Passkeys always confirm with Windows Hello (remembered for a few minutes), which is what lets
   /// them tell the site the user was verified. Without Windows Hello they can only sign in to sites
   /// that don't require it.
+  static const _hello = MethodChannel("openbubbles/shortcuts");
+
   static Future<bool> _verifyUser(String rpId, {required bool required}) async {
     final until = _authorizedUntil;
     if (until != null && DateTime.now().isBefore(until)) return true;
@@ -550,8 +553,21 @@ class BrowserPasswords {
       return false;
     }
     _authInFlight ??= () async {
+      final reason = "Use your passkey for $rpId";
+      // the app's own prompt opens centered and on top even while OpenBubbles is in the tray or
+      // behind the browser (windows/runner/hello_prompt.cpp); the plugin's prompt is the fallback
+      if (Platform.isWindows) {
+        try {
+          return await _hello.invokeMethod<bool>("verifyUser", reason) ?? false;
+        } on PlatformException catch (e) {
+          if (e.code != "unavailable") {
+            Logger.warn("Windows Hello failed: $e");
+            return false;
+          }
+        } on MissingPluginException catch (_) {}
+      }
       try {
-        return await auth.authenticate(localizedReason: "Use your passkey for $rpId");
+        return await auth.authenticate(localizedReason: reason);
       } catch (e) {
         Logger.warn("Windows Hello failed: $e");
         return false;
