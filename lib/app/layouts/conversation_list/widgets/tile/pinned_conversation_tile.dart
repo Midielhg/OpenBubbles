@@ -20,6 +20,8 @@ import 'package:get/get.dart';
 class PinnedConversationTile extends CustomStateful<ConversationTileController> {
   /// Avatar size when [colCount] tiles share a row [rowWidth] wide. As in iOS Messages, the avatar
   /// takes about two thirds of its share of the row, leaving the rest as space around it.
+  static const double sideMargin = 4;
+
   static double avatarSize(double rowWidth, int colCount) => max((rowWidth / colCount * 0.64).floorToDouble(), 0).toDouble();
 
   PinnedConversationTile({
@@ -71,7 +73,7 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(left: 4, right: 4, top: 1, bottom: 3),
+      margin: const EdgeInsets.only(left: PinnedConversationTile.sideMargin, right: PinnedConversationTile.sideMargin, top: 1, bottom: 3),
       child: MouseRegion(
         onEnter: (event) => controller.hoverHighlight.value = true,
         onExit: (event) => controller.hoverHighlight.value = false,
@@ -108,9 +110,11 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
                 builder: (BuildContext context, BoxConstraints constraints) {
                   // Great math right here
                   final colCount = kIsDesktop ? ss.settings.pinColumnsLandscape.value : ss.settings.pinColumnsPortrait.value;
-                  // each tile takes an equal share of the row, with the avatar centered in it
-                  final share = (constraints.maxWidth / colCount).floorToDouble();
-                  final maxWidth = PinnedConversationTile.avatarSize(constraints.maxWidth, colCount);
+                  // each tile takes an equal share of the row, with the avatar centered in it; the row
+                  // is this width plus the tile's own side margins, which come out of each share
+                  final rowWidth = constraints.maxWidth + 2 * PinnedConversationTile.sideMargin;
+                  final share = (rowWidth / colCount).floorToDouble() - 2 * PinnedConversationTile.sideMargin;
+                  final maxWidth = PinnedConversationTile.avatarSize(rowWidth, colCount);
 
                   return SizedBox(
                     width: share,
