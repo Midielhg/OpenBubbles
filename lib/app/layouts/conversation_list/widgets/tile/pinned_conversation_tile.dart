@@ -18,6 +18,14 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 class PinnedConversationTile extends CustomStateful<ConversationTileController> {
+  /// Space on each side of a pinned avatar (the gap between two avatars is twice this).
+  static const double sidePadding = 22;
+
+  /// Avatar size when [colCount] tiles share a row [rowWidth] wide: each tile gets an equal share,
+  /// less its side padding (and a pixel, so rounding never fits one more tile in the row).
+  static double avatarSize(double rowWidth, int colCount) =>
+      max((rowWidth / colCount - 2 * sidePadding - 1).floorToDouble(), 0).toDouble();
+
   PinnedConversationTile({
     super.key,
     required Chat chat,
@@ -91,8 +99,8 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
               clipBehavior: Clip.none,
               padding: const EdgeInsets.only(
                 top: 4,
-                left: 11,
-                right: 11,
+                left: PinnedConversationTile.sidePadding,
+                right: PinnedConversationTile.sidePadding,
                 bottom: 2,
               ),
               decoration: BoxDecoration(
@@ -109,10 +117,9 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   // Great math right here
-                  final availableWidth = constraints.maxWidth;
                   final colCount = kIsDesktop ? ss.settings.pinColumnsLandscape.value : ss.settings.pinColumnsPortrait.value;
-                  final spaceBetween = (colCount - 1) * 30;
-                  final maxWidth = max(((availableWidth - spaceBetween) / colCount).floorToDouble(), 0).toDouble();
+                  // the row's width (this tile's padding added back), shared by colCount tiles
+                  final maxWidth = PinnedConversationTile.avatarSize(constraints.maxWidth + 2 * PinnedConversationTile.sidePadding, colCount);
 
                   return ConstrainedBox(
                     constraints: BoxConstraints(

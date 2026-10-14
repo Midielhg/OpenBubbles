@@ -160,12 +160,10 @@ class CupertinoConversationListState
                               child: LayoutBuilder(builder:
                                   (BuildContext context,
                                       BoxConstraints constraints) {
-                                double availableWidth =
-                                    constraints.maxWidth - 50;
-                                double spaceBetween = (colCount - 1) * 30;
+                                // the pages are padded 10 on each side
                                 double maxWidth =
-                                    ((availableWidth - spaceBetween) / colCount)
-                                        .floorToDouble();
+                                    PinnedConversationTile.avatarSize(
+                                        constraints.maxWidth - 20, colCount);
                                 TextStyle style =
                                     context.theme.textTheme.bodyMedium!;
                                 double height = usedRowCount *
