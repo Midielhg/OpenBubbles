@@ -12,6 +12,15 @@ const MESSAGES = {
 
 let appVersion = "?";
 
+function newer(a, b) {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 chrome.runtime.sendMessage({ type: "status" }, (res) => {
   if (chrome.runtime.lastError || !res) res = { ok: false, error: "not_running" };
   if (res.ok) {
@@ -20,6 +29,17 @@ chrome.runtime.sendMessage({ type: "status" }, (res) => {
     text.textContent = "Connected to OpenBubbles.";
     hint.textContent = `${n} saved password${n === 1 ? "" : "s"}. Click a login box on a website to fill one.`;
     if (res.result?.version) appVersion = res.result.version;
+    // Loaded unpacked from OpenBubbles' folder, the extension only picks up new files there when it's
+    // reloaded; offer that when the app came with a newer copy
+    const bundled = res.result?.extensionVersion;
+    if (bundled && newer(bundled, chrome.runtime.getManifest().version)) {
+      hint.textContent = `Version ${bundled} came with OpenBubbles. If it's still not updated after this, ` +
+        "load the extension again from the folder in OpenBubbles > Settings > Passwords > Browser Extension.";
+      const update = document.getElementById("update");
+      update.textContent = `Update to ${bundled}`;
+      update.hidden = false;
+      update.addEventListener("click", () => chrome.runtime.reload());
+    }
   } else {
     box.className = "status bad";
     const [t, h] = MESSAGES[res.error] || ["Couldn't reach OpenBubbles.", `(${res.error})`];

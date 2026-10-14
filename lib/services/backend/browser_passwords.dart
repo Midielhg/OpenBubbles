@@ -76,6 +76,15 @@ class BrowserPasswords {
 
   static Timer? _watchdog;
 
+  static Future<String?> _bundledExtensionVersion() async {
+    try {
+      final manifest = jsonDecode(await File(p.join(extensionDir, "manifest.json")).readAsString());
+      return manifest is Map ? manifest["version"]?.toString() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> _checkBridgeFile() async {
     final server = _server;
     final token = _token;
@@ -232,7 +241,12 @@ class BrowserPasswords {
     switch (message["type"]) {
       case "status":
         final passwords = await _passwords();
-        return {"count": passwords.length, "version": (await PackageInfo.fromPlatform()).version};
+        return {
+          "count": passwords.length,
+          "version": (await PackageInfo.fromPlatform()).version,
+          // the extension copy installed with the app, so an older loaded copy can update itself
+          if (await _bundledExtensionVersion() case final v?) "extensionVersion": v,
+        };
       case "lookup":
         final host = _pageHost(message["url"]);
         if (host == null) return {"accounts": []};
