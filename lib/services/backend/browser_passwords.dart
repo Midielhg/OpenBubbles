@@ -64,13 +64,37 @@ class BrowserPasswords {
       await _bridgeFile.writeAsString("${_server!.port}\n$_token\n", flush: true);
       await _registerHost();
       Logger.info("Browser password bridge listening on ${_server!.port}");
+      // the browser's helper finds the app through this file; put it back if something removed or
+      // replaced it (e.g. another copy of the app starting and quitting during an update)
+      _watchdog?.cancel();
+      _watchdog = Timer.periodic(const Duration(minutes: 1), (_) => _checkBridgeFile());
     } catch (e, s) {
       Logger.error("Couldn't start the browser password bridge", error: e, trace: s);
       await stop();
     }
   }
 
+  static Timer? _watchdog;
+
+  static Future<void> _checkBridgeFile() async {
+    final server = _server;
+    final token = _token;
+    if (server == null || token == null) return;
+    final expected = "${server.port}\n$token\n";
+    try {
+      if (await _bridgeFile.exists() && await _bridgeFile.readAsString() == expected) return;
+      Logger.warn("Browser password bridge file was missing or stale; rewriting it");
+      await Directory(_dataDir).create(recursive: true);
+      await _bridgeFile.writeAsString(expected, flush: true);
+      await _registerHost();
+    } catch (e) {
+      Logger.warn("Couldn't check the browser password bridge file: $e");
+    }
+  }
+
   static Future<void> stop() async {
+    _watchdog?.cancel();
+    _watchdog = null;
     final server = _server;
     _server = null;
     _token = null;

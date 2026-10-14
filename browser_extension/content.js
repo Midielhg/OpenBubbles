@@ -592,7 +592,7 @@
   }, true);
   document.addEventListener("keydown", (e) => {
     if (!field || e.target !== field.anchor) {
-      if (e.key.length === 1) showGen++; // typing elsewhere: don't pop a menu up late
+      if ((e.key || "").length === 1) showGen++; // typing elsewhere: don't pop a menu up late
       return;
     }
     const n = field.accounts.length;
@@ -617,7 +617,7 @@
       } else {
         fillFromApp(field, account.id);
       }
-    } else if (e.key.length === 1) {
+    } else if ((e.key || "").length === 1) {
       // the user is typing their own value
       closeMenu();
     }
