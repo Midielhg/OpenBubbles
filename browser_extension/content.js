@@ -414,9 +414,10 @@
     return [chars.slice(0, 6), chars.slice(6, 12), chars.slice(12)].map((g) => g.join("")).join("-");
   }
 
-  function offerStrongPassword(fields, anchor) {
+  // [saved]: the site's saved logins, listed first (a strong password is then the last option)
+  function offerStrongPassword(fields, anchor, saved = []) {
     const generated = strongPassword();
-    const accounts = [{ generate: true, id: "__generate__", username: "Use Strong Password", site: generated }];
+    const accounts = [...saved, { generate: true, id: "__generate__", username: "Use Strong Password", site: generated }];
     field = { ...fields, anchor, accounts, active: -1, nonce: crypto.randomUUID(), generated };
     if (IS_TOP) return openMenu({ nonce: field.nonce, accounts, note: null, local: true });
     fieldsByNonce.set(field.nonce, field);
@@ -439,18 +440,15 @@
     const gen = ++showGen;
     if (fields.signup && fields.password && document.activeElement === fields.password) {
       if (dismissed.has(fields.password) || fields.password.value) return;
-      if (isNewPassword(fields.password)) return offerStrongPassword(fields, fields.password);
-      // Not marked as a new password by the page, so check the saved logins first: offer them when the
-      // sign-up was only guessed from the page's wording, or when the user name typed is a saved one
+      // Sites often mark sign-in boxes as new passwords too (WatchGuard's does), so whenever this site
+      // has saved logins, offer them first and a strong password after them
       const saved = await getAccounts();
       if (gen !== showGen || document.activeElement !== fields.password) return;
-      const savedAccounts = saved.ok ? saved.result?.accounts || [] : [];
+      let savedAccounts = saved.ok ? saved.result?.accounts || [] : [];
       const typed = fields.username && fields.username.value;
-      // (a single password box: a new password with its confirmation is a sign-up whatever the name)
-      const single = passwordInputs(scopeOf(fields.password)).filter(usable).length === 1;
-      const known = savedAccounts.length && (fields.signup === "guess" ||
-        (single && typed && savedAccounts.some((a) => sameUser(a.username, typed))));
-      if (!known) return offerStrongPassword(fields, fields.password);
+      const forTyped = typed ? savedAccounts.filter((a) => sameUser(a.username, typed)) : [];
+      if (forTyped.length) savedAccounts = forTyped;
+      return offerStrongPassword(fields, fields.password, savedAccounts);
     }
     const res = await getAccounts();
     // the user may have typed, or moved on, while we waited
