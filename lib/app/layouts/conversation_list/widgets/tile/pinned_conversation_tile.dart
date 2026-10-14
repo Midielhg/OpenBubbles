@@ -18,13 +18,9 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 class PinnedConversationTile extends CustomStateful<ConversationTileController> {
-  /// Space on each side of a pinned avatar (the gap between two avatars is twice this).
-  static const double sidePadding = 22;
-
-  /// Avatar size when [colCount] tiles share a row [rowWidth] wide: each tile gets an equal share,
-  /// less its side padding (and a pixel, so rounding never fits one more tile in the row).
-  static double avatarSize(double rowWidth, int colCount) =>
-      max((rowWidth / colCount - 2 * sidePadding - 1).floorToDouble(), 0).toDouble();
+  /// Avatar size when [colCount] tiles share a row [rowWidth] wide. As in iOS Messages, the avatar
+  /// takes about two thirds of its share of the row, leaving the rest as space around it.
+  static double avatarSize(double rowWidth, int colCount) => max((rowWidth / colCount * 0.64).floorToDouble(), 0).toDouble();
 
   PinnedConversationTile({
     super.key,
@@ -97,12 +93,7 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
             return AnimatedContainer(
               duration: const Duration(milliseconds: 100),
               clipBehavior: Clip.none,
-              padding: const EdgeInsets.only(
-                top: 4,
-                left: PinnedConversationTile.sidePadding,
-                right: PinnedConversationTile.sidePadding,
-                bottom: 2,
-              ),
+              padding: const EdgeInsets.only(top: 4, bottom: 2),
               decoration: BoxDecoration(
                 color: controller.shouldPartialHighlight.value
                     ? context.theme.colorScheme.properSurface.lightenOrDarken(10)
@@ -111,53 +102,59 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
                         : controller.hoverHighlight.value
                             ? context.theme.colorScheme.properSurface
                             : null,
-                borderRadius: BorderRadius.circular(
-                    controller.shouldHighlight.value || controller.shouldPartialHighlight.value || controller.hoverHighlight.value ? 8 : 0),
+                borderRadius: BorderRadius.circular(controller.shouldHighlight.value || controller.shouldPartialHighlight.value || controller.hoverHighlight.value ? 8 : 0),
               ),
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   // Great math right here
                   final colCount = kIsDesktop ? ss.settings.pinColumnsLandscape.value : ss.settings.pinColumnsPortrait.value;
-                  // the row's width (this tile's padding added back), shared by colCount tiles
-                  final maxWidth = PinnedConversationTile.avatarSize(constraints.maxWidth + 2 * PinnedConversationTile.sidePadding, colCount);
+                  // each tile takes an equal share of the row, with the avatar centered in it
+                  final share = (constraints.maxWidth / colCount).floorToDouble();
+                  final maxWidth = PinnedConversationTile.avatarSize(constraints.maxWidth, colCount);
 
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: maxWidth,
-                    ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: <Widget>[
-                        Column(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: <Widget>[
-                                ContactAvatarGroupWidget(
-                                  chat: controller.chat,
-                                  size: maxWidth,
-                                  editable: false,
+                  return SizedBox(
+                    width: share,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: maxWidth,
+                        ),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: <Widget>[
+                            Column(
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: <Widget>[
+                                    ContactAvatarGroupWidget(
+                                      chat: controller.chat,
+                                      size: maxWidth,
+                                      editable: false,
+                                    ),
+                                    UnreadIcon(width: maxWidth, parentController: controller),
+                                    MuteIcon(width: maxWidth, parentController: controller),
+                                    PinnedIndicators(width: maxWidth, controller: controller),
+                                  ],
                                 ),
-                                UnreadIcon(width: maxWidth, parentController: controller),
-                                MuteIcon(width: maxWidth, parentController: controller),
-                                PinnedIndicators(width: maxWidth, controller: controller),
+                                ChatTitle(width: maxWidth, parentController: controller),
                               ],
                             ),
-                            ChatTitle(width: maxWidth, parentController: controller),
+                            ReactionIcon(width: maxWidth, parentController: controller),
+                            Positioned(
+                              bottom: context.textTheme.bodyMedium!.fontSize! * 3,
+                              width: maxWidth,
+                              child: PinnedTileTextBubble(
+                                chat: controller.chat,
+                                size: maxWidth,
+                                parentController: controller,
+                              ),
+                            ),
                           ],
                         ),
-                        ReactionIcon(width: maxWidth, parentController: controller),
-                        Positioned(
-                          bottom: context.textTheme.bodyMedium!.fontSize! * 3,
-                          width: maxWidth,
-                          child: PinnedTileTextBubble(
-                            chat: controller.chat,
-                            size: maxWidth,
-                            parentController: controller,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 },
@@ -193,19 +190,21 @@ class _UnreadIconState extends CustomState<UnreadIcon, void, ConversationTileCon
   Widget build(BuildContext context) {
     return Obx(() {
       final unread = GlobalChatService.unreadState(controller.chat.guid).value;
-      return unread ? Positioned(
-        left: sqrt(widget.width) - widget.width * 0.05 * sqrt(2),
-        top: sqrt(widget.width) - widget.width * 0.05 * sqrt(2),
-        child: Container(
-          width: widget.width * 0.2,
-          height: widget.width * 0.2,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: context.theme.colorScheme.primary,
-          ),
-          margin: const EdgeInsets.only(right: 3),
-        ),
-      ) : const SizedBox.shrink();
+      return unread
+          ? Positioned(
+              left: sqrt(widget.width) - widget.width * 0.05 * sqrt(2),
+              top: sqrt(widget.width) - widget.width * 0.05 * sqrt(2),
+              child: Container(
+                width: widget.width * 0.2,
+                height: widget.width * 0.2,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: context.theme.colorScheme.primary,
+                ),
+                margin: const EdgeInsets.only(right: 3),
+              ),
+            )
+          : const SizedBox.shrink();
     });
   }
 }
@@ -220,7 +219,6 @@ class MuteIcon extends CustomStateful<ConversationTileController> {
 }
 
 class _MuteIconState extends CustomState<MuteIcon, void, ConversationTileController> {
-
   @override
   void initState() {
     super.initState();
@@ -312,8 +310,7 @@ class _ChatTitleState extends CustomState<ChatTitle, void, ConversationTileContr
       sub = WebListeners.chatUpdate.listen((chat) {
         if (chat.guid == controller.chat.guid) {
           // check if we really need to update this widget
-          if (chat.displayName != cachedDisplayName
-              || chat.participants.length != cachedParticipants.length) {
+          if (chat.displayName != cachedDisplayName || chat.participants.length != cachedParticipants.length) {
             final newTitle = chat.getTitle();
             if (newTitle != title) {
               setState(() {
@@ -343,9 +340,7 @@ class _ChatTitleState extends CustomState<ChatTitle, void, ConversationTileContr
       child: Obx(() {
         final hideInfo = ss.settings.redactedMode.value && ss.settings.hideContactInfo.value;
         final style = context.theme.textTheme.bodyMedium!.apply(
-          color: controller.shouldHighlight.value
-              ? context.theme.colorScheme.onBubble(context, controller.chat.isIMessage)
-              : context.theme.colorScheme.outline,
+          color: controller.shouldHighlight.value ? context.theme.colorScheme.onBubble(context, controller.chat.isIMessage) : context.theme.colorScheme.outline,
           fontSizeFactor: controller.chat.isPinned! ? 0.95 : 1,
         );
         String _title = title;
@@ -446,7 +441,6 @@ class ReactionIcon extends CustomStateful<ConversationTileController> {
 }
 
 class _ReactionIconState extends CustomState<ReactionIcon, void, ConversationTileController> {
-
   @override
   void initState() {
     super.initState();
