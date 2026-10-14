@@ -129,17 +129,33 @@ class _PinnedConversationTileState extends CustomState<PinnedConversationTile, v
                                 Stack(
                                   clipBehavior: Clip.none,
                                   children: <Widget>[
-                                    ContactAvatarGroupWidget(
-                                      chat: controller.chat,
-                                      size: maxWidth,
-                                      editable: false,
+                                    // a soft shadow under the avatar, as in iOS Messages (the fill shows
+                                    // behind group avatars, like the iPhone's light circle)
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: context.theme.colorScheme.properSurface,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF000000).withOpacity(context.theme.brightness == Brightness.dark ? 0.35 : 0.14),
+                                            blurRadius: maxWidth * 0.12,
+                                            offset: Offset(0, maxWidth * 0.04),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ContactAvatarGroupWidget(
+                                        chat: controller.chat,
+                                        size: maxWidth,
+                                        editable: false,
+                                      ),
                                     ),
                                     UnreadIcon(width: maxWidth, parentController: controller),
                                     MuteIcon(width: maxWidth, parentController: controller),
                                     PinnedIndicators(width: maxWidth, controller: controller),
                                   ],
                                 ),
-                                ChatTitle(width: maxWidth, parentController: controller),
+                                // the name may use the whole column, as in iOS Messages
+                                ChatTitle(width: maxWidth, textWidth: share - 8, parentController: controller),
                               ],
                             ),
                             ReactionIcon(width: maxWidth, parentController: controller),
@@ -259,8 +275,9 @@ class _MuteIconState extends CustomState<MuteIcon, void, ConversationTileControl
 
 class ChatTitle extends CustomStateful<ConversationTileController> {
   final double width;
+  final double? textWidth;
 
-  const ChatTitle({Key? key, required this.width, required super.parentController});
+  const ChatTitle({Key? key, required this.width, this.textWidth, required super.parentController});
 
   @override
   State<StatefulWidget> createState() => _ChatTitleState();
@@ -351,7 +368,7 @@ class _ChatTitleState extends CustomState<ChatTitle, void, ConversationTileContr
         return SizedBox(
           height: style.height! * style.fontSize! * 2,
           child: OverflowBox(
-            maxWidth: widget.width + 16,
+            maxWidth: widget.textWidth ?? widget.width + 16,
             child: Align(
               alignment: Alignment.center,
               child: RichText(
@@ -364,7 +381,7 @@ class _ChatTitleState extends CustomState<ChatTitle, void, ConversationTileContr
                 ),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: widget.textWidth != null ? 1 : 2,
               ),
             ),
           ),
