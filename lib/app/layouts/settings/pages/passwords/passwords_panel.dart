@@ -387,6 +387,42 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                   ],
                 ),
               ),
+              SettingsHeader(
+                iosSubtitle: iosSubtitle,
+                materialSubtitle: materialSubtitle,
+                text: "Security",
+              ),
+              SettingsSection(
+                backgroundColor: tileColor,
+                children: [
+                  SettingsTile(
+                    backgroundColor: tileColor,
+                    title: "Security Recommendations",
+                    subtitle: "Weak, reused and leaked passwords",
+                    leading: const SettingsLeadingIcon(
+                      iosIcon: CupertinoIcons.exclamationmark_shield_fill,
+                      materialIcon: Icons.shield_outlined,
+                      containerColor: Colors.redAccent,
+                    ),
+                    onTap: () async {
+                      if (manager == null) return;
+                      await ns.pushSettings(
+                        context,
+                        PasswordsGroupPanel(
+                          title: "Security Recommendations",
+                          groupType: PasswordGroupType.web,
+                          provider: manager!,
+                          groupNamesById: _groupNamesById,
+                          groupUserId: _groupsUserId,
+                          security: true,
+                        ),
+                      );
+                      await _loadCredentialCaches();
+                    },
+                    trailing: const NextButton(),
+                  ),
+                ],
+              ),
               if (_appleCodesAvailable)
                 SettingsHeader(
                   iosSubtitle: iosSubtitle,

@@ -1,6 +1,7 @@
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_editor_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_security.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_widgets.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
@@ -23,6 +24,8 @@ class PasswordsGroupPanel extends StatefulWidget {
   final lib.ArcPasswordManagerDefaultAnisetteProvider provider;
   final Map<String, String> groupNamesById;
   final String? groupUserId;
+  /// Security Recommendations: only logins with weak, reused or leaked passwords, with the reason.
+  final bool security;
 
   const PasswordsGroupPanel({
     super.key,
@@ -31,6 +34,7 @@ class PasswordsGroupPanel extends StatefulWidget {
     required this.provider,
     required this.groupNamesById,
     required this.groupUserId,
+    this.security = false,
   });
 
   @override
@@ -49,8 +53,88 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
   /// One row per login: copies of a login saved for several of a site's addresses are merged.
   Future<List<CredentialEntry>> _loadCredentials(PasswordGroupType type) async {
     final entries = await _loadAllCredentials(type);
-    if (type == PasswordGroupType.web || type == PasswordGroupType.codes) return mergeSameLogins(entries);
+    if (type == PasswordGroupType.web || type == PasswordGroupType.codes) {
+      final merged = mergeSameLogins(entries);
+      if (widget.security) return _withIssues(merged);
+      return merged;
+    }
     return entries;
+  }
+
+  // ---------- Security Recommendations ----------
+
+  List<CredentialEntry> _allLogins = [];
+  Map<String, List<PasswordIssue>> _issues = {};
+  Map<String, int> _reuseCounts = {};
+  Set<String>? _leaked;
+  String? _leakStatus;
+
+  List<CredentialEntry> _withIssues(List<CredentialEntry> logins) {
+    _allLogins = logins;
+    _issues = PasswordSecurity.issues(logins, leakedPasswords: _leaked ?? const {});
+    _reuseCounts = {
+      for (final e in PasswordSecurity.reused(logins).entries) e.key: e.value.length,
+    };
+    final flagged = logins.where((l) => _issues.containsKey(l.id)).toList();
+    // most serious first, then A to Z
+    flagged.sort((a, b) {
+      final sa = _issues[a.id]!.first.index, sb = _issues[b.id]!.first.index;
+      if (sa != sb) return sa - sb;
+      return a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase());
+    });
+    return flagged;
+  }
+
+  Future<void> _checkLeaks() async {
+    setState(() => _leakStatus = "Checking...");
+    try {
+      final leaked = await PasswordSecurity.leaked(
+        _allLogins.map(PasswordSecurity.passwordOf),
+        progress: (done, total) {
+          if (mounted) setState(() => _leakStatus = "Checking... $done of $total");
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _leaked = leaked;
+        _leakStatus = leaked.isEmpty ? "None of your passwords appear in known data leaks." : null;
+        _credentialsFuture = Future.value(_withIssues(_allLogins));
+      });
+    } catch (e) {
+      if (mounted) setState(() => _leakStatus = "Couldn't check right now: $e");
+    }
+  }
+
+  String _issueText(CredentialEntry entry) {
+    final password = PasswordSecurity.passwordOf(entry);
+    return (_issues[entry.id] ?? const [])
+        .map((i) => PasswordSecurity.describe(i, reusedCount: _reuseCounts[password] ?? 0))
+        .join(" · ");
+  }
+
+  Widget _securityHeader() {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        SettingsSection(
+          backgroundColor: tileColor,
+          children: [
+            SettingsTile(
+              backgroundColor: tileColor,
+              title: _leaked == null ? "Check for Leaked Passwords" : "Check Again for Leaked Passwords",
+              subtitle: _leakStatus ??
+                  "Compares your passwords with known data leaks (Have I Been Pwned). Only the first 5 "
+                      "characters of each password's hash are sent, never the password.",
+              leading: const SettingsLeadingIcon(
+                iosIcon: CupertinoIcons.exclamationmark_shield_fill,
+                materialIcon: Icons.shield_outlined,
+                containerColor: Colors.redAccent,
+              ),
+              onTap: _leakStatus?.startsWith("Checking") == true ? null : _checkLeaks,
+            ),
+          ],
+        ),
+      ]),
+    );
   }
 
   Future<List<CredentialEntry>> _loadAllCredentials(PasswordGroupType type) async {
@@ -332,8 +416,9 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
       materialSubtitle: materialSubtitle,
       headerColor: headerColor,
       tileColor: tileColor,
-      fab: _buildFab(context),
+      fab: widget.security ? null : _buildFab(context),
       bodySlivers: [
+        if (widget.security) _securityHeader(),
         FutureBuilder<List<CredentialEntry>>(
           future: _credentialsFuture,
           builder: (context, snapshot) {
@@ -352,12 +437,14 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
             }
 
             // A to Z, like Apple's Passwords app
-            final credentials = [...?snapshot.data]..sort((a, b) =>
-                a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase()));
+            final credentials = [...?snapshot.data];
+            if (!widget.security) {
+              credentials.sort((a, b) => a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase()));
+            }
             if (credentials.isEmpty) {
               return _buildStatusSliver(
                 child: Text(
-                  "No credentials saved in this group.",
+                  widget.security ? "No weak or reused passwords. Nice!" : "No credentials saved in this group.",
                   style: context.theme.textTheme.bodyMedium,
                 ),
               );
@@ -433,7 +520,7 @@ class _PasswordsGroupPanelState extends OptimizedState<PasswordsGroupPanel> {
     return SettingsTile(
       backgroundColor: tileColor,
       title: entry.item.title,
-      subtitle: entry.item.subtitle,
+      subtitle: widget.security ? "${entry.item.subtitle}\n${_issueText(entry)}" : entry.item.subtitle,
       onTap: openDetails,
       leading: CredentialAvatar(credential: entry.item),
       trailing: const NextButton(),
