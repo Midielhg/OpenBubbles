@@ -61,6 +61,10 @@ class SearchViewState extends OptimizedState<SearchView> {
   bool isFromMe = false;
   bool isNotFromMe = false;
   DateTime? sinceDate;
+  // quick filters (this device's messages): only messages with photos/attachments, or with links
+  bool onlyPhotos = false;
+  bool onlyLinks = false;
+  bool get quickFilter => local && (onlyPhotos || onlyLinks);
 
   Color get backgroundColor => ss.settings.windowEffect.value == WindowEffect.disabled
       ? context.theme.colorScheme.background
@@ -79,17 +83,19 @@ class SearchViewState extends OptimizedState<SearchView> {
   }
 
   Future<void> search(String newSearch) async {
-    if (isSearching || isNullOrEmpty(newSearch) || newSearch.length < 3) return;
+    // with Photos or Links on, an empty search lists all of them
+    if (isSearching || (!quickFilter && (isNullOrEmpty(newSearch) || newSearch.length < 3))) return;
     focusNode.unfocus();
     noResults = false;
     currentSearchTerm = newSearch;
 
     // If we've already searched for the results and there are none, set no results and return
-    if (pastSearches
-            .firstWhereOrNull((e) => e.search == newSearch && e.method == (local ? "local" : "network"))
-            ?.results
-            .isEmpty ??
-        false) {
+    if (!quickFilter &&
+        (pastSearches
+                .firstWhereOrNull((e) => e.search == newSearch && e.method == (local ? "local" : "network"))
+                ?.results
+                .isEmpty ??
+            false)) {
       return setState(() {
         noResults = true;
       });
@@ -106,11 +112,17 @@ class SearchViewState extends OptimizedState<SearchView> {
     );
 
     if (local) {
-      obx.Condition<Message> condition = Message_.text
-          .contains(currentSearchTerm!, caseSensitive: false)
-          .and(Message_.associatedMessageGuid.isNull())
+      obx.Condition<Message> condition = Message_.associatedMessageGuid.isNull()
           .and(Message_.dateDeleted.isNull())
           .and(Message_.dateCreated.notNull());
+      if (currentSearchTerm!.isNotEmpty) {
+        condition = condition.and(Message_.text.contains(currentSearchTerm!, caseSensitive: false));
+      }
+      if (onlyPhotos) condition = condition.and(Message_.hasAttachments.equals(true));
+      if (onlyLinks) {
+        condition = condition.and(Message_.text.contains("http", caseSensitive: false)
+            .or(Message_.text.contains("www.", caseSensitive: false)));
+      }
 
       if (isFromMe) {
         condition = condition.and(Message_.isFromMe.equals(true));
@@ -135,7 +147,7 @@ class SearchViewState extends OptimizedState<SearchView> {
       final results = query.find();
       query.close();
 
-      if (selectedChat == null) {
+      if (selectedChat == null && !quickFilter) {
         final q2query = Database.chats.query(Chat_.title.contains(currentSearchTerm!, caseSensitive: false)
           .and(Chat_.dateDeleted.isNull())).build();
         q2query.limit = 10;
@@ -393,6 +405,36 @@ class SearchViewState extends OptimizedState<SearchView> {
                           ]))
                     ]),
                   ),
+                  if (local)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 15, right: 15, top: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final (label, icon, on) in [
+                            ("Photos", CupertinoIcons.photo, onlyPhotos),
+                            ("Links", CupertinoIcons.link, onlyLinks),
+                          ])
+                            FilterChip(
+                              avatar: Icon(icon, size: 16, color: on ? context.theme.colorScheme.onPrimary : context.theme.colorScheme.primary),
+                              label: Text(label),
+                              selected: on,
+                              showCheckmark: false,
+                              selectedColor: context.theme.colorScheme.primary,
+                              labelStyle: TextStyle(color: on ? context.theme.colorScheme.onPrimary : context.theme.colorScheme.properOnSurface),
+                              shape: const StadiumBorder(),
+                              onSelected: (value) {
+                                setState(() {
+                                  if (label == "Photos") onlyPhotos = value; else onlyLinks = value;
+                                  currentSearch = null;
+                                  noResults = false;
+                                });
+                                if (quickFilter || textEditingController.text.length >= 3) search(textEditingController.text);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                   if (!kIsWeb && backend.getRemoteService() != null)
                     Padding(
                       padding: const EdgeInsets.only(left: 15, right: 15, top: 15, bottom: 10),
@@ -496,7 +538,9 @@ class SearchViewState extends OptimizedState<SearchView> {
                         spans.add(TextSpan(
                             text: subText.substring(termEnd, subText.length).trimRight(), style: subtitleStyle));
                       } else {
-                        spans.add(TextSpan(text: message.text, style: subtitleStyle));
+                        spans.add(TextSpan(
+                            text: (message.text ?? "").trim().isNotEmpty ? message.text : "Attachment",
+                            style: subtitleStyle));
                       }
 
                       return Container(
