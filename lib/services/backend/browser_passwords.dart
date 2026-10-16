@@ -456,6 +456,34 @@ class BrowserPasswords {
 
   /// Stores a login the way the Passwords editor does: the password record plus a password-manager
   /// record that carries its history, so it shows up properly on Apple devices too.
+  /// Imports one login (from a browser's password export). Logins already saved for the site and
+  /// user name are left alone. Returns true when it was added.
+  static Future<bool> importLogin(String url, String username, String password) async {
+    final manager = pushService.state?.icloudServices?.passwords;
+    if (manager == null || !pushService.cachedInClique) throw _BridgeError("not_ready");
+    final host = _pageHost(url.contains("://") ? url : "https://$url");
+    if (host == null || password.isEmpty) return false;
+    if ((await _existingLogin(host, username)).isNotEmpty) return false;
+    final now = _now();
+    final id = _newId();
+    await Future.wait([
+      api.savePassword(
+        passwords: manager,
+        id: id,
+        entry: api.PasswordRawEntry(
+          cdat: now,
+          mdat: now,
+          srvr: host,
+          acct: username,
+          agrp: "com.apple.cfnetwork",
+          data: Uint8List.fromList(utf8.encode(password)),
+        ),
+      ),
+      api.savePasswordMeta(passwords: manager, id: _newId(id), entry: _newMeta(id, host, username, password, now)),
+    ]);
+    return true;
+  }
+
   static Future<void> _save(String host, String username, String password) async {
     final manager = pushService.state?.icloudServices?.passwords;
     if (manager == null || !pushService.cachedInClique) throw _BridgeError("not_ready");

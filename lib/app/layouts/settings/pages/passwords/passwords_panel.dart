@@ -4,6 +4,7 @@ import 'package:bluebubbles/app/layouts/settings/pages/passwords/browser_extensi
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/group_credentials_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_import.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_store.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_group_panel.dart';
@@ -423,6 +424,21 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                     },
                     trailing: const NextButton(),
                   ),
+                  if (!kIsWeb && Platform.isWindows)
+                    SettingsTile(
+                      backgroundColor: tileColor,
+                      title: "Import Passwords",
+                      subtitle: "From a Chrome, Edge, Firefox, Bitwarden or 1Password export (.csv)",
+                      leading: const SettingsLeadingIcon(
+                        iosIcon: CupertinoIcons.square_arrow_down_fill,
+                        materialIcon: Icons.file_download_outlined,
+                        containerColor: Colors.teal,
+                      ),
+                      onTap: () async {
+                        if (await PasswordImport.run(context) > 0) await _loadCredentialCaches();
+                      },
+                      trailing: const NextButton(),
+                    ),
                   if (RecentlyDeletedStore.supported)
                     SettingsTile(
                       backgroundColor: tileColor,
