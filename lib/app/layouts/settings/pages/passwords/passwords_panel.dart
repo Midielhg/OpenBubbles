@@ -4,6 +4,8 @@ import 'package:bluebubbles/app/layouts/settings/pages/passwords/browser_extensi
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/group_credentials_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/credential_detail_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_panel.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_store.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_group_panel.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/passwords_widgets.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dart';
@@ -421,6 +423,23 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                     },
                     trailing: const NextButton(),
                   ),
+                  if (RecentlyDeletedStore.supported)
+                    SettingsTile(
+                      backgroundColor: tileColor,
+                      title: "Recently Deleted",
+                      subtitle: "Logins deleted here in the last 30 days",
+                      leading: const SettingsLeadingIcon(
+                        iosIcon: CupertinoIcons.trash_fill,
+                        materialIcon: Icons.delete_outline,
+                        containerColor: Colors.grey,
+                      ),
+                      onTap: () async {
+                        if (manager == null) return;
+                        await ns.pushSettings(context, RecentlyDeletedPanel(provider: manager!));
+                        await _loadCredentialCaches();
+                      },
+                      trailing: const NextButton(),
+                    ),
                 ],
               ),
               if (_appleCodesAvailable)

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_store.dart';
 import 'package:bluebubbles/app/layouts/setup/pages/sync/qr_code_scanner.dart';
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
@@ -1118,6 +1119,18 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
     if (id == null) return;
     setState(() => _saving = true);
     try {
+      // kept for 30 days in Recently Deleted
+      if ((widget.groupType == PasswordGroupType.web || widget.groupType == PasswordGroupType.codes) &&
+          widget.passwordRaw != null) {
+        await RecentlyDeletedStore.remember(
+          id: id,
+          raw: widget.passwordRaw!,
+          copies: widget.copies,
+          group: widget.group,
+          metaId: widget.passwordMetaId,
+          meta: widget.passwordMeta,
+        );
+      }
       switch (widget.groupType) {
         case PasswordGroupType.web:
           final metaId = widget.passwordMetaId;
