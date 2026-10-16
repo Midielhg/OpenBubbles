@@ -103,6 +103,12 @@ class BrowserPasswords {
     }
   }
 
+  /// Starts the connection point again, with a fresh port and token.
+  static Future<void> restart() async {
+    await stop();
+    await start();
+  }
+
   static Future<void> stop() async {
     _watchdog?.cancel();
     _watchdog = null;

@@ -34,6 +34,7 @@ import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/database/database.dart';
 import 'package:dio/dio.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/system/status_panel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -150,6 +151,24 @@ class _SettingsPageState extends OptimizedState<SettingsPage> {
                                         editable: false,
                                         fontSize: 22,
                                         size: 50,
+                                      ),
+                                      trailing: const NextButton(),
+                                    ),
+                                    SettingsTile(
+                                      backgroundColor: tileColor,
+                                      title: "Status",
+                                      subtitle: "iMessage, Mac relay, iCloud Keychain and more",
+                                      onTap: () {
+                                        ns.pushAndRemoveSettingsUntil(
+                                          context,
+                                          const StatusPanel(),
+                                          (route) => route.isFirst,
+                                        );
+                                      },
+                                      leading: const SettingsLeadingIcon(
+                                        iosIcon: CupertinoIcons.waveform_path_ecg,
+                                        materialIcon: Icons.monitor_heart_outlined,
+                                        containerColor: Colors.green,
                                       ),
                                       trailing: const NextButton(),
                                     ),

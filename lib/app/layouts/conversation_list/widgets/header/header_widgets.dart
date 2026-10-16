@@ -17,6 +17,7 @@ import 'package:bluebubbles/app/wrappers/titlebar_wrapper.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/system/status_panel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -133,6 +134,8 @@ class MaterialOverflowMenu extends StatelessWidget {
           goToFaceTime(context);
         } else if (value == 11) {
           goToPasswords(context);
+        } else if (value == 12) {
+          ns.pushAndRemoveSettingsUntil(context, const StatusPanel(), (route) => route.isFirst);
         }
       },
       itemBuilder: (context) {
@@ -194,6 +197,13 @@ class MaterialOverflowMenu extends StatelessWidget {
             value: 11,
             child: Text(
               'Passwords',
+              style: context.textTheme.bodyLarge!.apply(color: context.theme.colorScheme.properOnSurface),
+            ),
+          ),
+          PopupMenuItem(
+            value: 12,
+            child: Text(
+              'Status',
               style: context.textTheme.bodyLarge!.apply(color: context.theme.colorScheme.properOnSurface),
             ),
           ),
