@@ -36,6 +36,10 @@ import 'package:win32/win32.dart';
 class BrowserPasswords {
   static const extensionId = "odfmlmhmmoamgcgboaclpookgfjnehin";
   static const hostName = "com.openbubbles.passwords";
+  static const firefoxExtensionId = "passwords@openbubbles";
+
+  /// The Firefox copy of the extension (same files, Firefox manifest).
+  static String get firefoxExtensionDir => p.join(p.dirname(Platform.resolvedExecutable), "browser_extension_firefox");
   static const _authWindow = Duration(minutes: 10);
   static const _maxFrame = 1024 * 1024;
 
@@ -150,6 +154,16 @@ class BrowserPasswords {
     ]) {
       _setRegistryDefault("$browserKey\\$hostName", manifest.path);
     }
+    // Firefox names allowed extensions by id, in its own manifest
+    final firefoxManifest = File(p.join(_dataDir, "$hostName.firefox.json"));
+    await firefoxManifest.writeAsString(jsonEncode({
+      "name": hostName,
+      "description": "Passwords (OpenBubbles)",
+      "path": _hostExe,
+      "type": "stdio",
+      "allowed_extensions": [firefoxExtensionId],
+    }));
+    _setRegistryDefault("Software\\Mozilla\\NativeMessagingHosts\\$hostName", firefoxManifest.path);
   }
 
   static void _setRegistryDefault(String subKey, String value) {
@@ -190,7 +204,7 @@ class BrowserPasswords {
         if (message["type"] == "hello" &&
             _token != null &&
             _constantTimeEquals(message["token"]?.toString() ?? "", _token!) &&
-            message["origin"] == "chrome-extension://$extensionId/") {
+            (message["origin"] == "chrome-extension://$extensionId/" || message["origin"] == "moz-extension://$firefoxExtensionId/")) {
           authenticated = true;
         } else {
           socket.destroy();

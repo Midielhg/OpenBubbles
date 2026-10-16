@@ -96,6 +96,15 @@ install(CODE "
   " COMPONENT Runtime)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../browser_extension/"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/browser_extension" COMPONENT Runtime)
+# the same extension for Firefox, with its own manifest (see firefox_manifest.cmake)
+include("${CMAKE_CURRENT_SOURCE_DIR}/firefox_manifest.cmake")
+install(CODE "
+  file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/browser_extension_firefox\")
+  " COMPONENT Runtime)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../browser_extension/"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/browser_extension_firefox" COMPONENT Runtime)
+install(FILES "${CMAKE_BINARY_DIR}/firefox_extension/manifest.json"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/browser_extension_firefox" COMPONENT Runtime)
 
 if(PLUGIN_BUNDLED_LIBRARIES)
   install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"

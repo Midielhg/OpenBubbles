@@ -20,6 +20,9 @@
 namespace {
 
 constexpr char kExtensionOrigin[] = "chrome-extension://odfmlmhmmoamgcgboaclpookgfjnehin/";
+// Firefox passes the host manifest's path and then the extension's id
+constexpr char kFirefoxExtensionId[] = "passwords@openbubbles";
+constexpr char kFirefoxOrigin[] = "moz-extension://passwords@openbubbles/";
 
 HANDLE g_stdout = INVALID_HANDLE_VALUE;
 
@@ -84,8 +87,12 @@ int main(int argc, char** argv) {
   g_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   HANDLE std_in = GetStdHandle(STD_INPUT_HANDLE);
 
-  // Chrome and Edge pass the calling extension's origin as the first argument.
-  if (argc < 2 || std::strcmp(argv[1], kExtensionOrigin) != 0) return 1;
+  // Chrome and Edge pass the calling extension's origin as the first argument; Firefox passes the
+  // manifest path and then the extension's id.
+  const char* origin = nullptr;
+  if (argc >= 2 && std::strcmp(argv[1], kExtensionOrigin) == 0) origin = kExtensionOrigin;
+  else if (argc >= 3 && std::strcmp(argv[2], kFirefoxExtensionId) == 0) origin = kFirefoxOrigin;
+  if (!origin) return 1;
 
   int port = 0;
   std::string token;
@@ -101,7 +108,7 @@ int main(int argc, char** argv) {
   address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   if (connect(app, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) FailWith("not_running");
 
-  std::string hello = Frame("{\"type\":\"hello\",\"token\":\"" + token + "\",\"origin\":\"" + kExtensionOrigin + "\"}");
+  std::string hello = Frame("{\"type\":\"hello\",\"token\":\"" + token + "\",\"origin\":\"" + origin + "\"}");
   if (!SendAll(app, hello.data(), static_cast<int>(hello.size()))) FailWith("not_running");
 
   // browser -> app

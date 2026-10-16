@@ -112,7 +112,47 @@ class _BrowserExtensionPanelState extends OptimizedState<BrowserExtensionPanel> 
                 ],
               ),
               const SettingsSubtitle(
-                subtitle: "After an OpenBubbles update, click the reload arrow on the extension's card (or restart the browser) to get the newest version.",
+                subtitle: "After an OpenBubbles update, click \"Update\" in the extension's menu (or the reload arrow on its card) to get the newest version.",
+                unlimitedSpace: true,
+              ),
+              SettingsHeader(
+                iosSubtitle: iosSubtitle,
+                materialSubtitle: materialSubtitle,
+                text: "Firefox (128 or Newer)",
+              ),
+              SettingsSection(
+                backgroundColor: tileColor,
+                children: [
+                  SettingsTile(
+                    backgroundColor: tileColor,
+                    title: "1. Open about:debugging#/runtime/this-firefox",
+                    subtitle: "Click to copy the address, then paste it into Firefox's address bar.",
+                    onTap: () => copy("about:debugging#/runtime/this-firefox", "Address"),
+                    trailing: Icon(iOS ? CupertinoIcons.doc_on_clipboard : Icons.copy, size: 18),
+                  ),
+                  const SettingsDivider(),
+                  SettingsTile(
+                    backgroundColor: tileColor,
+                    title: "2. \"Load Temporary Add-on\", then choose manifest.json in this folder",
+                    subtitle: "${BrowserPasswords.firefoxExtensionDir}\nClick to copy the folder path.",
+                    isThreeLine: true,
+                    onTap: () => copy(BrowserPasswords.firefoxExtensionDir, "Folder path"),
+                    trailing: Icon(iOS ? CupertinoIcons.doc_on_clipboard : Icons.copy, size: 18),
+                  ),
+                  const SettingsDivider(),
+                  SettingsTile(
+                    backgroundColor: tileColor,
+                    title: "Show the Firefox folder in File Explorer",
+                    onTap: () => Process.run("explorer.exe", [BrowserPasswords.firefoxExtensionDir]),
+                    trailing: const NextButton(),
+                  ),
+                ],
+              ),
+              const SettingsSubtitle(
+                subtitle: "Regular Firefox removes extensions loaded this way when it restarts, because it only keeps "
+                    "extensions signed by Mozilla. To keep it, sign it for yourself (free, unlisted) at "
+                    "addons.mozilla.org, or use Firefox Developer Edition with xpinstall.signatures.required "
+                    "set to false in about:config.",
                 unlimitedSpace: true,
               ),
             ],
