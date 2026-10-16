@@ -110,6 +110,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return reply(request("fill", { url, credentialId: msg.credentialId }, 120000), sendResponse);
   }
 
+  // one-time codes: recent texted codes, and the page's site's authenticator codes
+  if (msg.type === "codes") {
+    return reply(request("codes", { url }, 15000), sendResponse);
+  }
+  if (msg.type === "fillCode" && typeof msg.credentialId === "string") {
+    return reply(request("fillCode", { url, credentialId: msg.credentialId }, 120000), sendResponse);
+  }
+
   const tabId = sender.tab.id;
 
   // a login field inside a frame: its menu is drawn by the top frame of the same tab
@@ -257,6 +265,16 @@ async function remoteChoose(tabId, nonce, credentialId) {
     await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, generate: true }, { frameId: m.frameId });
     return null;
   }
+  if (credentialId.startsWith("__code__")) {
+    // a texted code: the frame with the field already has it
+    await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, codeId: credentialId }, { frameId: m.frameId });
+    return null;
+  }
+  if (credentialId.startsWith("__totp__")) {
+    const { code } = await request("fillCode", { url: m.url, credentialId: credentialId.slice(8) }, 120000);
+    await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, code }, { frameId: m.frameId });
+    return null;
+  }
   const result = await request("fill", { url: m.url, credentialId }, 120000);
   await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, ...result }, { frameId: m.frameId });
   return null;
@@ -362,4 +380,14 @@ async function decide(tabId, id, decision, username) {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove([`save:${tabId}`, `user:${tabId}`]);
+});
+
+// ---------- keyboard shortcut ----------
+//
+// Alt+Shift+P (changeable in the browser's extension shortcuts) opens the menu on the focused box.
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "open-menu") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab && tab.id != null) chrome.tabs.sendMessage(tab.id, { type: "openMenu" }).catch(() => {});
 });

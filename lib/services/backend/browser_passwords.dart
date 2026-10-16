@@ -4,6 +4,8 @@ import 'dart:ffi';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:bluebubbles/database/database.dart';
+import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/backend/webauthn.dart';
 import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
@@ -333,6 +335,21 @@ class BrowserPasswords {
           "signature": WebAuthn.b64url(assertion.signature),
           if (user.id != null) "userHandle": WebAuthn.b64url(user.id!),
         };
+      case "codes":
+        // one-time-code boxes: recent texted codes (any site, like Safari), and which of this site's
+        // logins have an authenticator code (the code itself comes with "fillCode")
+        final host = _pageHost(message["url"]);
+        if (host == null) return {"texted": [], "authenticator": []};
+        return {"texted": _textedCodes(), "authenticator": await _authenticatorLogins(host)};
+      case "fillCode":
+        final host = _pageHost(message["url"]);
+        final credentialId = message["credentialId"]?.toString();
+        if (host == null || credentialId == null) throw _BridgeError("not_found");
+        final totp = (await _authenticatorFor(host)).firstWhereOrNull((t) => t.id == credentialId);
+        if (totp == null) throw _BridgeError("not_found");
+        if (!await _authorize(host)) throw _BridgeError("denied");
+        final (code, _) = totp.totp.generateOtp();
+        return {"code": code.toString().padLeft(totp.totp.digits, "0")};
       case "passkeyRegister":
         return await _registerPasskey(message);
       default:
@@ -576,6 +593,27 @@ class BrowserPasswords {
   /// that don't require it.
   static const _hello = MethodChannel("openbubbles/shortcuts");
 
+  /// Windows Hello. The app's own prompt opens centered and on top even while OpenBubbles is in the
+  /// tray or behind the browser (windows/runner/hello_prompt.cpp); the plugin's prompt is the fallback.
+  static Future<bool> _helloPrompt(String reason) async {
+    if (Platform.isWindows) {
+      try {
+        return await _hello.invokeMethod<bool>("verifyUser", reason) ?? false;
+      } on PlatformException catch (e) {
+        if (e.code != "unavailable") {
+          Logger.warn("Windows Hello failed: $e");
+          return false;
+        }
+      } on MissingPluginException catch (_) {}
+    }
+    try {
+      return await LocalAuthentication().authenticate(localizedReason: reason);
+    } catch (e) {
+      Logger.warn("Windows Hello failed: $e");
+      return false;
+    }
+  }
+
   static Future<bool> _verifyUser(String rpId, {required bool required}) async {
     final until = _authorizedUntil;
     if (until != null && DateTime.now().isBefore(until)) return true;
@@ -590,27 +628,7 @@ class BrowserPasswords {
       if (required) throw _BridgeError("no_windows_hello");
       return false;
     }
-    _authInFlight ??= () async {
-      final reason = "Use your passkey for $rpId";
-      // the app's own prompt opens centered and on top even while OpenBubbles is in the tray or
-      // behind the browser (windows/runner/hello_prompt.cpp); the plugin's prompt is the fallback
-      if (Platform.isWindows) {
-        try {
-          return await _hello.invokeMethod<bool>("verifyUser", reason) ?? false;
-        } on PlatformException catch (e) {
-          if (e.code != "unavailable") {
-            Logger.warn("Windows Hello failed: $e");
-            return false;
-          }
-        } on MissingPluginException catch (_) {}
-      }
-      try {
-        return await auth.authenticate(localizedReason: reason);
-      } catch (e) {
-        Logger.warn("Windows Hello failed: $e");
-        return false;
-      }
-    }();
+    _authInFlight ??= _helloPrompt("Use your passkey for $rpId");
     final ok = await _authInFlight!;
     _authInFlight = null;
     if (!ok) throw _BridgeError("denied");
@@ -674,18 +692,83 @@ class BrowserPasswords {
     if (until != null && DateTime.now().isBefore(until)) return true;
     _authInFlight ??= () async {
       try {
-        final auth = LocalAuthentication();
-        if (!await auth.isDeviceSupported()) return true;
-        return await auth.authenticate(localizedReason: "Fill your password for $host");
-      } catch (e) {
-        Logger.warn("Windows Hello failed: $e");
-        return false;
+        if (!await LocalAuthentication().isDeviceSupported()) return true;
+      } catch (_) {
+        return true;
       }
+      return _helloPrompt("Fill your password for $host");
     }();
     final ok = await _authInFlight!;
     _authInFlight = null;
     if (ok) _authorizedUntil = DateTime.now().add(_authWindow);
     return ok;
+  }
+
+  // ---------- one-time codes ----------
+
+  static const _codeWindow = Duration(minutes: 5);
+
+  // Codes for signing in to an Apple Account stay in OpenBubbles (and on the user's devices); they're
+  // never offered to websites.
+  static final _appleCode = RegExp(r"apple\s*(account|id)|@apple\.com|#apple\.com|appleid", caseSensitive: false);
+  static final _codeHint = RegExp(
+      r"code|c[oó]digo|otp|passcode|password|pin\b|verif|one[- ]?time|2fa|mfa|security|login|sign[- ]?in|token|clave",
+      caseSensitive: false);
+  // 4-8 digits, optionally written with a dash or space in the middle (123-456), or a G-123456 style prefix
+  static final _codePattern = RegExp(r"(?<![\w-])(?:[A-Z]{1,3}-)?(\d{3,4}[- ]\d{3,4}|\d{4,8})(?![\w-])");
+
+  /// Codes in messages received in the last few minutes, newest first.
+  static List<Map<String, dynamic>> _textedCodes() {
+    final since = DateTime.now().subtract(_codeWindow);
+    final query = Database.messages
+        .query(Message_.dateCreated.greaterThanDate(since).and(Message_.isFromMe.equals(false)))
+        .order(Message_.dateCreated, flags: Order.descending)
+        .build()
+      ..limit = 20;
+    final messages = query.find();
+    query.close();
+    final codes = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final m in messages) {
+      final text = "${m.subject ?? ""} ${m.text ?? ""}".trim();
+      if (text.isEmpty || _appleCode.hasMatch(text) || !_codeHint.hasMatch(text)) continue;
+      final match = _codePattern.firstMatch(text);
+      if (match == null) continue;
+      final code = match.group(1)!.replaceAll(RegExp(r"[- ]"), "");
+      if (!seen.add(code)) continue;
+      final handle = m.handle ?? (m.handleId != null ? Handle.findOne(originalROWID: m.handleId) : null);
+      final from = handle?.displayName ?? "Messages";
+      codes.add({"id": "__code__${codes.length}", "code": code, "from": from});
+      if (codes.length == 3) break;
+    }
+    return codes;
+  }
+
+  static Future<List<({String id, String username, api.PasswordManagerTotp totp})>> _authenticatorFor(String host) async {
+    final matches = (await _matches(host)).where((m) => m.score >= 2).toList();
+    if (matches.isEmpty) return [];
+    final manager = pushService.state!.icloudServices!.passwords!;
+    final metas = await api.getPasswordsMeta(passwords: manager);
+    final out = <({String id, String username, api.PasswordManagerTotp totp})>[];
+    final seen = <String>{};
+    for (final m in matches) {
+      final site = _registrable(_siteHost(m.entry.srvr));
+      final user = m.entry.acct.trim().toLowerCase();
+      for (final meta in metas.values) {
+        if (_registrable(_siteHost(meta.$2.srvr)) != site || meta.$2.acct.trim().toLowerCase() != user) continue;
+        final totp = meta.$2.getPasswordData().totp;
+        if (totp != null && seen.add(user)) out.add((id: m.id, username: m.entry.acct, totp: totp));
+      }
+    }
+    return out;
+  }
+
+  static Future<List<Map<String, dynamic>>> _authenticatorLogins(String host) async {
+    try {
+      return [for (final t in await _authenticatorFor(host)) {"id": t.id, "username": t.username}];
+    } catch (_) {
+      return [];
+    }
   }
 
   // ---------- site matching ----------

@@ -137,8 +137,45 @@
     return [...buttons, heading].join(" ");
   }
 
+  // ---------- one-time code boxes ----------
+
+  const CODE_HINT = /one.?time|otp|verification|verify|2fa|mfa|two.?factor|security.?code|passcode|auth.*code|totp|\bcode\b|c[oó]digo|token|pin\b/i;
+
+  const NOT_CODE_HINT = /zip|postal|post.?code|promo|coupon|discount|gift|voucher|referral|invite|area.?code|country.?code|dial|product|tracking|sku/i;
+
+  function labelText(el) {
+    const ids = (el.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean);
+    const labelled = ids.map((id) => document.getElementById(id)?.innerText || "").join(" ");
+    const label = el.labels && el.labels[0] ? el.labels[0].innerText : "";
+    return `${label} ${labelled}`;
+  }
+
+  // a row of single-character boxes, one per digit (e.g. six boxes for a six-digit code)
+  function digitBoxes(el) {
+    if (el.maxLength !== 1) return null;
+    let group = el.parentElement;
+    for (let i = 0; group && i < 4; group = group.parentElement, i++) {
+      const boxes = [...group.querySelectorAll("input")].filter((e) => e.maxLength === 1 && usable(e));
+      if (boxes.length >= 4 && boxes.length <= 8) return boxes;
+    }
+    return null;
+  }
+
+  function isOneTimeCode(el) {
+    if (!(el instanceof HTMLInputElement) || isPassword(el)) return false;
+    if (!["text", "tel", "number", ""].includes(el.type)) return false;
+    if (/one-time-code/i.test(el.autocomplete || "")) return true;
+    if (/username|email/i.test(el.autocomplete || "") || el.type === "email") return false;
+    if (digitBoxes(el)) return true;
+    const words = [el.name, el.id, el.placeholder, el.getAttribute("aria-label"), labelText(el)].join(" ");
+    if (!CODE_HINT.test(words) || NOT_CODE_HINT.test(words)) return false;
+    // not a long free-text box
+    return !(el.maxLength > 12);
+  }
+
   function loginFieldsFor(el) {
     if (!usable(el)) return null;
+    if (isOneTimeCode(el)) return { code: digitBoxes(el)?.[0] || el, boxes: digitBoxes(el) };
     if (isPassword(el)) {
       return { password: el, username: usernameFor(el), signup: isSignup(el) };
     }
@@ -259,6 +296,8 @@
     .note { padding: 8px; color: #6e6e73; }
     .key.passkey { background: #5e5ce6; font-size: 14px; }
     .key.generate { background: #ff9f0a; font-size: 14px; }
+    .key.texted { background: #34c759; font-size: 14px; }
+    .key.totp { background: #0a84ff; font-size: 14px; }
     .site.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; letter-spacing: .3px; }
     @media (prefers-color-scheme: dark) {
       .menu { background: #2c2c2e; color: #f5f5f7; border-color: rgba(255,255,255,.12); }
@@ -333,9 +372,11 @@
       item.className = "item" + (i === menu.active ? " active" : "");
       const key = document.createElement("div");
       key.className = "key";
-      key.textContent = account.generate ? "\u{1F510}" : account.passkey ? "\u{1F511}" : (account.username || "?").trim().charAt(0).toUpperCase() || "?";
+      key.textContent = account.generate ? "\u{1F510}" : account.passkey ? "\u{1F511}" : account.code ? "\u{1F4AC}" :
+        account.totp ? "\u{23F1}" : (account.username || "?").trim().charAt(0).toUpperCase() || "?";
       if (account.passkey) key.classList.add("passkey");
       if (account.generate) key.classList.add("generate");
+      if (account.code || account.totp) key.classList.add(account.code ? "texted" : "totp");
       const text = document.createElement("div");
       text.className = "text";
       const user = document.createElement("div");
@@ -374,6 +415,7 @@
     removeMenu();
     if (account.passkey) return useConditionalPasskey(account);
     if (account.generate && m.local) return fillGenerated(field);
+    if ((account.code || account.totp) && m.local) return useCodeItem(field, account);
     if (m.local) return fillFromApp(field, account.id);
     // the field is in another frame: OpenBubbles sends the password straight to that frame
     const res = await send({ type: "remoteChoose", nonce: m.nonce, credentialId: account.id });
@@ -436,8 +478,57 @@
     fields.password.focus();
   }
 
+  async function showCodes(fields, gen) {
+    const res = await send({ type: "codes" });
+    if (gen !== showGen) return;
+    const anchor = document.activeElement;
+    if (!fields.code || (anchor !== fields.code && !(fields.boxes || []).includes(anchor))) return;
+    if (dismissed.has(fields.code) || !res.ok) return;
+    const accounts = [
+      ...(res.result?.texted || []).map((c) => ({ code: c.code, id: c.id, username: c.code, site: `From Messages, ${c.from}` })),
+      ...(res.result?.authenticator || []).map((t) => ({ totp: true, id: `__totp__${t.id}`, username: "Authenticator code", site: t.username })),
+    ];
+    if (!accounts.length) return closeMenu();
+    field = { ...fields, anchor, accounts, active: -1, nonce: crypto.randomUUID() };
+    if (IS_TOP) return openMenu({ nonce: field.nonce, accounts, note: null, local: true });
+    fieldsByNonce.set(field.nonce, field);
+    window.parent.postMessage({ __openbubbles: "offset", nonce: field.nonce, rect: rectOf(anchor) }, "*");
+    send({ type: "remoteMenu", nonce: field.nonce, accounts, note: null });
+  }
+
+  // fills a code into its box, or one digit per box for split code boxes
+  function fillCode(fields, code) {
+    if (!fields || !code) return;
+    closeMenu();
+    suppressUntil = Date.now() + 1500;
+    if (fields.boxes && fields.boxes.length >= code.length) {
+      [...code].forEach((digit, i) => setValue(fields.boxes[i], digit));
+      fields.boxes[Math.min(code.length, fields.boxes.length) - 1].focus();
+    } else if (fields.code && fields.code.isConnected) {
+      setValue(fields.code, code);
+    }
+  }
+
+  async function fillAuthenticator(fields, account) {
+    if (!fields) return;
+    closeMenu();
+    const res = await send({ type: "fillCode", credentialId: account.id.replace(/^__totp__/, "") });
+    if (res.ok) return fillCode(fields, res.result?.code);
+    if (res.error !== "denied" && IS_TOP) {
+      field = fields;
+      openMenu({ nonce: fields.nonce, note: FILL_FAILED, local: true });
+    }
+  }
+
+  // a code item (texted or authenticator) was chosen for the focused field
+  function useCodeItem(fields, account) {
+    if (account.totp) return fillAuthenticator(fields, account);
+    return fillCode(fields, account.code);
+  }
+
   async function show(fields) {
     const gen = ++showGen;
+    if (fields.code) return showCodes(fields, gen);
     if (fields.signup && fields.password && document.activeElement === fields.password) {
       if (dismissed.has(fields.password) || fields.password.value) return;
       // Sites often mark sign-in boxes as new passwords too (WatchGuard's does), so whenever this site
@@ -525,7 +616,26 @@
     if (msg.type === "doFill") {
       const fields = fieldsByNonce.get(msg.nonce);
       if (fields && msg.generate) fillGenerated(fields);
+      else if (fields && msg.codeId) {
+        const item = (fields.accounts || []).find((a) => a.id === msg.codeId);
+        if (item) fillCode(fields, item.code);
+      } else if (fields && typeof msg.code === "string") fillCode(fields, msg.code);
       else if (fields) applyFill(fields, msg);
+      return;
+    }
+    if (msg.type === "openMenu") {
+      // the extension's keyboard shortcut: offer logins (or codes) for the focused box, even where
+      // the menu didn't open by itself
+      const el = document.activeElement;
+      if (!document.hasFocus() || !(el instanceof HTMLInputElement) || !usable(el)) return;
+      dismissed.delete(el);
+      suppressUntil = 0;
+      let fields = loginFieldsFor(el);
+      if (!fields && isTextLike(el)) {
+        const next = passwordInputs(scopeOf(el)).find((p) => usable(p) && follows(el, p));
+        fields = { username: el, password: next || null };
+      }
+      if (fields) show(fields);
       return;
     }
     if (!IS_TOP) return;
@@ -609,6 +719,8 @@
       const account = field.accounts[field.active];
       if (account.generate) {
         fillGenerated(field);
+      } else if (account.code || account.totp) {
+        useCodeItem(field, account);
       } else if (account.passkey) {
         closeMenu();
         useConditionalPasskey(account);
