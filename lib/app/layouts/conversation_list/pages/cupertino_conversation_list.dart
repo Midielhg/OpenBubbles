@@ -305,7 +305,9 @@ class CupertinoConversationListState
                                   : chats.chats
                                       .archivedHelper(showArchived)
                                       .unknownSendersHelper(showUnknown)
-                                      .bigPinHelper(false);
+                                      .bigPinHelper(false)
+                                      .where(controller.matchesFilter)
+                                      .toList();
 
                           if (!chats.loadedChatBatch.value || _chats.isEmpty) {
                             return SliverToBoxAdapter(
@@ -319,6 +321,8 @@ class CupertinoConversationListState
                                         child: Text(
                                           !chats.loadedChatBatch.value
                                               ? "Loading chats..."
+                                              : controller.listFilter.value != ChatListFilter.all
+                                                  ? "No conversations match this filter"
                                               : showArchived
                                                   ? "You have no archived chats"
                                                   : showUnknown

@@ -63,6 +63,7 @@ class CupertinoHeader extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       SyncIndicator(size: 16),
+                      ChatListFilterButton(controller: controller),
                       const SizedBox(width: 10.0),
                       ClipOval(
                         child: Material(
@@ -226,7 +227,9 @@ class _MacListHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Row(
             children: [
               Expanded(child: _MacSearchField(controller: controller)),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              ChatListFilterButton(controller: controller),
+              const SizedBox(width: 4),
               SyncIndicator(size: 16),
               const Material(
                 color: Colors.transparent,
@@ -316,5 +319,61 @@ class _MacSearchFieldState extends State<_MacSearchField> {
         ),
       ),
     );
+  }
+}
+
+/// iOS Messages' filter menu: All Messages, Known Senders, Unknown Senders, Unread Messages.
+class ChatListFilterButton extends StatelessWidget {
+  const ChatListFilterButton({super.key, required this.controller});
+
+  final ConversationListController controller;
+
+  static const _labels = {
+    ChatListFilter.all: "All Messages",
+    ChatListFilter.known: "Known Senders",
+    ChatListFilter.unknown: "Unknown Senders",
+    ChatListFilter.unread: "Unread Messages",
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final active = controller.listFilter.value != ChatListFilter.all;
+      return PopupMenuButton<ChatListFilter>(
+        tooltip: "Filter: ${_labels[controller.listFilter.value]}",
+        color: context.theme.colorScheme.properSurface,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+        onSelected: (value) => controller.listFilter.value = value,
+        itemBuilder: (context) => [
+          for (final entry in _labels.entries)
+            PopupMenuItem(
+              value: entry.key,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    child: controller.listFilter.value == entry.key
+                        ? Icon(CupertinoIcons.checkmark_alt, size: 18, color: context.theme.colorScheme.primary)
+                        : null,
+                  ),
+                  Text(entry.value, style: context.textTheme.bodyLarge!.apply(color: context.theme.colorScheme.properOnSurface)),
+                ],
+              ),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? context.theme.colorScheme.primary : Colors.transparent,
+          ),
+          child: Icon(
+            CupertinoIcons.line_horizontal_3_decrease,
+            size: 18,
+            color: active ? context.theme.colorScheme.onPrimary : context.theme.colorScheme.properOnSurface,
+          ),
+        ),
+      );
+    });
   }
 }

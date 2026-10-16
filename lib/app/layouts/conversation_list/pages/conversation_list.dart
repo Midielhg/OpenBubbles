@@ -29,6 +29,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:bluebubbles/database/database.dart';
 
+enum ChatListFilter { all, known, unknown, unread }
+
 class ConversationListController extends StatefulController {
   final bool showArchivedChats;
   final bool showUnknownSenders;
@@ -40,6 +42,21 @@ class ConversationListController extends StatefulController {
   final List<Chat> selectedChats = [];
   /// inline sidebar search (desktop): filters the list in place instead of opening SearchView
   final RxString searchQuery = "".obs;
+  /// iOS Messages' filter: all, known senders, unknown senders or unread
+  final Rx<ChatListFilter> listFilter = ChatListFilter.all.obs;
+
+  bool matchesFilter(Chat chat) {
+    switch (listFilter.value) {
+      case ChatListFilter.all:
+        return true;
+      case ChatListFilter.known:
+        return chat.isGroup || chat.participants.firstOrNull?.contact != null;
+      case ChatListFilter.unknown:
+        return !chat.isGroup && chat.participants.firstOrNull?.contact == null;
+      case ChatListFilter.unread:
+        return chat.hasUnreadMessage ?? false;
+    }
+  }
 
   bool matchesSearch(Chat chat) {
     final q = searchQuery.value.trim().toLowerCase();
