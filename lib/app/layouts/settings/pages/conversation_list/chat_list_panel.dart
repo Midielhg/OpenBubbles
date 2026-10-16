@@ -466,6 +466,24 @@ class _ChatListPanelState extends OptimizedState<ChatListPanel> {
                       ),
                   ],
                 ),
+                if (iOS)
+                  SettingsHeader(iosSubtitle: iosSubtitle, materialSubtitle: materialSubtitle, text: "Swipe Actions"),
+                if (iOS)
+                  SettingsSection(
+                    backgroundColor: tileColor,
+                    children: [
+                      Obx(() => SettingsSwitch(
+                            onChanged: (bool val) {
+                              ss.settings.iosSwipeActions.value = val;
+                              saveSettings();
+                            },
+                            initialVal: ss.settings.iosSwipeActions.value,
+                            title: "Swipe Actions",
+                            subtitle: "Swipe a conversation right to pin or mark it read, left to mute or delete it",
+                            backgroundColor: tileColor,
+                          )),
+                    ],
+                  ),
                 if (!kIsWeb && !kIsDesktop && !iOS)
                   SettingsHeader(iosSubtitle: iosSubtitle, materialSubtitle: materialSubtitle, text: "Swipe Actions"),
                 if (!kIsWeb && !kIsDesktop && !iOS)

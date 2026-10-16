@@ -16,6 +16,7 @@ import 'package:bluebubbles/app/wrappers/scrollbar_wrapper.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -374,7 +375,9 @@ class CupertinoConversationListState
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    child,
+                                    showDeleted ? child : Obx(() => ss.settings.iosSwipeActions.value
+                                        ? _swipeActions(context, chat, child)
+                                        : child),
                                     separator,
                                   ],
                                 );
@@ -512,4 +515,57 @@ class CupertinoConversationListState
           )),
     );
   }
+}
+
+/// iOS Messages swipe actions: right for Read/Unread and Pin, left for Mute and Delete.
+Widget _swipeActions(BuildContext context, Chat chat, Widget child) {
+  const white = Color(0xFFFFFFFF);
+  return Slidable(
+    key: ValueKey("swipe-${chat.guid}"),
+    groupTag: "conversations",
+    startActionPane: ActionPane(
+      motion: const DrawerMotion(),
+      extentRatio: 0.42,
+      children: [
+        SlidableAction(
+          onPressed: (_) => chat.toggleHasUnread(!chat.hasUnreadMessage!),
+          backgroundColor: const Color(0xFF0A84FF),
+          foregroundColor: white,
+          icon: chat.hasUnreadMessage! ? CupertinoIcons.chat_bubble : CupertinoIcons.chat_bubble_fill,
+          label: chat.hasUnreadMessage! ? "Read" : "Unread",
+        ),
+        SlidableAction(
+          onPressed: (_) => chat.togglePin(!chat.isPinned!),
+          backgroundColor: const Color(0xFFFF9F0A),
+          foregroundColor: white,
+          icon: chat.isPinned! ? CupertinoIcons.pin_slash_fill : CupertinoIcons.pin_fill,
+          label: chat.isPinned! ? "Unpin" : "Pin",
+        ),
+      ],
+    ),
+    endActionPane: ActionPane(
+      motion: const DrawerMotion(),
+      extentRatio: 0.42,
+      children: [
+        SlidableAction(
+          onPressed: (_) => chat.toggleMute(chat.muteType != "mute"),
+          backgroundColor: const Color(0xFF5E5CE6),
+          foregroundColor: white,
+          icon: chat.muteType == "mute" ? CupertinoIcons.bell_fill : CupertinoIcons.bell_slash_fill,
+          label: chat.muteType == "mute" ? "Unmute" : "Mute",
+        ),
+        SlidableAction(
+          onPressed: (_) {
+            chats.removeChat(chat);
+            Chat.softDelete(chat);
+          },
+          backgroundColor: const Color(0xFFFF3B30),
+          foregroundColor: white,
+          icon: CupertinoIcons.trash_fill,
+          label: "Delete",
+        ),
+      ],
+    ),
+    child: child,
+  );
 }
