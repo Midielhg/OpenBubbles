@@ -57,6 +57,14 @@ async function details() {
   // what happened on this tab's last login box
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const fkey = `frames:${tab?.id}`;
+    const frames = (await chrome.storage.session.get(fkey))[fkey];
+    const fel = document.getElementById("frames");
+    fel.textContent = frames
+      ? `Running on: ${frames.hosts.join(", ")}.` +
+        (frames.lastField ? ` Last box: ${frames.lastField.field} on ${frames.lastField.host} (${frames.lastField.kind}).` : " No box clicked yet.")
+      : "Not running on this page. Reload the page.";
+    fel.hidden = false;
     const key = `lookup:${tab?.id}`;
     const last = (await chrome.storage.session.get(key))[key];
     if (last) {

@@ -690,12 +690,26 @@
 
   // ---------- events ----------
 
+  // diagnostics for the popup: which frames this runs in, and what the last clicked box looked like
+  try {
+    chrome.runtime.sendMessage({ type: "frameHello" }, () => void chrome.runtime.lastError);
+  } catch (_) {}
+
+  function noteField(el, fields) {
+    if (!(el instanceof HTMLInputElement)) return;
+    const kind = !fields ? "not a login box" : fields.code ? "code box" : fields.password && document.activeElement === fields.password ? "password box" : "user name box";
+    try {
+      chrome.runtime.sendMessage({ type: "fieldSeen", kind, field: `${el.type}#${el.id || el.name || "?"}` }, () => void chrome.runtime.lastError);
+    } catch (_) {}
+  }
+
   function onFocus(e) {
     if (orphaned()) return;
     notePasswords();
     const el = e.composedPath ? e.composedPath()[0] : e.target;
     if (Date.now() < suppressUntil) return;
     const fields = loginFieldsFor(el);
+    noteField(el, fields);
     if (!fields) return closeMenu();
     show(fields);
   }

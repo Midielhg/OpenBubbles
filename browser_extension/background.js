@@ -102,6 +102,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const url = sender.url;
   if (!sender.tab || !url || !/^https?:/i.test(url)) return false;
 
+  if (msg.type === "frameHello" || msg.type === "fieldSeen") {
+    noteFrame(sender.tab.id, url, msg);
+    return false;
+  }
   if (msg.type === "lookup") {
     const lookup = request("lookup", { url }, 15000);
     noteLookup(sender.tab.id, url, lookup);
@@ -386,7 +390,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // ---------- keyboard shortcut ----------
 //
-// Alt+Shift+P (changeable in the browser's extension shortcuts) opens the menu on the focused box.
+// Alt+Shift+L (changeable in the browser's extension shortcuts) opens the menu on the focused box.
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "open-menu") return;
@@ -427,3 +431,21 @@ function noteLookup(tabId, url, lookup) {
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(`lookup:${tabId}`).catch(() => {}));
+
+async function noteFrame(tabId, url, msg) {
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch (_) {}
+  const key = `frames:${tabId}`;
+  const info = (await chrome.storage.session.get(key))[key] || { hosts: [] };
+  if (!info.hosts.includes(host)) info.hosts = [...info.hosts, host].slice(-8);
+  if (msg.type === "fieldSeen") info.lastField = { host, kind: msg.kind, field: String(msg.field || "").slice(0, 60), at: Date.now() };
+  chrome.storage.session.set({ [key]: info }).catch(() => {});
+}
+
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  // a new page in the tab: forget the old page's frames
+  if (change.status === "loading" && change.url) chrome.storage.session.remove(`frames:${tabId}`).catch(() => {});
+});
+chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(`frames:${tabId}`).catch(() => {}));
