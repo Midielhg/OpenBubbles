@@ -103,6 +103,7 @@ class GetMessages extends AsyncTask<List<dynamic>, List<Message>> {
     int limit = stuff[2];
     bool includeDeleted = stuff[3];
     int? searchAround = stuff[4];
+    Chat.repairMessages(chatId);
     return Database.runInTransaction(TxMode.read, () {
       /// Get the message IDs for the chat by querying the [cmJoinBox]
       final messages = <Message>[];
@@ -144,7 +145,7 @@ class GetMessages extends AsyncTask<List<dynamic>, List<Message>> {
       final chat = Database.chats.get(chatId);
       for (int i = 0; i < messages.length; i++) {
         Message message = messages[i];
-        if (chat!.participants.isNotEmpty && !message.isFromMe! && message.handleId != null && message.handleId != 0) {
+        if (chat!.participants.isNotEmpty && !(message.isFromMe ?? false) && message.handleId != null && message.handleId != 0) {
           Handle? handle = chat.participants.firstWhereOrNull((e) => e.originalROWID == message.handleId) ?? message.getHandle();
           if (handle == null && message.originalROWID != null) {
             messages.remove(message);
@@ -1391,10 +1392,33 @@ class Chat {
     return (await createAsyncTask<List<Attachment>>(task)) ?? [];
   }
 
+  /// Fills in messages of a chat that were saved without a guid or sender (e.g. one received or
+  /// synced while incomplete). Much of the app needs both, so such a message made the chat fail to
+  /// open; it gets a stable guid from its database id, and counts as ours when it has no sender.
+  static void repairMessages(int chatId) {
+    try {
+      final query = (Database.messages.query(Message_.guid.isNull().or(Message_.isFromMe.isNull()))
+            ..link(Message_.chat, Chat_.id.equals(chatId)))
+          .build();
+      final broken = query.find();
+      query.close();
+      if (broken.isEmpty) return;
+      for (final m in broken) {
+        m.guid ??= "repaired-${m.id}";
+        m.isFromMe ??= m.handleId == null || m.handleId == 0;
+      }
+      Database.messages.putMany(broken);
+      Logger.warn("Repaired ${broken.length} message(s) without a guid or sender in chat $chatId");
+    } catch (e, s) {
+      Logger.error("Couldn't repair messages in chat $chatId", error: e, trace: s);
+    }
+  }
+
   /// Gets messages synchronously - DO NOT use in performance-sensitive areas,
   /// otherwise prefer [getMessagesAsync]
   static List<Message> getMessages(Chat chat, {int offset = 0, int limit = 25, bool includeDeleted = false, bool getDetails = false}) {
     if (kIsWeb || chat.id == null) return [];
+    repairMessages(chat.id!);
     return Database.runInTransaction(TxMode.read, () {
       final query = (Database.messages.query(includeDeleted
               ? Message_.dateCreated.notNull().and(Message_.dateDeleted.isNull().or(Message_.dateDeleted.notNull()))
