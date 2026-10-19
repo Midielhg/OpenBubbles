@@ -475,7 +475,8 @@ class _ReactionIconState extends CustomState<ReactionIcon, void, ConversationTil
   Widget build(BuildContext context) {
     return Obx(() {
       final unread = GlobalChatService.unreadState(controller.chat.guid).value;
-      return unread && !isNullOrEmpty(controller.chat.latestMessage.associatedMessageGuid) && !controller.chat.latestMessage.isFromMe!
+      // a message may not say who sent it yet (e.g. while it syncs): treat it as ours and show nothing
+      return unread && !isNullOrEmpty(controller.chat.latestMessage.associatedMessageGuid) && !(controller.chat.latestMessage.isFromMe ?? true)
           ? Positioned(
               top: -sqrt(widget.width / 2) + widget.width * 0.05,
               right: -sqrt(widget.width / 2) + widget.width * 0.025,

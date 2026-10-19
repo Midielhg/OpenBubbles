@@ -456,9 +456,9 @@ class _ChatSubtitleState extends CustomState<ChatSubtitle, void, ConversationTil
     // (it will be disposed when scrolled out of view)
     forceDelete = false;
     subtitle = MessageHelper.getNotificationText(controller.chat.latestMessage);
-    cachedLatestMessageGuid = controller.chat.latestMessage.guid!;
+    cachedLatestMessageGuid = controller.chat.latestMessage.guid;
     cachedDateEdited = controller.chat.latestMessage.dateEdited;
-    isFromMe = controller.chat.latestMessage.isFromMe!;
+    isFromMe = controller.chat.latestMessage.isFromMe ?? false;
     isDelivered = controller.chat.isGroup || !isFromMe || controller.chat.latestMessage.dateDelivered != null
         || controller.chat.latestMessage.dateRead != null;
     fakeText = faker.lorem.words(subtitle.split(" ").length).join(" ");
@@ -488,7 +488,7 @@ class _ChatSubtitleState extends CustomState<ChatSubtitle, void, ConversationTil
             }
           } else if (!controller.chat.isGroup
               && message != null
-              && message.isFromMe!
+              && (message.isFromMe ?? false)
               && (message.dateDelivered != null || message.dateRead != null)) {
             // update delivered status
             setState(() {});
@@ -525,7 +525,7 @@ class _ChatSubtitleState extends CustomState<ChatSubtitle, void, ConversationTil
               });
             }
           } else if (!controller.chat.isGroup
-              && message.isFromMe!
+              && (message.isFromMe ?? false)
               && (message.dateDelivered != null || message.dateRead != null)) {
             // update delivered status
             setState(() {});

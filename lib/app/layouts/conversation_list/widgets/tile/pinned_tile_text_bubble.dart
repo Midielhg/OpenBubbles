@@ -50,7 +50,7 @@ class PinnedTileTextBubbleState extends CustomState<PinnedTileTextBubble, void, 
     forceDelete = false;
     subtitle = MessageHelper.getNotificationText(controller.chat.latestMessage);
     lastMessage = controller.chat.latestMessage;
-    cachedLatestMessageGuid = controller.chat.latestMessage.guid!;
+    cachedLatestMessageGuid = controller.chat.latestMessage.guid;
     fakeText = faker.lorem.words(subtitle.split(" ").length).join(" ");
     // run query after render has completed
     if (!kIsWeb) {
@@ -112,7 +112,7 @@ class PinnedTileTextBubbleState extends CustomState<PinnedTileTextBubble, void, 
       context.theme.colorScheme.bubble(context, chat.isIMessage)
     ];
     if (lastMessage == null) return bubbleColors;
-    if (!ss.settings.colorfulAvatars.value && ss.settings.colorfulBubbles.value && !lastMessage!.isFromMe!) {
+    if (!ss.settings.colorfulAvatars.value && ss.settings.colorfulBubbles.value && !(lastMessage!.isFromMe ?? false)) {
       if (lastMessage!.handle?.color == null) {
         bubbleColors = toColorGradient(lastMessage!.handle?.address);
       } else {
@@ -132,7 +132,8 @@ class PinnedTileTextBubbleState extends CustomState<PinnedTileTextBubble, void, 
       String _subtitle = hideInfo ? fakeText : subtitle;
 
       final unread = GlobalChatService.unreadState(controller.chat.guid).value;
-      if (!unread || lastMessage?.associatedMessageGuid != null || lastMessage!.isFromMe! || isNullOrEmpty(_subtitle)) {
+      // no bubble without a message from someone else (a message may not say who sent it yet)
+      if (!unread || lastMessage == null || lastMessage!.associatedMessageGuid != null || (lastMessage!.isFromMe ?? true) || isNullOrEmpty(_subtitle)) {
         return const SizedBox.shrink();
       }
 
