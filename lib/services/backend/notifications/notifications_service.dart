@@ -27,7 +27,7 @@ import 'package:local_notifier/local_notifier.dart';
 import 'package:path/path.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:timezone/timezone.dart';
-import 'package:universal_html/html.dart' hide File, Platform, Navigator, Text;
+import 'package:universal_html/html.dart' hide File, Platform, Navigator, Text, Clipboard;
 import 'package:universal_io/io.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
