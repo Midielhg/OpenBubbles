@@ -85,7 +85,7 @@ jobs:
           $ok = $false
           for ($i = 1; $i -le 3 -and -not $ok; $i++) {
             $out = choco install -y --no-progress nasm innosetup 2>&1
-            if ($LASTEXITCODE -eq 0) { $ok = $true } else {
+            if ($LASTEXITCODE -eq 0) { $ok = $true; $out | Select-Object -Last 6 } else {
               Write-Output "choco attempt $i failed ($LASTEXITCODE); retrying"
               Start-Sleep -Seconds (20 * $i)
             }
@@ -94,12 +94,22 @@ jobs:
             $out | Select-String -Pattern "error|failed|ERROR" | Select-Object -First 15 | ForEach-Object { Write-Output ("::error::" + $_.Line.Trim()) }
             throw "choco install failed"
           }
-          if (-not (Test-Path "C:\Program Files\NASM\nasm.exe")) { throw "NASM missing" }
-          "C:\Program Files\NASM" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          "C:\Strawberry\perl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          $protoc = (Get-Command protoc -ErrorAction Stop).Source
+          # find each tool wherever this runner image put it, and say which one is missing
+          $nasm = @("C:\Program Files\NASM\nasm.exe", "C:\Program Files (x86)\NASM\nasm.exe", "C:\ProgramData\chocolatey\bin\nasm.exe") |
+            Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $nasm) { $nasm = (Get-Command nasm -ErrorAction SilentlyContinue).Source }
+          if (-not $nasm) { Write-Output "::error::NASM not found after installing it"; throw "NASM missing" }
+          Write-Output "NASM: $nasm"
+          (Split-Path $nasm) | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          if (Test-Path "C:\Strawberry\perl\bin") {
+            "C:\Strawberry\perl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          } else {
+            Write-Output "::warning::Strawberry Perl isn't at C:\Strawberry; using perl from PATH"
+          }
+          $protoc = (Get-Command protoc -ErrorAction SilentlyContinue).Source
+          if (-not $protoc) { Write-Output "::error::protoc not found on PATH ($env:PATH)"; throw "protoc missing" }
           "PROTOC=$protoc" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          protoc --version
+          & $protoc --version
 
       - name: Set up placeholder Fairplay certs
         shell: bash
