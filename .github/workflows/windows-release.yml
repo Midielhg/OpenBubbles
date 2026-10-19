@@ -78,13 +78,17 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # NASM (OpenSSL's assembler); choco's nasm package stopped installing it
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1
+
       - name: Install build tools
         shell: pwsh
         run: |
           # the tools' download sites are sometimes flaky: retry, and report choco's error if it keeps failing
           $ok = $false
           for ($i = 1; $i -le 3 -and -not $ok; $i++) {
-            $out = choco install -y --no-progress nasm innosetup 2>&1
+            $out = choco install -y --no-progress innosetup 2>&1
             if ($LASTEXITCODE -eq 0) { $ok = $true; $out | Select-Object -Last 6 } else {
               Write-Output "choco attempt $i failed ($LASTEXITCODE); retrying"
               Start-Sleep -Seconds (20 * $i)
