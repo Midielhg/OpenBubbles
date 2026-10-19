@@ -58,6 +58,8 @@ class Settings {
   final RxBool swipableConversationTiles = false.obs;
   // iOS-style list: swipe right for Pin / Read, left for Mute / Delete
   final RxBool iosSwipeActions = true.obs;
+  // move a verification code's text to Recently Deleted once the code is filled or copied
+  final RxBool deleteCodesAfterUse = true.obs;
   final RxBool showDeliveryTimestamps = false.obs;
   final RxBool filteredChatList = false.obs;
   final RxBool startVideosMuted = true.obs;
@@ -342,6 +344,7 @@ class Settings {
       'openKeyboardOnSTB': openKeyboardOnSTB.value,
       'swipableConversationTiles': swipableConversationTiles.value,
       'iosSwipeActions': iosSwipeActions.value,
+      'deleteCodesAfterUse': deleteCodesAfterUse.value,
       'showDeliveryTimestamps': showDeliveryTimestamps.value,
       'filteredChatList': filteredChatList.value,
       'startVideosMuted': startVideosMuted.value,
@@ -512,6 +515,7 @@ class Settings {
     ss.settings.openKeyboardOnSTB.value = map['openKeyboardOnSTB'] ?? false;
     ss.settings.swipableConversationTiles.value = map['swipableConversationTiles'] ?? false;
     ss.settings.iosSwipeActions.value = map['iosSwipeActions'] ?? true;
+    ss.settings.deleteCodesAfterUse.value = map['deleteCodesAfterUse'] ?? true;
     ss.settings.showDeliveryTimestamps.value = map['showDeliveryTimestamps'] ?? false;
     ss.settings.filteredChatList.value = map['filteredChatList'] ?? false;
     ss.settings.startVideosMuted.value = map['startVideosMuted'] ?? true;
@@ -686,6 +690,7 @@ class Settings {
     s.openKeyboardOnSTB.value = map['openKeyboardOnSTB'] ?? false;
     s.swipableConversationTiles.value = map['swipableConversationTiles'] ?? false;
     s.iosSwipeActions.value = map['iosSwipeActions'] ?? true;
+    s.deleteCodesAfterUse.value = map['deleteCodesAfterUse'] ?? true;
     s.showDeliveryTimestamps.value = map['showDeliveryTimestamps'] ?? false;
     s.filteredChatList.value = map['filteredChatList'] ?? false;
     s.startVideosMuted.value = map['startVideosMuted'] ?? true;

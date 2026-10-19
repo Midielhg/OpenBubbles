@@ -536,7 +536,9 @@
   // a code item (texted or authenticator) was chosen for the focused field
   function useCodeItem(fields, account) {
     if (account.totp) return fillAuthenticator(fields, account);
-    return fillCode(fields, account.code);
+    fillCode(fields, account.code);
+    // Delete After Use: the app moves the code's text to Recently Deleted (if that's turned on)
+    send({ type: "codeUsed", id: account.id });
   }
 
   async function show(fields) {

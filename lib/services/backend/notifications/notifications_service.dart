@@ -15,6 +15,7 @@ import 'package:bluebubbles/database/database.dart';
 import 'package:bluebubbles/services/network/backend_service.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
+import 'package:bluebubbles/services/backend/verification_codes.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
@@ -441,6 +442,13 @@ class NotificationsService extends GetxService {
       }
       if (toasted) return;
       final replyable = Platform.isWindows;
+      // a verification code in the text: first button copies it (and the text then goes to Recently
+      // Deleted, if Delete After Use is on)
+      final code = isReaction || notifications[guid]!.isNotEmpty ? null : VerificationCodes.codeInMessage(message);
+      if (code != null) {
+        nActions.insert(0, LocalNotificationAction(text: "Copy $code"));
+        actions.insert(0, "Copy $code");
+      }
       toast = LocalNotification(
         imagePath: path,
         title: isGroup && count == 1 && !isReaction && !message.isGroupEvent ? "$title: $contactName" : title,
@@ -455,7 +463,7 @@ class NotificationsService extends GetxService {
             // Windows allows 5 buttons and Send takes one; the reply replaces Mark Read
             : replyable
                 ? nActions.where((a) => a.text != "Mark Read").take(4).toList()
-                : nActions,
+                : nActions.take(5).toList(),
       );
       notifications[guid]!.add(toast);
       if (replyable) {
@@ -492,6 +500,11 @@ class NotificationsService extends GetxService {
         notifications[guid]!.remove(toast);
         notificationCounts[guid] = 0;
 
+        if (code != null && actions[index] == "Copy $code") {
+          await Clipboard.setData(ClipboardData(text: code));
+          if (message.guid != null) VerificationCodes.used(message.guid!);
+          return;
+        }
         Chat? chat = Chat.findOne(guid: guid);
         if (chat == null) return;
         if (actions[index] == "Mark Read" || multiple) {

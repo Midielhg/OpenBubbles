@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:bluebubbles/database/database.dart';
 import 'package:bluebubbles/database/models.dart';
+import 'package:bluebubbles/services/backend/verification_codes.dart';
 import 'package:bluebubbles/services/backend/webauthn.dart';
 import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
@@ -361,6 +362,12 @@ class BrowserPasswords {
         final host = _pageHost(message["url"]);
         if (host == null) return {"texted": [], "authenticator": []};
         return {"texted": _textedCodes(), "authenticator": await _authenticatorLogins(host)};
+      case "codeUsed":
+        // a texted code was filled on a site: Delete After Use (only codes still on offer)
+        // ("codeId": "id" is the request's own id)
+        final codeId = message["codeId"]?.toString() ?? "";
+        if (_textedCodes().any((c) => c["id"] == codeId)) VerificationCodes.used(codeId.substring("__code__".length));
+        return {};
       case "fillCode":
         final host = _pageHost(message["url"]);
         final credentialId = message["credentialId"]?.toString();
@@ -756,15 +763,6 @@ class BrowserPasswords {
 
   static const _codeWindow = Duration(minutes: 5);
 
-  // Codes for signing in to an Apple Account stay in OpenBubbles (and on the user's devices); they're
-  // never offered to websites.
-  static final _appleCode = RegExp(r"apple\s*(account|id)|@apple\.com|#apple\.com|appleid", caseSensitive: false);
-  static final _codeHint = RegExp(
-      r"code|c[oó]digo|otp|passcode|password|pin\b|verif|one[- ]?time|2fa|mfa|security|login|sign[- ]?in|token|clave",
-      caseSensitive: false);
-  // 4-8 digits, optionally written with a dash or space in the middle (123-456), or a G-123456 style prefix
-  static final _codePattern = RegExp(r"(?<![\w-])(?:[A-Z]{1,3}-)?(\d{3,4}[- ]\d{3,4}|\d{4,8})(?![\w-])");
-
   /// Codes in messages received in the last few minutes, newest first.
   static List<Map<String, dynamic>> _textedCodes() {
     final since = DateTime.now().subtract(_codeWindow);
@@ -778,15 +776,11 @@ class BrowserPasswords {
     final codes = <Map<String, dynamic>>[];
     final seen = <String>{};
     for (final m in messages) {
-      final text = "${m.subject ?? ""} ${m.text ?? ""}".trim();
-      if (text.isEmpty || _appleCode.hasMatch(text) || !_codeHint.hasMatch(text)) continue;
-      final match = _codePattern.firstMatch(text);
-      if (match == null) continue;
-      final code = match.group(1)!.replaceAll(RegExp(r"[- ]"), "");
-      if (!seen.add(code)) continue;
+      final code = VerificationCodes.codeInMessage(m);
+      if (code == null || m.guid == null || !seen.add(code)) continue;
       final handle = m.handle ?? (m.handleId != null ? Handle.findOne(originalROWID: m.handleId) : null);
       final from = handle?.displayName ?? "Messages";
-      codes.add({"id": "__code__${codes.length}", "code": code, "from": from});
+      codes.add({"id": "__code__${m.guid}", "code": code, "from": from});
       if (codes.length == 3) break;
     }
     return codes;

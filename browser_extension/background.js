@@ -120,6 +120,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "codes") {
     return reply(request("codes", { url }, 15000), sendResponse);
   }
+  if (msg.type === "codeUsed" && typeof msg.id === "string") {
+    return reply(request("codeUsed", { url, codeId: msg.id }, 15000), sendResponse);
+  }
   if (msg.type === "fillCode" && typeof msg.credentialId === "string") {
     return reply(request("fillCode", { url, credentialId: msg.credentialId }, 120000), sendResponse);
   }
@@ -274,6 +277,7 @@ async function remoteChoose(tabId, nonce, credentialId) {
   if (credentialId.startsWith("__code__")) {
     // a texted code: the frame with the field already has it
     await chrome.tabs.sendMessage(tabId, { type: "doFill", nonce, codeId: credentialId }, { frameId: m.frameId });
+    request("codeUsed", { url: m.url, codeId: credentialId }, 15000).catch(() => {});
     return null;
   }
   if (credentialId.startsWith("__totp__")) {

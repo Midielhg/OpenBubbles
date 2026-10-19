@@ -70,6 +70,22 @@ class _BrowserExtensionPanelState extends OptimizedState<BrowserExtensionPanel> 
                           containerColor: Colors.blueAccent,
                         ),
                       )),
+                  Obx(() => SettingsSwitch(
+                        initialVal: ss.settings.deleteCodesAfterUse.value,
+                        onChanged: (val) async {
+                          ss.settings.deleteCodesAfterUse.value = val;
+                          await ss.saveSettings();
+                        },
+                        title: "Delete Verification Codes After Use",
+                        subtitle: "Once a texted code is filled on a website or copied from its notification, move the text to Recently Deleted.",
+                        backgroundColor: tileColor,
+                        isThreeLine: true,
+                        leading: const SettingsLeadingIcon(
+                          iosIcon: CupertinoIcons.trash,
+                          materialIcon: Icons.auto_delete_outlined,
+                          containerColor: Colors.grey,
+                        ),
+                      )),
                 ],
               ),
               SettingsHeader(
