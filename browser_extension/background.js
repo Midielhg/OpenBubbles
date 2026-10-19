@@ -391,3 +391,21 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && tab.id != null) chrome.tabs.sendMessage(tab.id, { type: "openMenu" }).catch(() => {});
 });
+
+// ---------- pages already open ----------
+//
+// Pages keep the copy of the page script they were opened with. After an install, update or reload
+// that copy can't reach the extension, so put a fresh one into every open page (all frames).
+
+chrome.runtime.onInstalled.addListener(async () => {
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  } catch (_) {
+    return;
+  }
+  for (const tab of tabs) {
+    if (tab.id == null || tab.discarded) continue;
+    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["content.js"] }).catch(() => {});
+  }
+});

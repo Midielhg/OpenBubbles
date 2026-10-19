@@ -248,9 +248,22 @@
 
   function getAccounts() {
     if (!lookup || Date.now() - lookup.at > LOOKUP_TTL_MS) {
-      lookup = { at: Date.now(), promise: send({ type: "lookup" }) };
+      const entry = { at: Date.now(), promise: send({ type: "lookup" }) };
+      lookup = entry;
+      // only keep answers; after a failure (app closed, timed out) the next click asks again
+      entry.promise.then((res) => { if (!res.ok && lookup === entry) lookup = null; });
     }
     return lookup.promise;
+  }
+
+  // After the extension is updated or reloaded, scripts left in open pages can't reach it anymore;
+  // the extension puts a fresh copy into those pages (background.js), so the old one steps aside.
+  function orphaned() {
+    try {
+      return !chrome.runtime?.id;
+    } catch (_) {
+      return true;
+    }
   }
 
   // ---------- dropdown ----------
@@ -550,10 +563,12 @@
     let accounts = [];
     let note = null;
     if (!res.ok) {
-      if (!fields.password) return;
       if (res.error === "not_running") note = "Open OpenBubbles on this PC to fill passwords.";
       else if (res.error === "not_ready") note = "Passwords aren't ready yet. Open Passwords in OpenBubbles.";
-      else return;
+      else if (res.error === "extension") note = "Passwords was updated. Reload this page to use it here.";
+      else if (res.error === "timeout") note = "OpenBubbles didn't answer. Try again in a moment.";
+      else if (res.error === "not_installed") note = "Set up the extension in OpenBubbles > Settings > Passwords.";
+      else note = `Couldn't get your passwords (${res.error}).`;
     } else {
       accounts = res.result?.accounts || [];
       if (fields.username && fields.username.value && anchor === fields.password) {
@@ -676,6 +691,7 @@
   // ---------- events ----------
 
   function onFocus(e) {
+    if (orphaned()) return;
     notePasswords();
     const el = e.composedPath ? e.composedPath()[0] : e.target;
     if (Date.now() < suppressUntil) return;
