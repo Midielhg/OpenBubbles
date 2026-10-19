@@ -81,8 +81,19 @@ jobs:
       - name: Install build tools
         shell: pwsh
         run: |
-          choco install -y --no-progress nasm innosetup
-          if ($LASTEXITCODE -ne 0) { throw "choco install failed ($LASTEXITCODE)" }
+          # the tools' download sites are sometimes flaky: retry, and report choco's error if it keeps failing
+          $ok = $false
+          for ($i = 1; $i -le 3 -and -not $ok; $i++) {
+            $out = choco install -y --no-progress nasm innosetup 2>&1
+            if ($LASTEXITCODE -eq 0) { $ok = $true } else {
+              Write-Output "choco attempt $i failed ($LASTEXITCODE); retrying"
+              Start-Sleep -Seconds (20 * $i)
+            }
+          }
+          if (-not $ok) {
+            $out | Select-String -Pattern "error|failed|ERROR" | Select-Object -First 15 | ForEach-Object { Write-Output ("::error::" + $_.Line.Trim()) }
+            throw "choco install failed"
+          }
           if (-not (Test-Path "C:\Program Files\NASM\nasm.exe")) { throw "NASM missing" }
           "C:\Program Files\NASM" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
           "C:\Strawberry\perl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
