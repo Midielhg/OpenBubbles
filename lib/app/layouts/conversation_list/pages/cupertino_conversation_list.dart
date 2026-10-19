@@ -523,6 +523,7 @@ class CupertinoConversationListState
 
 /// iOS Messages swipe actions: right for Read/Unread and Pin, left for Mute and Delete.
 Widget _swipeActions(BuildContext context, Chat chat, Widget child) {
+  // new conversations (from a first message) may not have these flags yet
   const white = Color(0xFFFFFFFF);
   return Slidable(
     key: ValueKey("swipe-${chat.guid}"),
@@ -532,18 +533,18 @@ Widget _swipeActions(BuildContext context, Chat chat, Widget child) {
       extentRatio: 0.42,
       children: [
         SlidableAction(
-          onPressed: (_) => chat.toggleHasUnread(!chat.hasUnreadMessage!),
+          onPressed: (_) => chat.toggleHasUnread(!(chat.hasUnreadMessage ?? false)),
           backgroundColor: const Color(0xFF0A84FF),
           foregroundColor: white,
-          icon: chat.hasUnreadMessage! ? CupertinoIcons.chat_bubble : CupertinoIcons.chat_bubble_fill,
-          label: chat.hasUnreadMessage! ? "Read" : "Unread",
+          icon: (chat.hasUnreadMessage ?? false) ? CupertinoIcons.chat_bubble : CupertinoIcons.chat_bubble_fill,
+          label: (chat.hasUnreadMessage ?? false) ? "Read" : "Unread",
         ),
         SlidableAction(
-          onPressed: (_) => chat.togglePin(!chat.isPinned!),
+          onPressed: (_) => chat.togglePin(!(chat.isPinned ?? false)),
           backgroundColor: const Color(0xFFFF9F0A),
           foregroundColor: white,
-          icon: chat.isPinned! ? CupertinoIcons.pin_slash_fill : CupertinoIcons.pin_fill,
-          label: chat.isPinned! ? "Unpin" : "Pin",
+          icon: (chat.isPinned ?? false) ? CupertinoIcons.pin_slash_fill : CupertinoIcons.pin_fill,
+          label: (chat.isPinned ?? false) ? "Unpin" : "Pin",
         ),
       ],
     ),

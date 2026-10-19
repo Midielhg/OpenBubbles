@@ -103,7 +103,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!sender.tab || !url || !/^https?:/i.test(url)) return false;
 
   if (msg.type === "lookup") {
-    return reply(request("lookup", { url }, 15000), sendResponse);
+    const lookup = request("lookup", { url }, 15000);
+    noteLookup(sender.tab.id, url, lookup);
+    return reply(lookup, sendResponse);
   }
   if (msg.type === "fill" && typeof msg.credentialId === "string") {
     // long timeout: OpenBubbles may be waiting on Windows Hello
@@ -409,3 +411,19 @@ chrome.runtime.onInstalled.addListener(async () => {
     chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["content.js"] }).catch(() => {});
   }
 });
+
+// ---------- diagnostics ----------
+//
+// The last login lookup in each tab (address, how many logins, or the error), shown in the popup so
+// a page where nothing is offered can be told apart from one where the app found nothing.
+
+function noteLookup(tabId, url, lookup) {
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch (_) {}
+  const save = (result) => chrome.storage.session.set({ [`lookup:${tabId}`]: { host, ...result, at: Date.now() } }).catch(() => {});
+  lookup.then((r) => save({ count: (r?.accounts || []).length }), (e) => save({ error: e.message }));
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(`lookup:${tabId}`).catch(() => {}));

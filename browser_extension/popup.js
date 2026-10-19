@@ -54,6 +54,19 @@ chrome.runtime.sendMessage({ type: "status" }, (res) => {
 async function details() {
   document.getElementById("versions").textContent =
     `Extension ${chrome.runtime.getManifest().version} · OpenBubbles ${appVersion}`;
+  // what happened on this tab's last login box
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const key = `lookup:${tab?.id}`;
+    const last = (await chrome.storage.session.get(key))[key];
+    if (last) {
+      const el = document.getElementById("lookup");
+      el.textContent = last.error
+        ? `This page (${last.host}): couldn't get logins (${last.error}).`
+        : `This page (${last.host}): ${last.count} saved login${last.count === 1 ? "" : "s"} found.`;
+      el.hidden = false;
+    }
+  } catch (_) {}
   const { lastPasskey } = await chrome.storage.session.get("lastPasskey");
   if (lastPasskey && Date.now() - lastPasskey.at < 30 * 60 * 1000) {
     const el = document.getElementById("passkey");
