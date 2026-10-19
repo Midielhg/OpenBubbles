@@ -871,7 +871,7 @@ class Chat {
       );
     }
     existing.style = isGroup ? 43 : 45;
-    existing.chatIdentifier = chatIdentifier!;
+    existing.chatIdentifier = chatIdentifier ?? guid.split(";").last;
     existing.participants = participants.map((p) => api.CloudParticipant(uri: p.address)).toList();
     existing.lastReadMessageTimestamp = dbOnlyLatestMessageDate == null ? 0 : RustPushBBUtils.nsSinceAppleEpoch(dbOnlyLatestMessageDate!);
     existing.lastAddressedHandle = (await ensureHandle()).replaceFirst("mailto:", "").replaceFirst("tel:", "");
@@ -1409,7 +1409,7 @@ class Chat {
       query.close();
       for (int i = 0; i < messages.length; i++) {
         Message message = messages[i];
-        if (chat.participants.isNotEmpty && !message.isFromMe! && message.handleId != null && message.handleId != 0) {
+        if (chat.participants.isNotEmpty && !(message.isFromMe ?? false) && message.handleId != null && message.handleId != 0) {
           Handle? handle = chat.participants.firstWhereOrNull((e) => e.originalROWID == message.handleId) ?? message.getHandle();
           if (handle == null) {
             messages.remove(message);
@@ -1421,7 +1421,9 @@ class Chat {
       }
       // fetch attachments and reactions if requested
       if (getDetails) {
-        final messageGuids = messages.map((e) => e.guid!).toList();
+        // a message can be saved before it has a guid (e.g. one still being received or synced);
+        // it just has no reactions to look up yet
+        final messageGuids = messages.map((e) => e.guid).whereType<String>().toList();
         final associatedMessagesQuery = (Database.messages.query(Message_.associatedMessageGuid.oneOf(messageGuids))
               ..order(Message_.originalROWID))
             .build();
@@ -1430,7 +1432,8 @@ class Chat {
         associatedMessages = MessageHelper.normalizedAssociatedMessages(associatedMessages);
         for (Message m in messages) {
           m.attachments = List<Attachment>.from(m.dbAttachments);
-          m.associatedMessages = associatedMessages.where((e) => e.associatedMessageGuid == m.guid).toList();
+          m.associatedMessages =
+              m.guid == null ? [] : associatedMessages.where((e) => e.associatedMessageGuid == m.guid).toList();
         }
       }
       return messages;
