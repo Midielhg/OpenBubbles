@@ -196,8 +196,8 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
       _buildTextField(
         context,
         controller: _serverController,
-        label: "Server",
-        enabled: widget.id == null,
+        // the main website; editable for saved passwords too (the login moves to the new site)
+        label: "Website",
       ),
       const SettingsDivider(),
       _buildTextField(
@@ -585,6 +585,15 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
     return null;
   }
 
+  /// The website as the keychain stores it: just the host ("https://www.site.com/login" ->
+  /// "www.site.com"), whatever was typed or pasted.
+  String get _server {
+    final typed = _serverController.text.trim();
+    final uri = Uri.tryParse(typed.contains("://") ? typed : "https://$typed");
+    final host = uri?.host ?? "";
+    return host.isNotEmpty ? host.toLowerCase() : typed;
+  }
+
   api.PasswordRawEntry _buildPasswordRecord({
     api.PasswordRawEntry? existing,
   }) {
@@ -592,7 +601,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
     return api.PasswordRawEntry(
       cdat: existing?.cdat ?? now,
       mdat: now,
-      srvr: _serverController.text.trim(),
+      srvr: _server,
       acct: _accountController.text.trim(),
       agrp: existing?.agrp ?? "com.apple.cfnetwork",
       data: Uint8List.fromList(utf8.encode(_passwordController.text)),
@@ -608,7 +617,7 @@ class _PasswordEditorPanelState extends OptimizedState<PasswordEditorPanel> {
   }) {
     final now = _nowDate();
     final existingData = existing?.getPasswordData();
-    final server = _serverController.text.trim();
+    final server = _server;
     final account = _accountController.text.trim();
     final history = _buildHistory(
       existingHistory: existingData?.history ?? historyTemplate,
