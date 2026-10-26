@@ -35,6 +35,7 @@ import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/database/database.dart';
 import 'package:dio/dio.dart';
 import 'package:bluebubbles/app/layouts/settings/pages/system/status_panel.dart';
+import 'package:bluebubbles/app/layouts/settings/settings_search.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +61,8 @@ class _SettingsPageState extends OptimizedState<SettingsPage> {
   final RxnDouble progress = RxnDouble();
   final RxnInt totalSize = RxnInt();
   api.DeviceInfo? deviceInfo;
+  // the search field at the top: while it has text, matching options replace the list
+  final RxString settingsQuery = "".obs;
 
   @override
   void initState() {
@@ -124,6 +127,10 @@ class _SettingsPageState extends OptimizedState<SettingsPage> {
                       tileColor: tileColor,
                       headerColor: headerColor,
                       bodySlivers: [
+                        SliverToBoxAdapter(child: SettingsSearchField(query: settingsQuery)),
+                        if (settingsQuery.value.trim().isNotEmpty)
+                          SettingsSearchResults(query: settingsQuery.value, tileColor: tileColor),
+                        if (settingsQuery.value.trim().isEmpty)
                         SliverList(
                           delegate: SliverChildListDelegate(
                             <Widget>[
