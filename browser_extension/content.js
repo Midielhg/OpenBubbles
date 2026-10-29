@@ -866,6 +866,11 @@
     .user-input:focus { border-color: #0a84ff; box-shadow: 0 0 0 3px rgba(10,132,255,.2); }
     .never { margin-right: auto; background: none; border: 0; padding: 4px 0; color: #6e6e73; cursor: pointer; font: inherit; }
     .never:hover { text-decoration: underline; }
+    .as-new { display: block; margin: 8px 0 0; background: none; border: 0; padding: 0; color: #0a84ff;
+      cursor: pointer; font: inherit; }
+    .as-new:hover { text-decoration: underline; }
+    .as-new[hidden] { display: none; }
+    button.b:disabled { opacity: .45; cursor: default; }
     button.b { border: 0; border-radius: 8px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
     .later { background: rgba(0,0,0,.06); color: inherit; }
     .save { background: #0a84ff; color: #fff; }
@@ -901,9 +906,13 @@
     text.className = "text";
     const title = document.createElement("div");
     title.className = "title";
-    title.textContent = pending.failed
+    // "update" changes the saved login for this user name; "new" saves another login for the site
+    let state = pending.state;
+    let asNew = !!pending.asNew;
+    const titleFor = () => pending.failed
       ? "Couldn't save. Is OpenBubbles open?"
-      : pending.state === "update" ? "Update saved password?" : "Save password?";
+      : state === "update" ? "Update saved password?" : asNew ? "Save as new login?" : "Save password?";
+    title.textContent = titleFor();
     const sub = document.createElement("div");
     sub.className = "sub";
     sub.textContent = pending.site;
@@ -935,15 +944,52 @@
     later.textContent = "Not now";
     const save = document.createElement("button");
     save.className = "b save";
-    save.textContent = pending.failed ? "Try again" : pending.state === "update" ? "Update" : "Save";
+    const refresh = () => {
+      title.textContent = titleFor();
+      save.textContent = pending.failed ? "Try again" : state === "update" ? "Update" : "Save";
+      // a new login needs its own user name
+      save.disabled = asNew && !userInput.value.trim();
+      asNewLink.hidden = asNew || state !== "update";
+    };
     buttons.append(never, later, save);
+
+    // the password was for an account that isn't saved yet (a password reset, say): save it as a
+    // new login under the user name typed here instead of changing the one OpenBubbles picked
+    const asNewLink = document.createElement("button");
+    asNewLink.className = "as-new";
+    asNewLink.textContent = "Save as a new login instead";
+    asNewLink.addEventListener("click", (e) => {
+      if (!e.isTrusted) return;
+      asNew = true;
+      state = "new";
+      userInput.value = "";
+      userInput.placeholder = "User name for the new login";
+      refresh();
+      userInput.focus();
+    });
+
+    // editing the user name can turn an update into a new login (or the other way): ask again
+    let recheckTimer = 0;
+    userInput.addEventListener("input", () => {
+      refresh();
+      clearTimeout(recheckTimer);
+      recheckTimer = setTimeout(async () => {
+        const username = userInput.value.trim();
+        if (asNew && !username) return;
+        const res = await send({ type: "saveRecheck", id: pending.id, username });
+        if (!res.ok || !res.result || userInput.value.trim() !== username) return;
+        if (res.result.state === "update" || res.result.state === "new") state = res.result.state;
+        else if (res.result.state === "same") state = "update";
+        refresh();
+      }, 350);
+    });
 
     const decide = async (decision) => {
       const username = userInput.value.trim();
       closeBanner();
       const res = await send({ type: "saveDecision", id: pending.id, decision, username });
       if (decision === "save" && !res.ok) {
-        showBanner({ ...pending, username, failed: true });
+        showBanner({ ...pending, username, state, asNew, failed: true });
       }
     };
     // only real clicks count; scripts on the page can't reach into the closed shadow root
@@ -951,7 +997,8 @@
     later.addEventListener("click", (e) => e.isTrusted && decide("dismiss"));
     save.addEventListener("click", (e) => e.isTrusted && decide("save"));
 
-    card.append(top, userRow, buttons);
+    refresh();
+    card.append(top, userRow, asNewLink, buttons);
     root.append(style, card);
     document.documentElement.appendChild(banner);
   }

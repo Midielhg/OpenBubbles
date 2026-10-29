@@ -180,6 +180,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "saveDecision" && sender.frameId === 0 && typeof msg.id === "string") {
     return reply(decide(tabId, msg.id, msg.decision, typeof msg.username === "string" ? msg.username : null), sendResponse);
   }
+  if (msg.type === "saveRecheck" && sender.frameId === 0 && typeof msg.id === "string" && typeof msg.username === "string") {
+    return reply(recheck(tabId, msg.id, msg.username), sendResponse);
+  }
   return false;
 });
 
@@ -369,6 +372,15 @@ async function pendingFor(tabId) {
   const pending = await sessionGet(`save:${tabId}`);
   if (!pending || Date.now() - pending.at > PENDING_TTL_MS) return null;
   return publicView(pending);
+}
+
+// the user name was edited in the banner: is that a new login, or one already saved?
+async function recheck(tabId, id, username) {
+  const pending = await sessionGet(`save:${tabId}`);
+  if (!pending || pending.id !== id) throw new Error("expired");
+  const check = await request(
+    "checkSave", { url: pending.url, username: username.trim().slice(0, 256), password: pending.password }, 15000);
+  return { state: check && check.state };
 }
 
 async function decide(tabId, id, decision, username) {
