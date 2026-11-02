@@ -1,3 +1,4 @@
+import 'package:bluebubbles/helpers/types/unknown_senders.dart';
 import 'package:bluebubbles/database/database.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/utils/logger/logger.dart';
@@ -41,8 +42,12 @@ class _GlobalChatService extends GetxService {
 
   void watchChats() {
     final query = Database.chats.query().watch(triggerImmediately: true);
+    List<Chat> latest = [];
+    // the user's own addresses arrive later: count again without their own chats as unknown
+    ever(MyAddresses.loaded, (_) => _evaluateUnreadInfo(latest));
     query.listen((event) {
       final chats = event.find();
+      latest = chats;
 
       // Detect changes and make updates
       _evaluateUnreadInfo(chats);
@@ -51,7 +56,9 @@ class _GlobalChatService extends GetxService {
   }
 
   void _evaluateUnreadInfo(List<Chat> chats) {
-    unreadCount.value = chats.where((element) => element.hasUnreadMessage ?? false).length;
+    // the badge leaves out chats from unknown senders, like iOS
+    unreadCount.value =
+        chats.where((element) => (element.hasUnreadMessage ?? false) && !element.isUnknownSender).length;
 
     for (Chat chat in chats) {
       final RxBool? currentUnreadStatus = _unreadCountMap[chat.guid];

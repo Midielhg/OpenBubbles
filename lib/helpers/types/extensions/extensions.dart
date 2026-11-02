@@ -1,3 +1,4 @@
+import 'package:bluebubbles/helpers/types/unknown_senders.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
 import 'package:bluebubbles/database/models.dart';
 import 'package:bluebubbles/services/services.dart';
@@ -117,10 +118,12 @@ extension ChatListHelpers on RxList<Chat> {
 
   RxList<Chat> unknownSendersHelper(bool unknown) {
     if (!ss.settings.filterUnknownSenders.value) return this;
+    // rebuild the list once the user's own addresses are known
+    MyAddresses.loaded.value;
     if (unknown) {
-      return where((e) => !e.isGroup && e.participants.firstOrNull?.contact == null).toList().obs;
+      return where((e) => e.isUnknownSender).toList().obs;
     } else {
-      return where((e) => e.isGroup || (!e.isGroup && e.participants.firstOrNull?.contact != null)).toList().obs;
+      return where((e) => !e.isUnknownSender).toList().obs;
     }
   }
 }

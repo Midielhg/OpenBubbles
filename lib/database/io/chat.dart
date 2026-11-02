@@ -1,3 +1,4 @@
+import 'package:bluebubbles/helpers/types/unknown_senders.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -1138,9 +1139,7 @@ class Chat {
   /// Return whether or not the notification should be muted
   bool shouldMuteNotification(Message? message) {
     /// Filter unknown senders & sender doesn't have a contact, then don't notify
-    if (ss.settings.filterUnknownSenders.value &&
-        participants.length == 1 &&
-        participants.first.contact == null) {
+    if (ss.settings.filterUnknownSenders.value && isUnknownSender) {
       return true;
 
       /// Check if global text detection is on and notify accordingly

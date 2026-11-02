@@ -1,3 +1,4 @@
+import 'package:bluebubbles/helpers/types/unknown_senders.dart';
 import 'dart:async';
 
 import 'package:bluebubbles/app/layouts/chat_creator/chat_creator.dart';
@@ -46,13 +47,14 @@ class ConversationListController extends StatefulController {
   final Rx<ChatListFilter> listFilter = ChatListFilter.all.obs;
 
   bool matchesFilter(Chat chat) {
+    MyAddresses.loaded.value;
     switch (listFilter.value) {
       case ChatListFilter.all:
         return true;
       case ChatListFilter.known:
-        return chat.isGroup || chat.participants.firstOrNull?.contact != null;
+        return !chat.isUnknownSender;
       case ChatListFilter.unknown:
-        return !chat.isGroup && chat.participants.firstOrNull?.contact == null;
+        return chat.isUnknownSender;
       case ChatListFilter.unread:
         return chat.hasUnreadMessage ?? false;
     }
