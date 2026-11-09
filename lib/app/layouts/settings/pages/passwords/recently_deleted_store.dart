@@ -146,6 +146,10 @@ class RecentlyDeletedStore {
   static Uint8List _protect(Uint8List data) => _crypt(data, protect: true);
   static Uint8List _unprotect(Uint8List data) => _crypt(data, protect: false);
 
+  /// Also used for the IMCDesk sync's settings (imcdesk_sync.dart).
+  static Uint8List protect(Uint8List data) => _protect(data);
+  static Uint8List unprotect(Uint8List data) => _unprotect(data);
+
   static Uint8List _crypt(Uint8List data, {required bool protect}) {
     final input = calloc<CRYPT_INTEGER_BLOB>();
     final output = calloc<CRYPT_INTEGER_BLOB>();

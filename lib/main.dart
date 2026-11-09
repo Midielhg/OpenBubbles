@@ -37,6 +37,7 @@ import 'package:google_ml_kit/google_ml_kit.dart' hide Message;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:bluebubbles/services/backend/browser_passwords.dart';
+import 'package:bluebubbles/services/backend/imcdesk_sync.dart';
 import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/network/app_updater.dart';
 import 'package:local_notifier/local_notifier.dart';
@@ -542,6 +543,7 @@ class _HomeState extends OptimizedState<Home> with WidgetsBindingObserver, TrayL
         AppUpdater.start();
         // fills iCloud passwords through the Passwords browser extension
         if (Platform.isWindows) BrowserPasswords.start();
+        if (Platform.isWindows) ImcDeskSync.start();
         // Ctrl+Alt+P opens Passwords from anywhere
         if (Platform.isWindows) PasswordsQuickOpen.listen();
       }

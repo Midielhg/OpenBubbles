@@ -6,12 +6,15 @@ import 'dart:typed_data';
 
 import 'package:bluebubbles/database/database.dart';
 import 'package:bluebubbles/database/models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/password_models.dart';
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/recently_deleted_store.dart';
 import 'package:bluebubbles/services/backend/verification_codes.dart';
 import 'package:bluebubbles/services/backend/webauthn.dart';
 import 'package:bluebubbles/services/ui/passwords/passwords_quick_open.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:bluebubbles/src/rust/api/api.dart' as api;
+import 'package:bluebubbles/src/rust/lib.dart' as lib;
 import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:ffi/ffi.dart';
@@ -535,6 +538,14 @@ class BrowserPasswords {
 
     // update the existing login (in whatever group it lives in)
     final existing = found.first;
+    await _updateLogin(manager, existing.id, existing.entry, password, now);
+    Logger.info("Updated the saved password for $host from the browser");
+  }
+
+  /// Changes a saved login's password, adding the change to its history like the Passwords app does.
+  static Future<void> _updateLogin(lib.ArcPasswordManagerDefaultAnisetteProvider manager, String id,
+      api.PasswordRawEntry entry, String password, int now) async {
+    final existing = _Match(id, entry, 0);
     final passwords = await api.getPasswords(passwords: manager);
     final group = passwords[existing.id]?.$1;
     final oldPassword = utf8.decode(existing.entry.data, allowMalformed: true);
@@ -596,7 +607,104 @@ class BrowserPasswords {
       ),
       api.savePasswordMeta(passwords: manager, id: meta?.key ?? _newId(existing.id), entry: metaEntry, group: group),
     ]);
-    Logger.info("Updated the saved password for $host from the browser");
+  }
+
+  // ---------- IMCDesk sync (imcdesk_sync.dart) ----------
+
+  static String siteHostOf(String server) => _siteHost(server);
+  static String registrableOf(String host) => _registrable(host);
+
+  /// Saves a new login from IMCDesk. Returns its id.
+  static Future<String> syncCreate(String host, String username, String password) async {
+    final manager = pushService.state!.icloudServices!.passwords!;
+    final now = _now();
+    final id = _newId();
+    await Future.wait([
+      api.savePassword(
+        passwords: manager,
+        id: id,
+        entry: api.PasswordRawEntry(
+          cdat: now,
+          mdat: now,
+          srvr: host,
+          acct: username,
+          agrp: "com.apple.cfnetwork",
+          data: Uint8List.fromList(utf8.encode(password)),
+        ),
+      ),
+      api.savePasswordMeta(passwords: manager, id: _newId(id), entry: _newMeta(id, host, username, password, now)),
+    ]);
+    return id;
+  }
+
+  /// Changes a login's password from IMCDesk, along with its copies for other addresses of the same
+  /// site that had the same password.
+  static Future<void> syncUpdate(String id, String password) async {
+    final manager = pushService.state!.icloudServices!.passwords!;
+    final passwords = await api.getPasswords(passwords: manager);
+    final mine = passwords[id];
+    if (mine == null) return;
+    final now = _now();
+    final old = mine.$2.data;
+    final site = _registrable(_siteHost(mine.$2.srvr));
+    final copies = passwords.entries.where((e) =>
+        e.key != id &&
+        e.value.$1 == mine.$1 &&
+        _sameUser(e.value.$2.acct, mine.$2.acct) &&
+        _registrable(_siteHost(e.value.$2.srvr)) == site &&
+        listEquals(e.value.$2.data, old));
+    await _updateLogin(manager, id, mine.$2, password, now);
+    for (final copy in copies) {
+      await api.savePassword(
+        passwords: manager,
+        id: copy.key,
+        group: copy.value.$1,
+        entry: api.PasswordRawEntry(
+          cdat: copy.value.$2.cdat,
+          mdat: now,
+          srvr: copy.value.$2.srvr,
+          acct: copy.value.$2.acct,
+          agrp: copy.value.$2.agrp,
+          data: Uint8List.fromList(utf8.encode(password)),
+        ),
+      );
+    }
+  }
+
+  /// Deletes a login that was deleted in IMCDesk. It's kept in Recently Deleted for 30 days.
+  static Future<void> syncDelete(String id) async {
+    final manager = pushService.state!.icloudServices!.passwords!;
+    final passwords = await api.getPasswords(passwords: manager);
+    final mine = passwords[id];
+    if (mine == null) return;
+    final group = mine.$1;
+    final site = _registrable(_siteHost(mine.$2.srvr));
+    final copies = passwords.entries
+        .where((e) =>
+            e.key != id &&
+            e.value.$1 == group &&
+            _sameUser(e.value.$2.acct, mine.$2.acct) &&
+            _registrable(_siteHost(e.value.$2.srvr)) == site &&
+            listEquals(e.value.$2.data, mine.$2.data))
+        .toList();
+    final metas = await api.getPasswordsMeta(passwords: manager);
+    final meta = metas.entries.firstWhereOrNull((e) =>
+        e.value.$1 == group &&
+        _registrable(_siteHost(e.value.$2.srvr)) == site &&
+        _sameUser(e.value.$2.acct, mine.$2.acct));
+    await RecentlyDeletedStore.remember(
+      id: id,
+      raw: mine.$2,
+      copies: [for (final c in copies) CredentialCopy(id: c.key, raw: c.value.$2, group: c.value.$1)],
+      group: group,
+      metaId: meta?.key,
+      meta: meta?.value.$2,
+    );
+    await Future.wait([
+      api.deletePassword(passwords: manager, id: id, group: group),
+      for (final c in copies) api.deletePassword(passwords: manager, id: c.key, group: c.value.$1),
+      if (meta != null) api.deletePasswordMeta(passwords: manager, id: meta.key, group: group),
+    ]);
   }
 
   static api.PasswordManagerMeta _newMeta(String id, String server, String username, String password, int now) =>

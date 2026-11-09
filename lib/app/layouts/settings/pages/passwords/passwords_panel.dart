@@ -1,3 +1,5 @@
+import 'package:bluebubbles/app/layouts/settings/pages/passwords/imcdesk_sync_panel.dart';
+import 'package:bluebubbles/services/backend/imcdesk_sync.dart';
 import 'dart:convert';
 
 import 'package:bluebubbles/app/layouts/settings/pages/passwords/browser_extension_panel.dart';
@@ -524,6 +526,19 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
                         containerColor: Colors.green,
                       ),
                       onTap: () => ns.pushSettings(context, const BrowserExtensionPanel()),
+                      trailing: const NextButton(),
+                    ),
+                    const SettingsDivider(),
+                    SettingsTile(
+                      backgroundColor: tileColor,
+                      title: "IMCDesk Sync",
+                      subtitle: "Keep @${ImcDeskSync.domain} logins the same in IMCDesk",
+                      leading: const SettingsLeadingIcon(
+                        iosIcon: CupertinoIcons.arrow_2_circlepath,
+                        materialIcon: Icons.sync,
+                        containerColor: Colors.teal,
+                      ),
+                      onTap: () => ns.pushSettings(context, const ImcDeskSyncPanel()),
                       trailing: const NextButton(),
                     ),
                   ],
