@@ -23,7 +23,8 @@ class ImcAccount {
         host = (m["host"] ?? "").toString(),
         provider = (m["provider"] ?? "").toString(),
         changedAt = DateTime.tryParse((m["changedAt"] ?? "").toString()),
-        fingerprint = (m["fingerprint"] ?? "").toString();
+        fingerprint = (m["fingerprint"] ?? "").toString(),
+        addedBySync = m["addedBySync"] == true;
 
   final String id;
   final String username;
@@ -32,6 +33,7 @@ class ImcAccount {
   final String provider;
   final DateTime? changedAt;
   final String fingerprint;
+  final bool addedBySync;
 }
 
 /// Two-way password sync with IMCDesk (Asset Management → Passwords), for logins whose user name ends in
@@ -50,7 +52,7 @@ class ImcAccount {
 class ImcDeskSync {
   static const domain = "imcequitygroup.com";
   static const _every = Duration(minutes: 5);
-  static const _microsoftSites = {"microsoftonline.com", "microsoft.com", "office.com", "office365.com", "live.com", "outlook.com"};
+  static const _microsoftSites = {"microsoftonline.com", "microsoft.com", "office.com", "office365.com", "live.com", "outlook.com", "azure.com"};
 
   static bool get supported => Platform.isWindows;
 
@@ -103,7 +105,7 @@ class ImcDeskSync {
       if (e.response?.statusCode == 401) return "IMCDesk didn't accept that code. Create a new one.";
       return "Couldn't reach $host.";
     }
-    _state = {"key": key, "host": host, "pairs": <String, dynamic>{}};
+    _state = {"key": key, "host": host, "v": 2, "pairs": <String, dynamic>{}};
     await _save();
     connected.value = true;
     server.value = host;
@@ -211,6 +213,9 @@ class ImcDeskSync {
         if (r == 2) pulled++;
       } else if (pair["seen"] != true) {
         // linked on the last run and not visible on one side yet (iCloud can take a moment): wait
+      } else if (a == null && pair["added"] == true) {
+        // a record the sync itself added, removed in IMCDesk (the duplicates clean-up): the login stays here
+        pairs.remove(imcId);
       } else if (a == null) {
         deleteInKeychain.add(imcId);
       } else if (pair["removedHere"] != true) {
@@ -264,13 +269,19 @@ class ImcDeskSync {
       });
       if (isCopy) continue;
 
-      final sameUser = freeImc.where((a) => a.username.toLowerCase() == k.acct.toLowerCase()).toList();
-      final match = sameUser.firstWhereOrNull((a) => a.host.isNotEmpty && _site(a.host) == site) ??
-          sameUser.firstWhereOrNull((a) => a.host.isEmpty && _microsoftSites.contains(site) && _isMicrosoft(a)) ??
-          (sameUser.length == 1 && sameUser.first.host.isEmpty ? sameUser.first : null);
+      final kcFp = fingerprint(key, password);
+      bool sameLogin(ImcAccount a) =>
+          a.username.toLowerCase() == k.acct.toLowerCase() &&
+          (a.host.isNotEmpty
+              ? _site(a.host) == site
+              : _providerMatches(a.provider, site) || (a.fingerprint.isNotEmpty && a.fingerprint == kcFp));
+      // the IMCDesk record of this login is already linked to another copy of it: nothing to add
+      if (imc.values.any((a) => pairs.containsKey(a.id) && sameLogin(a))) continue;
+      // the original record before one the sync added
+      final match = freeImc.where(sameLogin).sortedBy<num>((a) => a.addedBySync ? 1 : 0).firstOrNull;
       if (match != null) {
         freeImc.remove(match);
-        final pair = <String, dynamic>{"kc": e.key, "name": _name(k.acct, k.srvr), "site": site};
+        final pair = <String, dynamic>{"kc": e.key, "name": _name(k.acct, k.srvr), "site": site, "added": match.addedBySync};
         pairs[match.id] = pair;
         final r = await _reconcile(host, key, pair, match, e.key, k);
         if (r == 1) pushed++;
@@ -283,16 +294,27 @@ class ImcDeskSync {
         "password": password,
         "changedAt": DateTime.fromMillisecondsSinceEpoch(k.mdat).toUtc().toIso8601String(),
       });
-      pairs[res["id"].toString()] = {"kc": e.key, "name": _name(k.acct, k.srvr), "site": site, "fp": fingerprint(key, password)};
+      if (res["existed"] == true) {
+        // IMCDesk already had it (its own duplicate check): link, and let the next sync settle the password
+        pairs[res["id"].toString()] = {"kc": e.key, "name": _name(k.acct, k.srvr), "site": site};
+        continue;
+      }
+      pairs[res["id"].toString()] = {"kc": e.key, "name": _name(k.acct, k.srvr), "site": site, "fp": kcFp, "added": true};
       created++;
       _note("Added ${_name(k.acct, k.srvr)} to IMCDesk");
     }
 
     var noWebsite = 0;
     for (final a in freeImc) {
+      // came from Keychain in the first place (a duplicate waiting for the clean-up)
+      if (a.addedBySync) continue;
       final site = a.host.isNotEmpty ? a.host : (_isMicrosoft(a) ? "login.microsoftonline.com" : "");
       if (site.isEmpty) {
         noWebsite++;
+        continue;
+      }
+      // Keychain already has a login for this user and site (linked to another IMCDesk record): don't add another
+      if (keychain.values.any((k) => k.acct.toLowerCase() == a.username.toLowerCase() && _site(k.srvr) == _site(site))) {
         continue;
       }
       final password = (await _post(host, key, "/reveal", {"id": a.id}))["password"]?.toString() ?? "";
@@ -379,6 +401,19 @@ class ImcDeskSync {
 
   static String _site(String server) => BrowserPasswords.registrableOf(BrowserPasswords.siteHostOf(server));
 
+  /// A provider name ("Wells Fargo") naming a site ("wellsfargo.com"); same rules as IMCDesk's
+  /// providerMatchesHost.
+  static bool _providerMatches(String provider, String site) {
+    final p = provider.toLowerCase().replaceAll(RegExp(r"[^a-z0-9]"), "");
+    final labels = site.toLowerCase().split(".").where((l) => l.isNotEmpty).toList();
+    if (p.length < 3 || labels.length < 2) return false;
+    final name = labels[labels.length - 2].replaceAll(RegExp(r"[^a-z0-9]"), "");
+    if (name.length < 3) return false;
+    if (RegExp(r"microsoft|office|m365|outlook|azure|entra").hasMatch(p) &&
+        _microsoftSites.contains(labels.sublist(labels.length - 2).join("."))) return true;
+    return p.contains(name) || (p.length >= 4 && name.contains(p));
+  }
+
   static bool _isMicrosoft(ImcAccount a) {
     final p = a.provider.toLowerCase();
     return p.isEmpty || p.contains("microsoft") || p.contains("m365") || p.contains("office 365") || p.contains("outlook");
@@ -416,6 +451,11 @@ class ImcDeskSync {
       _state = Map<String, dynamic>.from(
           jsonDecode(utf8.decode(RecentlyDeletedStore.unprotect(await _file.readAsBytes()))) as Map);
       connected.value = _state["key"] != null;
+      // links made before matching was fixed (v1 duplicated logins): start over and link again
+      if (_state["v"] != 2) {
+        _state["pairs"] = <String, dynamic>{};
+        _state["v"] = 2;
+      }
       server.value = (_state["host"] ?? "").toString();
       linkedCount.value = _pairs.length;
     } catch (e, s) {
