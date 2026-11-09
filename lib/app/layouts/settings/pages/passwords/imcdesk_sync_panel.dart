@@ -91,8 +91,9 @@ class _ImcDeskSyncPanelState extends OptimizedState<ImcDeskSyncPanel> {
           backgroundColor: tileColor,
           children: [
             _text("Keeps your @${ImcDeskSync.domain} logins the same in iCloud Keychain and in IMCDesk. A password "
-                "changed or deleted in either place changes in the other, and the newer change wins if both "
-                "changed. Personal logins never leave Keychain."),
+                "changed in either place changes in the other, and the newer change wins if both changed. A login "
+                "deleted in IMCDesk is deleted here too, but removing one from your iPhone or OpenBubbles never "
+                "deletes it from IMCDesk. Personal logins never leave Keychain."),
             _text("In IMCDesk, open Personal settings → Security → Connect OpenBubbles, copy the connection code "
                 "and paste it here."),
             Padding(
@@ -156,19 +157,19 @@ class _ImcDeskSyncPanelState extends OptimizedState<ImcDeskSyncPanel> {
           SettingsSection(
             backgroundColor: tileColor,
             children: [
-              _text("These logins were deleted on one side. Because there are several at once, they weren't "
-                  "deleted on the other side yet:\n\n${ImcDeskSync.heldDeleteNames.join("\n")}"),
+              _text("These logins were deleted in IMCDesk. Because there are several at once, they weren't "
+                  "deleted from your devices yet:\n\n${ImcDeskSync.heldDeleteNames.join("\n")}"),
               SettingsTile(
                 backgroundColor: tileColor,
                 title: "Delete Them Everywhere",
-                subtitle: "Deleted logins in Keychain stay in Recently Deleted for 30 days",
+                subtitle: "They stay in Recently Deleted for 30 days",
                 onTap: () => ImcDeskSync.resolveHeldDeletes(true),
               ),
               const SettingsDivider(),
               SettingsTile(
                 backgroundColor: tileColor,
                 title: "Keep Them",
-                subtitle: "Adds them back where they were deleted",
+                subtitle: "Keeps them on your devices and adds them back to IMCDesk",
                 onTap: () => ImcDeskSync.resolveHeldDeletes(false),
               ),
             ],

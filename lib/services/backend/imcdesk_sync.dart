@@ -35,8 +35,13 @@ class ImcAccount {
 }
 
 /// Two-way password sync with IMCDesk (Asset Management → Passwords), for logins whose user name ends in
-/// @imcequitygroup.com. A change or deletion on either side is copied to the other; when both sides
-/// changed since the last sync, the newer change wins. Personal logins never leave Keychain.
+/// @imcequitygroup.com. A password change on either side is copied to the other; when both sides changed
+/// since the last sync, the newer change wins. Personal logins never leave Keychain.
+///
+/// Deletions only go ONE way: a login deleted in IMCDesk is deleted here (kept in Recently Deleted), but a
+/// login removed from Keychain (iPhone, Apple account, OpenBubbles) is NEVER deleted from IMCDesk — IMCDesk
+/// is the company's record, and its sync API has no delete at all. The link is just paused until the login
+/// comes back to Keychain, and it isn't re-added to Keychain on its own.
 ///
 /// Each linked pair remembers the password fingerprint both sides had at the last sync, so a sync can tell
 /// which side changed. Deletions only follow for logins that were already linked, never on a run where
@@ -57,7 +62,7 @@ class ImcDeskSync {
   static final RxInt linkedCount = 0.obs;
   static final RxList<String> activity = <String>[].obs;
 
-  /// Deletions held back for the user to confirm: "kc:<imc id>" (delete in Keychain) or "imc:<imc id>".
+  /// Deletions from IMCDesk held back for the user to confirm: "kc:<imc id>".
   static final RxList<String> heldDeletes = <String>[].obs;
   static final RxList<String> heldDeleteNames = <String>[].obs;
 
@@ -183,7 +188,7 @@ class ImcDeskSync {
     var pushed = 0, pulled = 0, created = 0, deleted = 0;
 
     // 1. logins linked before: copy changes, or follow a deletion
-    final deleteInKeychain = <String>[], deleteInImc = <String>[];
+    final deleteInKeychain = <String>[];
     for (final imcId in pairs.keys.toList()) {
       final pair = pairs[imcId] as Map<String, dynamic>;
       final a = imc[imcId];
@@ -200,6 +205,7 @@ class ImcDeskSync {
         pairs.remove(imcId);
       } else if (a != null && k != null) {
         pair["seen"] = true;
+        pair.remove("removedHere");
         final r = await _reconcile(host, key, pair, a, pair["kc"] as String, k);
         if (r == 1) pushed++;
         if (r == 2) pulled++;
@@ -207,23 +213,22 @@ class ImcDeskSync {
         // linked on the last run and not visible on one side yet (iCloud can take a moment): wait
       } else if (a == null) {
         deleteInKeychain.add(imcId);
-      } else {
-        deleteInImc.add(imcId);
+      } else if (pair["removedHere"] != true) {
+        // removed from Keychain: IMCDesk keeps it (see the class comment)
+        pair["removedHere"] = true;
+        _note("${pair["name"] ?? "A login"} was removed from your devices; it stays in IMCDesk");
       }
     }
 
     // deletions: never when a side came back empty (a failed read looks exactly like "everything deleted"),
     // and more than a few at once wait for the user
-    final deletes = deleteInKeychain.length + deleteInImc.length;
+    final deletes = deleteInKeychain.length;
     if (deletes > 0) {
       if (all.isEmpty || imcList.isEmpty) {
         // skip this run
       } else if (deletes > 3 && !_approveHeld) {
-        heldDeletes.assignAll([...deleteInKeychain.map((id) => "kc:$id"), ...deleteInImc.map((id) => "imc:$id")]);
-        heldDeleteNames.assignAll([
-          for (final id in deleteInKeychain) "${(pairs[id] as Map)["name"] ?? id} (deleted in IMCDesk)",
-          for (final id in deleteInImc) "${(pairs[id] as Map)["name"] ?? id} (deleted on your devices)",
-        ]);
+        heldDeletes.assignAll(deleteInKeychain.map((id) => "kc:$id"));
+        heldDeleteNames.assignAll([for (final id in deleteInKeychain) "${(pairs[id] as Map)["name"] ?? id}"]);
       } else {
         for (final imcId in deleteInKeychain) {
           final pair = pairs[imcId] as Map<String, dynamic>;
@@ -231,13 +236,6 @@ class ImcDeskSync {
           pairs.remove(imcId);
           deleted++;
           _note("Deleted ${pair["name"] ?? "a login"} (deleted in IMCDesk; kept in Recently Deleted)");
-        }
-        for (final imcId in deleteInImc) {
-          final pair = pairs[imcId] as Map<String, dynamic>;
-          await _post(host, key, "/delete", {"id": imcId});
-          pairs.remove(imcId);
-          deleted++;
-          _note("Deleted ${pair["name"] ?? "a login"} in IMCDesk (deleted on your devices)");
         }
         heldDeletes.clear();
         heldDeleteNames.clear();
