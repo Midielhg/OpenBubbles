@@ -24,7 +24,7 @@ class MyAddresses {
   static Set<String> get addresses {
     if (_addresses.isEmpty && !_loading && pushService.state != null) {
       _loading = true;
-      api.getHandles(state: pushService.state!.client).then((handles) {
+      Future(() => api.getHandles(state: pushService.state!.client)).then((handles) {
         _addresses = handles.map(_normalize).where((a) => a.isNotEmpty).toSet();
         loaded.value++;
       }).catchError((e) {
@@ -45,6 +45,16 @@ extension UnknownSender on Chat {
   /// Nobody in the chat besides the user is in their contacts, like iOS' "Unknown Senders". The
   /// user's own number or contact card (an MMS or a group with a stranger, say) doesn't count.
   bool get isUnknownSender {
+    try {
+      return _isUnknownSender();
+    } catch (e, s) {
+      // used on the path of every incoming message (notification muting): never let it break that
+      Logger.warn("Couldn't tell whether ${guid} is from an unknown sender", error: e, trace: s);
+      return false;
+    }
+  }
+
+  bool _isUnknownSender() {
     final others = participants.where((h) {
       if (MyAddresses.isMine(h.address)) return false;
       final contact = h.contact;

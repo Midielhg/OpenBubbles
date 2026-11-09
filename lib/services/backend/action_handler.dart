@@ -511,7 +511,12 @@ class ActionHandler extends GetxService {
     }
 
     if ((!ls.isAlive || ss.settings.endpointUnifiedPush.value != "") && shouldNotify) {
-      await MessageHelper.handleNotification(m, c);
+      // a notification that fails must never cost the message itself: it's only saved below
+      try {
+        await MessageHelper.handleNotification(m, c);
+      } catch (e, s) {
+        Logger.error("Couldn't show the notification for ${m.guid}", error: e, trace: s, tag: "ActionHandler");
+      }
     }
     await m.forwardIfNessesary(c, markFailed: true);
     await c.addMessage(m);
