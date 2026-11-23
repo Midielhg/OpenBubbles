@@ -5015,7 +5015,13 @@ class RustPushService extends GetxService {
         }
         var keychain = pushService.state?.icloudServices?.keychain;
         if (keychain != null) {
-          cachedInClique = await api.isInClique(keychain: keychain);
+          // a failure here must not fail initFuture: everything that awaits it (Passwords, the chat
+          // list) would then never finish loading
+          try {
+            cachedInClique = await api.isInClique(keychain: keychain);
+          } catch (e, s) {
+            Logger.error("Couldn't check iCloud Keychain membership at startup", error: e, trace: s);
+          }
         }
       }
     })();

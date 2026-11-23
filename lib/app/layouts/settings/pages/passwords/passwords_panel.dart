@@ -15,6 +15,7 @@ import 'package:bluebubbles/app/layouts/settings/widgets/content/next_button.dar
 import 'package:bluebubbles/app/layouts/settings/widgets/settings_widgets.dart';
 import 'package:bluebubbles/app/wrappers/stateful_boilerplate.dart';
 import 'package:bluebubbles/helpers/helpers.dart';
+import 'package:bluebubbles/utils/logger/logger.dart';
 import 'package:bluebubbles/services/rustpush/rustpush_service.dart';
 import 'package:bluebubbles/services/services.dart';
 import 'package:flutter/cupertino.dart';
@@ -69,8 +70,20 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       return;
     }
 
-    await pushService.initFuture;
-    final inClique = pushService.cachedInClique;
+    try {
+      await pushService.initFuture;
+    } catch (e, s) {
+      Logger.error("App startup failed before Passwords opened", error: e, trace: s);
+    }
+    var inClique = pushService.cachedInClique;
+    if (!inClique) {
+      // the startup check may have failed (e.g. the anisette server was down); ask again
+      try {
+        inClique = await pushService.checkClique();
+      } catch (e, s) {
+        Logger.error("Couldn't check iCloud Keychain membership", error: e, trace: s);
+      }
+    }
     if (inClique && manager == null) {
       manager = pushService.state!.icloudServices!.passwords!;
     }
@@ -81,8 +94,10 @@ class _PasswordsPanelState extends OptimizedState<PasswordsPanel> {
       await _loadGroups();
     }
     pushService.checkClique().then((inclique) {
-      if (!inclique) return;
+      if (!inclique || manager == null) return;
       api.syncWifiPasswords(manager: manager!, userApprove: true);
+    }).catchError((e, s) {
+      Logger.error("Background iCloud Keychain check failed", error: e, trace: s);
     });
     if (!mounted) return;
     setState(() {
